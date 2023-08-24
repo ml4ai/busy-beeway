@@ -93,25 +93,6 @@ find_direction <- function(x1,y1,x2,y2) {
   h
 }
 
-createGlobalPath <- function(pX,pY,gX,gY) {
-  X <- c(pX)
-  Y <- c(pY)
-  x <- pX
-  y <- pY
-  d <- pdist(x,y,gX,gY)
-  while(d > 0.6) {
-    newd <- rtruncnorm(1,0.6,d,0.6,1)
-    x <- (1-newd/d)*x + newd/d*gX
-    y <- (1-newd/d)*y + newd/d*gY
-    d <- pdist(x,y,gX,gY)
-    X <- append(X,x)
-    Y <- append(Y,y)
-  }
-  X <- append(X,gX)
-  Y <- append(Y,gY)
-  list(X,Y)
-} 
-
 getAction <- function(cX,cY,tgX,tgY,speed) {
   h <- find_direction(cX,cY,tgX,tgY)
   dX <- speed*cos_plus(h)
@@ -235,45 +216,7 @@ nearest_vertex <- function(x,y,Tree,mTree = NULL,minD = Inf) {
   return(list(mTree,minD))
 }
 
-# growFullTree <- function(Tree,pX,pY,tgX,tgY,OX,OY,OH,eps,pspeed,XE,K,ptr,gb,tol){
-#   for (k in 1:K) {
-#     while(T) {
-#       if (runif(1) < gb) {
-#         qrandX <- tgX
-#         qrandY <- tgY
-#       }
-#       else {
-#         R <- pdist(pX,pY,tgX,tgY) + eps
-#         r <- R*sqrt(runif(1))
-#         theta <- runif(1)*2*pi
-#         qrandX <- pX + r * cos(theta)
-#         qrandY <- pY + r * sin(theta)
-#       }
-#       near <- nearest_vertex(qrandX,qrandY,Tree)
-#       qnearX <- near[[1]]$x
-#       qnearY <- near[[1]]$y
-#       t <- near[[1]]$t
-#       if ((t + 1)*ptr > XE[[length(XE[,1]),1]]) {
-#         break
-#       }
-#       GA <- getAction(qnearX,qnearY,qrandX,qrandY,pspeed)
-#       qnewX <- qnearX + ptr*GA[1]
-#       qnewY <- qnearY + ptr*GA[2]
-#       collProb <- getCollisionProb(qnearX,qnearY,qnewX,qnewY,XE,OX,OY,OH,(t+1)*ptr,tol)
-#       if (collProb < Praccept | isTRUE(all.equal(collProb,Praccept))) {
-#         n <- near[[1]]$AddChild(Tree$totalCount)
-#         n$x <- qnewX
-#         n$y <- qnewY
-#         n$t <- t + 1
-#         n$p <- collProb
-#         break
-#       }
-#     }
-#   }
-#   Tree
-# }
-
-growFullTree <- function(Tree,pX,pY,tgX,tgY,OX,OY,OH,eps,pspeed,XE,K,ptr,gb,tol){
+growFullTree <- function(Tree,pX,pY,tgX,tgY,OX,OY,OH,pspeed,XE,K,ptr,gb,tol){
   for (k in 1:K) {
     while(T) {
       if (runif(1) < gb) {
@@ -281,7 +224,7 @@ growFullTree <- function(Tree,pX,pY,tgX,tgY,OX,OY,OH,eps,pspeed,XE,K,ptr,gb,tol)
         qrandY <- tgY
       }
       else {
-        R <- pdist(pX,pY,tgX,tgY) + eps
+        R <- pdist(pX,pY,tgX,tgY)
         r <- R*sqrt(runif(1))
         theta <- runif(1)*2*pi
         qrandX <- pX + r * cos(theta)
@@ -437,7 +380,6 @@ closestpointonline <- function(ax,ay,bx,by,px,py) {
 }
 
 SES_planning <- function(XE,
-                         GP,
                          pX,
                          pY,
                          gX,
@@ -449,13 +391,13 @@ SES_planning <- function(XE,
                          ospeeds,
                          oprobs,
                          ptr,
+                         sth,
                          Praccept=0.01,
                          max_time=500,
                          K=1500,
                          gb=0.01,
                          greed=0.001,
                          safety=10,
-                         eps=0.6,
                          tol=0.3) {
   O <- data.frame(x=OX,y=OY,t=0)
   PD <- data.frame(x=pX,y=pY,t=0)
@@ -479,16 +421,15 @@ SES_planning <- function(XE,
   for (t in 1:(max_time - 1)) {
     if (reGrowTree) {
       tlp <- t
-      #tgX <- GP[[1]][i]
-      #tgY <- GP[[2]][i]
-      GFTT <- growGoalTree(pX,pY,gX,gY,OX,OY,OH,pspeed,XE,ptr,Praccept,tol)
+      GP <- getAction(pX,pY,gX,gY,pspeed)
+      tgX <- pX + sth*GP[1]
+      tgY <- pY + sth*GP[2]
+      GFTT <- growGoalTree(pX,pY,tgX,tgY,OX,OY,OH,pspeed,XE,ptr,Praccept,tol)
       Tree <- GFTT[[2]]
       if (GFTT[[1]]) {
-        Tree <- growFullTree(Tree,pX,pY,gX,gY,OX,OY,OH,eps,pspeed,XE,K,ptr,gb,tol)
+        Tree <- growFullTree(Tree,pX,pY,tgX,tgY,OX,OY,OH,pspeed,XE,K,ptr,gb,tol)
       }
-      start <- Sys.time()
-      P <- getPathFromTree(Tree,gX,gY,greed,safety)
-      print(Sys.time() - start)
+      P <- getPathFromTree(Tree,tgX,tgY,greed,safety)
       if (is.null(P)) {
         PD <- rbind(PD,data.frame(x=pX,y=pY,t=t))
         print("No path can be found!")
@@ -528,10 +469,9 @@ SES_planning <- function(XE,
     OY[which(sqrt(OX^2 + OY^2) > 50)] <- -OY[which(sqrt(OX^2 + OY^2) > 50)]
     O <- rbind(O,data.frame(x=OX,y=OY,t=t + 1))
     reGrowTree <- checkFutureNodes(pX,pY,P,(t-tlp) + 2,XE,OX,OY,OH,ptr,Praccept,safety,tol)
-    #if (collision(prevX,prevY,pX,pY,tgX,tgY,tol)) {
-    #  reGrowTree <- T
-    #  i <- i + 1
-    #}
+    if (collision(prevX,prevY,pX,pY,tgX,tgY,tol)[[1]]) {
+      reGrowTree <- T
+    }
   }
   print("Out of time!")
   PD <- rbind(PD,data.frame(x=pX,y=pY,t=max_time+1))
