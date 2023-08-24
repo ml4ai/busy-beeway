@@ -1,4 +1,4 @@
-source("SES.R")
+source("~/busy-beeway/planners/ses/SES.R")
 
 pX <- 25
 pY <- 0
@@ -10,27 +10,22 @@ oH <- runif(50,1,360)
 pspeed <- 8
 ospeeds <- c(4.0,8.0,12.0,16.0)
 oprobs <- c(0.25,0.34,0.25,0.15)
-ptr <- 0.2
+ptr <- 1/30
 Praccept <- 0.01
 max_time <- 500
 K <- 1500
 gb <- 0.01
 greed <- 0.001
 safety <- 10
-eps <- 0.6
 tol <- 0.3
+sth <- 1
 
 if (!exists("XE")) {
-  XE <- SES(8,0.01,5000,ptr,ospeeds,oprobs)
-}
-
-if (!exists("GP")) {
-  GP <- createGlobalPath(pX,pY,gX,gY)
+  XE <- SES(sth,(1/30)*(1/10),5000,ptr,ospeeds,oprobs)
 }
 
 #start <- Sys.time()
 D <- SES_planning(XE,
-                  GP,
                   pX,
                   pY,
                   gX,
@@ -42,14 +37,14 @@ D <- SES_planning(XE,
                   ospeeds,
                   oprobs,
                   ptr,
-                  Praccept=0.01,
-                  max_time=500,
-                  K=1500,
-                  gb=0.01,
-                  greed=0.001,
-                  safety=10,
-                  eps=0.6,
-                  tol=0.3)
+                  sth,
+                  Praccept,
+                  max_time,
+                  K,
+                  gb,
+                  greed,
+                  safety,
+                  tol)
 #print(Sys.time() - start)
 P <- D[[1]]
 O <- D[[2]]
