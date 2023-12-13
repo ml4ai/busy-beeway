@@ -1,0 +1,54 @@
+domain busy_beeway {
+  	
+	requirements = { 
+		reward-deterministic, // Reward is a deterministic function
+		integer-valued,       // Uses integer variables
+		continuous,           // Uses continuous variables
+		multivalued,          // Uses enumerated variables
+		intermediate-nodes,   // Uses intermediate nodes
+	};
+      	
+	// User-defined types
+	types {
+	};
+
+	pvariables { 
+		ai-control : { state-fluent,  bool, default = true };
+		advancing : { state-fluent,  bool, default = true };
+        evading : { state-fluent, bool, default = false };
+        avoiding : { state-fluent, bool, default = false };
+        repulsed : { interm-fluent, bool, default = false };
+		 
+        advance : { action-fluent, bool, default = false };
+        avoid : { action-fluent, bool, default = false };
+	};
+  
+	cpfs {
+		ai-control' = if (advance | avoid) then KronDelta(false)
+        else KronDelta(true); 
+						
+		advancing' = if (advance) then KronDelta(true) else
+        if KronDelta();
+
+        evading' = if (evade) then KronDelta(true) else KronDelta(false);
+
+        avoiding' = if (avoid) then KronDelta(true) else KronDelta(false);
+	};
+    	
+    // A boolean functions as a 0/1 integer when a numerical value is needed
+	reward = p + q - r + 5*(i2 == @high); 
+}
+        
+instance inst_dbn_interm_po {
+
+	domain = prop_dbn2;	
+	init-state { 
+		p = true;  // could also just say 'p' by itself 
+		q = false; // default so unnecessary, could also say '~q' by itself
+		r;         // same as r = true
+	};
+  
+	max-nondef-actions = 1;
+	horizon  = 20;
+	discount = 0.9;
+}
