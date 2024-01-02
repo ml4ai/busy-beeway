@@ -33,7 +33,7 @@ pdistVec <- function(x1,y1,X,Y) {
   sqrt((X - x1)^2 + (Y - y1)^2)
 }
 
-processEnsemble <- function(X,m,tol) {
+processEnsemble <- function(X,m) {
   x <- c()
   for (i in 1:length(X)) {
     x <- append(x,X[[i]][[m]][1])
@@ -52,7 +52,7 @@ SES_plot <- function(XE,t,s=5000) {
   print(g)
 }
 
-SES <- function(sth,sts,soe,ptr,speeds,probs,tol=1.5e-08) {
+SES <- function(sth,sts,soe,ptr,speeds,probs) {
   X <- list()
   for (i in 0:soe) {
     X[[i+1]] <- list()
@@ -70,7 +70,7 @@ SES <- function(sth,sts,soe,ptr,speeds,probs,tol=1.5e-08) {
   }
   XE <- list()
   for (m in 0:(sth/ptr)) {
-    XE <- rbind(XE,c(m*ptr,processEnsemble(X,m + 1,tol)))
+    XE <- rbind(XE,c(m*ptr,processEnsemble(X,m + 1)))
   }
   XE
 }
