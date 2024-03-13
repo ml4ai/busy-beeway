@@ -537,6 +537,8 @@ create_uniform_default_policy_from_grid <- function(states,g_id = NULL) {
 create_uniform_default_policy <- function(grid_length,g_id = NULL) {
   gd <- expand.grid(cols=-grid_length:grid_length,
                     rows=-grid_length:grid_length)
+  gd <- gd[rowSums(abs(gd-c(0,0))) <= grid_length,]
+  rownames(gd) <- NULL
   create_uniform_default_policy_from_grid(gd,g_id)
 }
 
