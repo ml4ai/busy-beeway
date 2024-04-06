@@ -40,33 +40,6 @@ lesser_equals_plus <- function(x,y,tol=sqrt(.Machine$double.eps)) {
   (x < y) | equals_plus(x,y,tol)
 }
 
-create_random_board <- function(t=4,g=30,ob=10,cp) {
-  heading <- c("N","E","S","W")
-  ob_headings <- sample(heading,ob,replace=TRUE)
-  gd <- expand.grid(cols=-t:t,rows=-t:t)
-  obstacles <- gd[sample(which(gd$cols != 0 & gd$rows != 0),ob),c(1,2)]
-  obstacles$heading <- ob_headings
-  gh <- runif(1,1,360)
-  goal <- c(0,0) + c(g*cos_plus(gh),g*sin_plus(gh))
-  gd$sqdistgoal <- (gd$cols - goal[1])^2 + (gd$rows - goal[2])^2
-  gd$collprob <- 0.0
-  for (o in 1:nrow(obstacles)) {
-    transf <- switch(obstacles[o,3],
-                     N=c(0,1),E=c(1,0),S=c(0,-1),W=c(-1,0))
-    current_p <- c(obstacles[o,1],obstacles[o,2])
-    for (p in cp) {
-      gd[which(gd$cols == current_p[1] & gd$rows == current_p[2]),4] <- 
-        gd[which(gd$cols == current_p[1] & gd$rows == current_p[2]),4] + 
-        p - gd[which(gd$cols == current_p[1] & gd$rows == current_p[2]),4]*p
-      current_p <- c(current_p[1] + transf[1], current_p[2] + transf[2])
-      if (!any(gd$cols == current_p[1] & gd$rows == current_p[2])) {
-        break
-      }
-    }
-  }
-  gd
-}
-
 ccw <- function(ax,ay,bx,by,cx,cy) {
   (bx - ax)*(cy - ay) - (by - ay)*(cx - ax)
 }
@@ -88,13 +61,13 @@ point_dist <- function(x1,y1,x2,y2) {
   sqrt((x2 - x1)^2 + (y2 - y1)^2)
 }
 
-create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,prate=1/8) {
-  gd <- expand.grid(cols=-grid_length:grid_length + px,
-                    rows=-grid_length:grid_length + py)
+create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,step_size,time_step=1/30) {
+  gd <- expand.grid(cols=(-grid_length:grid_length)*step_size + px,
+                    rows=(-grid_length:grid_length)*step_size + py)
   cp <- matrix(0,nrow(gd),grid_length)
-
+  half_step <- (step_size/2)
   gd$sqdistgoal <- (gd$cols - gx)^2 + (gd$rows - gy)^2
-  e <- (grid_length + 1/2)
+  e <- (grid_length*step_size + half_step)
   uxb <- e + px
   uyb <- e + py
   lxb <- -e + px
@@ -128,8 +101,8 @@ create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,prate=1/8) {
   O$O_max_y <- 0
   
   for (t in 1:grid_length) {
-    cmax <- omax*t*prate
-    cmin <- omin*t*prate
+    cmax <- omax*t*time_step
+    cmin <- omin*t*time_step
     O[,5] <- O[,1] + cmax*cos_plus_vec(O[,3])
     O[,6] <- O[,2] + cmax*sin_plus_vec(O[,3])
     
@@ -152,19 +125,21 @@ create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,prate=1/8) {
     
     if (nrow(ob_inside) != 0) {
       for (i in 1:nrow(ob_inside)) {
-        cell_id <- which(greater_equals_plus(ob_inside[i,1],(gd$cols - 1/2)) & 
-                           lesser_equals_plus(ob_inside[i,1],(gd$cols + 1/2)) &
-                           greater_equals_plus(ob_inside[i,2],(gd$rows - 1/2)) & 
-                           lesser_equals_plus(ob_inside[i,2],(gd$rows + 1/2)))[1]
+        cell_id <- which(greater_equals_plus(ob_inside[i,1],(gd$cols - half_step)) & 
+                           lesser_equals_plus(ob_inside[i,1],(gd$cols + half_step)) &
+                           greater_equals_plus(ob_inside[i,2],(gd$rows - half_step)) & 
+                           lesser_equals_plus(ob_inside[i,2],(gd$rows + half_step)))[1]
         X <- gd[cell_id,1]
         Y <- gd[cell_id,2]
         dirX <- ob_inside[i,5] - ob_inside[i,1]
         dirY <- ob_inside[i,6] - ob_inside[i,2]
+        s_dirX <- sign(dirX)
+        s_dirY <- sign(dirY)
         
-        stepX <- sign(dirX)
-        stepY <- sign(dirY)
-        tDeltaX <- 1/(stepX*dirX)
-        tDeltaY <- 1/(stepY*dirY)
+        stepX <- s_dirX*step_size
+        stepY <- s_dirY*step_size
+        tDeltaX <- step_size/s_dirX
+        tDeltaY <- step_size/s_dirY
         tMaxX <- (X + (stepX*1/2) - ob_inside[i,1])/dirX
         
         tMaxY <- (Y + (stepY*1/2) - ob_inside[i,2])/dirY
@@ -174,7 +149,7 @@ create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,prate=1/8) {
             id <- which(equals_plus(gd$cols,X) & equals_plus(gd$rows,Y))
             d1 <- sqrt(prev_t^2*(dirX^2 + dirY^2))
             d2 <- sqrt(tMaxX^2*(dirX^2 + dirY^2))
-            p <- gen_coll_prob(d1,d2,obs_st[[t,1]],obs_st[[t,2]],cmin,cmax)
+            p <- gen_coll_prob(d1,d2,obs_st[t,1],obs_st[t,2],cmin,cmax)
             prev_t <- tMaxX
             cp[id,t] <- cp[id,t] + p - (cp[id,t]*p)
             tMaxX <- tMaxX + tDeltaX
@@ -184,7 +159,7 @@ create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,prate=1/8) {
             id <- which(equals_plus(gd$cols,X) & equals_plus(gd$rows,Y))
             d1 <- sqrt(prev_t^2*(dirX^2 + dirY^2))
             d2 <- sqrt(tMaxY^2*(dirX^2 + dirY^2))
-            p <- gen_coll_prob(d1,d2,obs_st[[t,1]],obs_st[[t,2]],cmin,cmax)
+            p <- gen_coll_prob(d1,d2,obs_st[t,1],obs_st[t,2],cmin,cmax)
             prev_t <- tMaxY
             cp[id,t] <- cp[id,t] + p - (cp[id,t]*p)
             tMaxY <- tMaxY + tDeltaY
@@ -204,17 +179,20 @@ create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,prate=1/8) {
         dirY <- valid_inter_n[i,6] - valid_inter_n[i,2]
         t_inter <- (uyb - valid_inter_n[i,2])/dirY
         inter_origin <- c(valid_inter_n[i,1] + t_inter*dirX,valid_inter_n[i,2] + t_inter*dirY)
-        cell_id <- which(greater_equals_plus(inter_origin[1],(gd$cols - 1/2)) & 
-                           lesser_equals_plus(inter_origin[1],(gd$cols + 1/2)) &
-                           greater_equals_plus(inter_origin[2],(gd$rows - 1/2)) & 
-                           lesser_equals_plus(inter_origin[2],(gd$rows + 1/2)))[1]
+        cell_id <- which(greater_equals_plus(inter_origin[1],(gd$cols - half_step)) & 
+                           lesser_equals_plus(inter_origin[1],(gd$cols + half_step)) &
+                           greater_equals_plus(inter_origin[2],(gd$rows - half_step)) & 
+                           lesser_equals_plus(inter_origin[2],(gd$rows + half_step)))[1]
         
         X <- gd[cell_id,1]
         Y <- gd[cell_id,2]
-        stepX <- sign(dirX)
-        stepY <- sign(dirY)
-        tDeltaX <- 1/(stepX*dirX)
-        tDeltaY <- 1/(stepY*dirY)
+        s_dirX <- sign(dirX)
+        s_dirY <- sign(dirY)
+        
+        stepX <- s_dirX*step_size
+        stepY <- s_dirY*step_size
+        tDeltaX <- step_size/s_dirX
+        tDeltaY <- step_size/s_dirY
         tMaxX <- (X + (stepX*1/2) - valid_inter_n[i,1])/dirX
         
         tMaxY <- (Y + (stepY*1/2) - valid_inter_n[i,2])/dirY
@@ -224,7 +202,7 @@ create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,prate=1/8) {
             id <- which(equals_plus(gd$cols,X) & equals_plus(gd$rows,Y))
             d1 <- sqrt(prev_t^2*(dirX^2 + dirY^2))
             d2 <- sqrt(tMaxX^2*(dirX^2 + dirY^2))
-            p <- gen_coll_prob(d1,d2,obs_st[[t,1]],obs_st[[t,2]],cmin,cmax)
+            p <- gen_coll_prob(d1,d2,obs_st[t,1],obs_st[t,2],cmin,cmax)
             prev_t <- tMaxX
             cp[id,t] <- cp[id,t] + p - (cp[id,t]*p)
             tMaxX <- tMaxX + tDeltaX
@@ -234,7 +212,7 @@ create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,prate=1/8) {
             id <- which(equals_plus(gd$cols,X) & equals_plus(gd$rows,Y))
             d1 <- sqrt(prev_t^2*(dirX^2 + dirY^2))
             d2 <- sqrt(tMaxY^2*(dirX^2 + dirY^2))
-            p <- gen_coll_prob(d1,d2,obs_st[[t,1]],obs_st[[t,2]],cmin,cmax)
+            p <- gen_coll_prob(d1,d2,obs_st[t,1],obs_st[t,2],cmin,cmax)
             prev_t <- tMaxY
             cp[id,t] <- cp[id,t] + p - (cp[id,t]*p)
             tMaxY <- tMaxY + tDeltaY
@@ -254,17 +232,20 @@ create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,prate=1/8) {
         dirY <- valid_inter_e[i,6] - valid_inter_e[i,2]
         t_inter <- (uxb - valid_inter_e[i,1])/dirX
         inter_origin <- c(valid_inter_e[i,1] + t_inter*dirX,valid_inter_e[i,2] + t_inter*dirY)
-        cell_id <- which(greater_equals_plus(inter_origin[1],(gd$cols - 1/2)) & 
-                           lesser_equals_plus(inter_origin[1],(gd$cols + 1/2)) &
-                           greater_equals_plus(inter_origin[2],(gd$rows - 1/2)) & 
-                           lesser_equals_plus(inter_origin[2],(gd$rows + 1/2)))[1]
+        cell_id <- which(greater_equals_plus(inter_origin[1],(gd$cols - half_step)) & 
+                           lesser_equals_plus(inter_origin[1],(gd$cols + half_step)) &
+                           greater_equals_plus(inter_origin[2],(gd$rows - half_step)) & 
+                           lesser_equals_plus(inter_origin[2],(gd$rows + half_step)))[1]
         
         X <- gd[cell_id,1]
         Y <- gd[cell_id,2]
-        stepX <- sign(dirX)
-        stepY <- sign(dirY)
-        tDeltaX <- 1/(stepX*dirX)
-        tDeltaY <- 1/(stepY*dirY)
+        s_dirX <- sign(dirX)
+        s_dirY <- sign(dirY)
+        
+        stepX <- s_dirX*step_size
+        stepY <- s_dirY*step_size
+        tDeltaX <- step_size/s_dirX
+        tDeltaY <- step_size/s_dirY
         tMaxX <- (X + (stepX*1/2) - valid_inter_e[i,1])/dirX
         
         tMaxY <- (Y + (stepY*1/2) - valid_inter_e[i,2])/dirY
@@ -274,7 +255,7 @@ create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,prate=1/8) {
             id <- which(equals_plus(gd$cols,X) & equals_plus(gd$rows,Y))
             d1 <- sqrt(prev_t^2*(dirX^2 + dirY^2))
             d2 <- sqrt(tMaxX^2*(dirX^2 + dirY^2))
-            p <- gen_coll_prob(d1,d2,obs_st[[t,1]],obs_st[[t,2]],cmin,cmax)
+            p <- gen_coll_prob(d1,d2,obs_st[t,1],obs_st[t,2],cmin,cmax)
             prev_t <- tMaxX
             cp[id,t] <- cp[id,t] + p - (cp[id,t]*p)
             tMaxX <- tMaxX + tDeltaX
@@ -284,7 +265,7 @@ create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,prate=1/8) {
             id <- which(equals_plus(gd$cols,X) & equals_plus(gd$rows,Y))
             d1 <- sqrt(prev_t^2*(dirX^2 + dirY^2))
             d2 <- sqrt(tMaxY^2*(dirX^2 + dirY^2))
-            p <- gen_coll_prob(d1,d2,obs_st[[t,1]],obs_st[[t,2]],cmin,cmax)
+            p <- gen_coll_prob(d1,d2,obs_st[t,1],obs_st[t,2],cmin,cmax)
             prev_t <- tMaxY
             cp[id,t] <- cp[id,t] + p - (cp[id,t]*p)
             tMaxY <- tMaxY + tDeltaY
@@ -304,17 +285,20 @@ create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,prate=1/8) {
         dirY <- valid_inter_s[i,6] - valid_inter_s[i,2]
         t_inter <- (lyb - valid_inter_s[i,2])/dirY
         inter_origin <- c(valid_inter_s[i,1] + t_inter*dirX,valid_inter_s[i,2] + t_inter*dirY)
-        cell_id <- which(greater_equals_plus(inter_origin[1],(gd$cols - 1/2)) & 
-                           lesser_equals_plus(inter_origin[1],(gd$cols + 1/2)) &
-                           greater_equals_plus(inter_origin[2],(gd$rows - 1/2)) & 
-                           lesser_equals_plus(inter_origin[2],(gd$rows + 1/2)))[1]
+        cell_id <- which(greater_equals_plus(inter_origin[1],(gd$cols - half_step)) & 
+                           lesser_equals_plus(inter_origin[1],(gd$cols + half_step)) &
+                           greater_equals_plus(inter_origin[2],(gd$rows - half_step)) & 
+                           lesser_equals_plus(inter_origin[2],(gd$rows + half_step)))[1]
         
         X <- gd[cell_id,1]
         Y <- gd[cell_id,2]
-        stepX <- sign(dirX)
-        stepY <- sign(dirY)
-        tDeltaX <- 1/(stepX*dirX)
-        tDeltaY <- 1/(stepY*dirY)
+        s_dirX <- sign(dirX)
+        s_dirY <- sign(dirY)
+        
+        stepX <- s_dirX*step_size
+        stepY <- s_dirY*step_size
+        tDeltaX <- step_size/s_dirX
+        tDeltaY <- step_size/s_dirY
         tMaxX <- (X + (stepX*1/2) - valid_inter_s[i,1])/dirX
         
         tMaxY <- (Y + (stepY*1/2) - valid_inter_s[i,2])/dirY
@@ -324,7 +308,7 @@ create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,prate=1/8) {
             id <- which(equals_plus(gd$cols,X) & equals_plus(gd$rows,Y))
             d1 <- sqrt(prev_t^2*(dirX^2 + dirY^2))
             d2 <- sqrt(tMaxX^2*(dirX^2 + dirY^2))
-            p <- gen_coll_prob(d1,d2,obs_st[[t,1]],obs_st[[t,2]],cmin,cmax)
+            p <- gen_coll_prob(d1,d2,obs_st[t,1],obs_st[t,2],cmin,cmax)
             prev_t <- tMaxX
             cp[id,t] <- cp[id,t] + p - (cp[id,t]*p)
             tMaxX <- tMaxX + tDeltaX
@@ -334,7 +318,7 @@ create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,prate=1/8) {
             id <- which(equals_plus(gd$cols,X) & equals_plus(gd$rows,Y))
             d1 <- sqrt(prev_t^2*(dirX^2 + dirY^2))
             d2 <- sqrt(tMaxY^2*(dirX^2 + dirY^2))
-            p <- gen_coll_prob(d1,d2,obs_st[[t,1]],obs_st[[t,2]],cmin,cmax)
+            p <- gen_coll_prob(d1,d2,obs_st[t,1],obs_st[t,2],cmin,cmax)
             prev_t <- tMaxY
             cp[id,t] <- cp[id,t] + p - (cp[id,t]*p)
             tMaxY <- tMaxY + tDeltaY
@@ -354,17 +338,20 @@ create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,prate=1/8) {
         dirY <- valid_inter_w[i,6] - valid_inter_w[i,2]
         t_inter <- (lxb - valid_inter_w[i,1])/dirX
         inter_origin <- c(valid_inter_w[i,1] + t_inter*dirX,valid_inter_w[i,2] + t_inter*dirY)
-        cell_id <- which(greater_equals_plus(inter_origin[1],(gd$cols - 1/2)) & 
-                           lesser_equals_plus(inter_origin[1],(gd$cols + 1/2)) &
-                           greater_equals_plus(inter_origin[2],(gd$rows - 1/2)) & 
-                           lesser_equals_plus(inter_origin[2],(gd$rows + 1/2)))[1]
-
+        cell_id <- which(greater_equals_plus(inter_origin[1],(gd$cols - half_step)) & 
+                           lesser_equals_plus(inter_origin[1],(gd$cols + half_step)) &
+                           greater_equals_plus(inter_origin[2],(gd$rows - half_step)) & 
+                           lesser_equals_plus(inter_origin[2],(gd$rows + half_step)))[1]
+        
         X <- gd[cell_id,1]
         Y <- gd[cell_id,2]
-        stepX <- sign(dirX)
-        stepY <- sign(dirY)
-        tDeltaX <- 1/(stepX*dirX)
-        tDeltaY <- 1/(stepY*dirY)
+        s_dirX <- sign(dirX)
+        s_dirY <- sign(dirY)
+        
+        stepX <- s_dirX*step_size
+        stepY <- s_dirY*step_size
+        tDeltaX <- step_size/s_dirX
+        tDeltaY <- step_size/s_dirY
         tMaxX <- (X + (stepX*1/2) - valid_inter_w[i,1])/dirX
         
         tMaxY <- (Y + (stepY*1/2) - valid_inter_w[i,2])/dirY
@@ -374,7 +361,7 @@ create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,prate=1/8) {
             id <- which(equals_plus(gd$cols,X) & equals_plus(gd$rows,Y))
             d1 <- sqrt(prev_t^2*(dirX^2 + dirY^2))
             d2 <- sqrt(tMaxX^2*(dirX^2 + dirY^2))
-            p <- gen_coll_prob(d1,d2,obs_st[[t,1]],obs_st[[t,2]],cmin,cmax)
+            p <- gen_coll_prob(d1,d2,obs_st[t,1],obs_st[t,2],cmin,cmax)
             prev_t <- tMaxX
             cp[id,t] <- cp[id,t] + p - (cp[id,t]*p)
             tMaxX <- tMaxX + tDeltaX
@@ -384,7 +371,7 @@ create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,prate=1/8) {
             id <- which(equals_plus(gd$cols,X) & equals_plus(gd$rows,Y))
             d1 <- sqrt(prev_t^2*(dirX^2 + dirY^2))
             d2 <- sqrt(tMaxY^2*(dirX^2 + dirY^2))
-            p <- gen_coll_prob(d1,d2,obs_st[[t,1]],obs_st[[t,2]],cmin,cmax)
+            p <- gen_coll_prob(d1,d2,obs_st[t,1],obs_st[t,2],cmin,cmax)
             prev_t <- tMaxY
             cp[id,t] <- cp[id,t] + p - (cp[id,t]*p)
             tMaxY <- tMaxY + tDeltaY
@@ -403,37 +390,54 @@ create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,prate=1/8) {
   gd
 }
 
-generate_obs_ses <- function(ospeeds=c(4.0,8.0,12.0,16.0),oprobs=c(0.25,0.34,0.25,0.15),k=50000,st=1/4,ptr=1/30,t=1) {
-  s <- c()
-  n <- 1
-  for (j in 1:k) {
-    speed <- sample(ospeeds,1,TRUE,oprobs)*(ptr*st)
-    a <- 0
-    for (i in seq((ptr*st),t,by=(ptr*st))) {
-      if (i == n*ptr) {
-        speed <- sample(ospeeds,1,TRUE,oprobs)*(ptr*st)
-      }
-      a <- a + speed
+generate_obs_ses <- function(O) {
+  max_t <- max(O$t)
+  max_id <- max(O$id)
+  df <- NULL
+  for (l in 1:max_t) {
+    d <- c()
+    for (i in 1:max_id) {
+      ids <- which(O$id == i)
+      d <- c(d,sqrt(diff(O[ids,1],lag=l)^2 + diff(O[ids,2],lag=l)^2))
     }
-    s <- c(s,a)
+    df <- rbind(df,data.frame(m=mean(d),sd=sd(d),t=l,ss=length(d)))
   }
-  c(mean(s),sd(s))
+  df
 }
 
-generate_ses <- function(ospeeds=c(4.0,8.0,12.0,16.0),oprobs=c(0.25,0.34,0.25,0.15),k=50000,st=1/4,ptr=1/30,prate=1/8,t=16) {
-  res <- list()
-  for (i in 1:t) {
-    res <- rbind(res,generate_obs_ses(ospeeds,oprobs,k,st,ptr,prate*i))
+merge_obs_st <- function(obs_st1,obs_st2) {
+  max_t <- max(max(obs_st1$t),max(obs_st2$t))
+  df <- NULL
+  for (t in 1:max_t) {
+    id1 <- which(obs_st1$t == t)
+    id2 <- which(obs_st2$t == t)
+    
+    if (length(id1) > 0 & length(id2) == 0) {
+      df <- rbind(df,obs_st1[id1,])
+    }
+    else if (length(id1) == 0 & length(id2) > 0) {
+      df <- rbind(df,obs_st2[id2,])
+    }
+    else {
+      n <- obs_st1[id1,4]
+      x_bar <- obs_st1[id1,1]
+      m <- obs_st2[id2,4]
+      y_bar <- obs_st2[id2,1]
+      
+      z_ss <- n + m
+      
+      z_bar <- (n*x_bar + m*y_bar)/z_ss
+      
+      x_var <- (obs_st1[id1,2])^2
+      y_var <- (obs_st2[id2,2])^2
+      
+      z_var <- (((n - 1)*x_var + (m - 1)*y_var)/(z_ss - 1)) + 
+        ((n*m*(x_bar - y_bar)^2)/(z_ss*(z_ss - 1)))
+      
+      df <- rbind(df,data.frame(m=z_bar,sd=sqrt(z_var),t=t,ss=z_ss))
+    }
   }
-  res
-}
-
-get_coll_probs <- function(m,s) {
-  p <- c(ptruncnorm(1,0,16,m,s) - ptruncnorm(0,0,16,m,s))
-  for (i in seq(3,17,by=2)) {
-    p <- c(p,ptruncnorm(i,0,16,m,s) - ptruncnorm(i-2,0,16,m,s))
-  }
-  p
+  df
 }
 
 gen_coll_prob <- function(d1,d2,m,s,mind=0,maxd=16) {
@@ -442,23 +446,24 @@ gen_coll_prob <- function(d1,d2,m,s,mind=0,maxd=16) {
 }
 
 plot_game_board <- function(states,tr=NULL,fill_data=0,fill_aux=NULL) {
-  player <- data.frame(x=0,y=0)
+  c_idx <- (nrow(states) + 1)/2
+  player <- data.frame(x=states[c_idx,1],y=states[c_idx,2])
   if (fill_data == 0) {
     if (is.null(tr)) {
       g <- ggplot() + 
         theme_bw() + 
         geom_tile(states,mapping=aes(x=cols,y=rows,fill=collprob),colour="white") +
         scale_fill_gradient(low="black",high="orange") +
-        geom_point(player,mapping=aes(x,y),size=45/max(states$cols),color="white")
+        geom_point(player,mapping=aes(x,y),size=.02*nrow(states),color="white")
     }
     else {
       g <- ggplot() + 
         theme_bw() + 
         geom_tile(states,mapping=aes(x=cols,y=rows,fill=collprob),colour="white") +
         scale_fill_gradient(low="black",high="orange") +
-        geom_point(player,mapping=aes(x,y),size=45/max(states$cols),color="white") 
-      for (i in 2:nrow(tr)) {
-        df <- data.frame(x1 = tr[i-1,1],x2 = tr[i,1],y1 = tr[i-1,2], y2 = tr[i,2])
+        geom_point(player,mapping=aes(x,y),size=.02*nrow(states),color="white") 
+      for (i in 2:length(tr)) {
+        df <- data.frame(x1 = states[tr[i-1],1],x2 = states[tr[i],1],y1 = states[tr[i-1],2], y2 = states[tr[i],2])
         g <- g + geom_segment(df,mapping=aes(x = x1,y = y1, xend = x2, yend = y2),
                               arrow=arrow(length=unit(0.15, "inches")))
       }
@@ -470,16 +475,16 @@ plot_game_board <- function(states,tr=NULL,fill_data=0,fill_aux=NULL) {
         theme_bw() + 
         geom_tile(states,mapping=aes(x=cols,y=rows,fill=sqdistgoal),colour="white") +
         scale_fill_gradient(low="green",high="black") +
-        geom_point(player,mapping=aes(x,y),size=45/max(states$cols),color="white")
+        geom_point(player,mapping=aes(x,y),size=.02*nrow(states),color="white")
     }
     else {
       g <- ggplot() + 
         theme_bw() + 
         geom_tile(states,mapping=aes(x=cols,y=rows,fill=sqdistgoal),colour="white") +
         scale_fill_gradient(low="green",high="black") +
-        geom_point(player,mapping=aes(x,y),size=45/max(states$cols),color="white") 
-      for (i in 2:nrow(tr)) {
-        df <- data.frame(x1 = tr[i-1,1],x2 = tr[i,1],y1 = tr[i-1,2], y2 = tr[i,2])
+        geom_point(player,mapping=aes(x,y),size=.02*nrow(states),color="white") 
+      for (i in 2:length(tr)) {
+        df <- data.frame(x1 = states[tr[i-1],1],x2 = states[tr[i],1],y1 = states[tr[i-1],2], y2 = states[tr[i],2])
         g <- g + geom_segment(df,mapping=aes(x = x1,y = y1, xend = x2, yend = y2),
                               arrow=arrow(length=unit(0.15, "inches")))
       }
@@ -491,16 +496,16 @@ plot_game_board <- function(states,tr=NULL,fill_data=0,fill_aux=NULL) {
         theme_bw() + 
         geom_tile(states,mapping=aes(x=cols,y=rows,fill=fill_aux),colour="white") +
         scale_fill_gradient(low="blue",high="red") +
-        geom_point(player,mapping=aes(x,y),size=45/max(states$cols),color="white")
+        geom_point(player,mapping=aes(x,y),size=.02*nrow(states),color="white")
     }
     else {
       g <- ggplot() + 
         theme_bw() + 
         geom_tile(states,mapping=aes(x=cols,y=rows,fill=fill_aux),colour="white") +
         scale_fill_gradient(low="blue",high="red") +
-        geom_point(player,mapping=aes(x,y),size=45/max(states$cols),color="white") 
-      for (i in 2:nrow(tr)) {
-        df <- data.frame(x1 = tr[i-1,1],x2 = tr[i,1],y1 = tr[i-1,2], y2 = tr[i,2])
+        geom_point(player,mapping=aes(x,y),size=.02*nrow(states),color="white") 
+      for (i in 2:length(tr)) {
+        df <- data.frame(x1 = states[tr[i-1],1],x2 = states[tr[i],1],y1 = states[tr[i-1],2], y2 = states[tr[i],2])
         g <- g + geom_segment(df,mapping=aes(x = x1,y = y1, xend = x2, yend = y2),
                               arrow=arrow(length=unit(0.15, "inches")))
       }
@@ -509,24 +514,23 @@ plot_game_board <- function(states,tr=NULL,fill_data=0,fill_aux=NULL) {
   g
 }
 
-create_cf <- function(b1,b2) {
-  costfunc <- function(states,g) {
-    cost <- b1*((states$sqdistgoal - min(states$sqdistgoal))/(max(states$sqdistgoal) - min(states$sqdistgoal))) + 
+create_vf <- function(b1,b2) {
+  valfunc <- function(states,g) {
+    val <- b1*((states$sqdistgoal - min(states$sqdistgoal))/(max(states$sqdistgoal) - min(states$sqdistgoal))) + 
       b2*states$collprob
     g_id <- which(greater_equals_plus(g[1],(states$cols - 1/2)) & lesser_equals_plus(g[1],(states$cols + 1/2)) &
                     greater_equals_plus(g[2],(states$rows - 1/2)) & lesser_equals_plus(g[2],(states$rows + 1/2)))
     if (length(g_id) != 0) {
-      cost[g_id[1]] <- 0
+      val[g_id[1]] <- 0
     }
-    cost
+    val
   }
-  costfunc
+  valfunc
 }
 
 create_uniform_default_policy_from_grid <- function(states,g_id = NULL) {
   adj_mat <- apply(states, 1,function(pt)
-    (pt["cols"] == states$cols & abs(pt["rows"] - states$rows) == 1) |
-    (abs(pt["cols"] - states$cols) == 1 & pt["rows"] == states$rows))
+    (abs(pt["rows"] - states$rows) <= 1 & abs(pt["cols"] - states$cols) <= 1))
   diag(adj_mat) <- 0
   adj_mat[g_id,] <- 0
   adj_mat[g_id,g_id] <- 1
@@ -537,23 +541,8 @@ create_uniform_default_policy_from_grid <- function(states,g_id = NULL) {
 create_uniform_default_policy <- function(grid_length,g_id = NULL) {
   gd <- expand.grid(cols=-grid_length:grid_length,
                     rows=-grid_length:grid_length)
-  gd <- gd[rowSums(abs(gd-c(0,0))) <= grid_length,]
-  rownames(gd) <- NULL
   create_uniform_default_policy_from_grid(gd,g_id)
 }
-
-sample_trajectory <- function(init,t_mat,states,H=8) {
-  trX <- c(init[1])
-  trY <- c(init[2])
-  idxs <- 1:nrow(states)
-  for (i in 1:H) {
-    ci <- which(equals_plus(states$cols,trX[length(trX)]) & equals_plus(states$rows,trY[length(trY)]))
-    ti <- sample(idxs,1,prob=t_mat[ci,])
-    trX <- c(trX,states[ti,1])
-    trY <- c(trY,states[ti,2])
-  }
-  data.frame(x=trX,y=trY)
-}  
 
 max_trajectory <- function(init,t_mat,states,H=8) {
   initial <- which(equals_plus(states$cols,init[1]) & equals_plus(states$rows,init[2]))
@@ -581,42 +570,8 @@ max_trajectory <- function(init,t_mat,states,H=8) {
   data.frame(x=trX,y=trY)
 }
 
-tr_log_likelihood <- function(tr_idx,U) {
-  L <- 0
-  if (length(tr_idx) == 1) {
-    return(0)
-  }
-  if (length(tr_idx) < 1) {
-    return(-Inf)
-  }
-  for (t in 1:(length(tr_idx) - 1)) {
-    L <- L + log(U[tr_idx[t],tr_idx[t+1]])
-  }
-  return(L)
-}
-
-total_cost <- function(dp,costfunc,states,tr,g) {
-  cost <- costfunc(states,g)
-  ct <- cost[which(equals_plus(states$cols,tr[nrow(tr),1]) & equals_plus(states$rows,tr[nrow(tr),2]))]
-  for (t in 1:(nrow(tr) - 1)) {
-    idx <- which(equals_plus(states$cols,tr[t,1]) & equals_plus(states$rows,tr[t,2]))
-    idxp <- which(equals_plus(states$cols,tr[t + 1,1]) & equals_plus(states$rows,tr[t + 1,2]))
-    ct <- ct + (cost[idx] - log(dp[idx,idxp]))
-  }
-  ct
-}
-
-sample_total_costs <- function(init,t_mat,dp,costfunc,states,g,s=5000) {
-  samps <- c()
-  for (t in 1:s) {
-    tr <- sample_trajectory(init,t_mat,states)
-    samps <- c(samps,total_cost(dp,costfunc,states,tr,g))
-  }
-  samps
-}
-
-LRL <- function(dp,costfunc,states,g) {
-  v <- costfunc(states,g)
+LRL <- function(dp,valfunc,states,g) {
+  v <- valfunc(states,g)
   z <- exp(-v) 
   u <- matrix(0,length(z),length(z))
   G <- dp %*% z
@@ -679,229 +634,72 @@ find_direction <- function(x1,y1,x2,y2) {
   h
 }
 
-checkFutureTr <- function(c_cost,g,tr,board,dp,costf,eps) {
-  t_cost <- total_cost(dp,costf,board,tr,g)
-  if (t_cost - c_cost > eps) {
-    return(TRUE)
-  }
-  return(FALSE)
+simulate_coll_probs <- function(x_dim,y_dim,t,ob_prob=0.2,ub=0.5) {
+  grid_size <- x_dim*y_dim
+  total <- grid_size*t
+  matrix(rbinom(total,1,ob_prob)*runif(total,0,ub),t,grid_size)
 }
 
-LSES_planner <- function(p,
-                         g,
-                         O,
-                         obs_st,
-                         eps,
-                         costf,
-                         pspeed,
-                         ospeeds,
-                         oprobs,
-                         pt=8,
-                         max_time=500,
-                         ptr=1/30,
-                         tol=0.3) {
-  omax <- max(ospeeds)
-  omin <- min(ospeeds)
-  prate <- pspeed*ptr
-  O_pos <- data.frame(x=O[,1],y=O[,2],h=O[,3],t=0)
+simulate_global_board <- function(grid_length,step_size=1) {
+  gd <- expand.grid(cols=(-grid_length:grid_length)*step_size,
+                    rows=(-grid_length:grid_length)*step_size)
+  gd
+}
+
+simulate_board <- function(px,py,gx,gy,gb,O,t,grid_length,step_size=1) {
+  gd <- expand.grid(cols=(-grid_length:grid_length)*step_size + px,
+                    rows=(-grid_length:grid_length)*step_size + py)
+  gd <- transform(merge(
+    x = gd,
+    y = cbind(rownames = rownames(gb), gb),by=c("cols","rows")
+  ), row.names = rownames, rownames = NULL)
+  gd$index <- as.numeric(row.names(gd))
+  r_ids <- order(gd$index)
+  gd <- gd[r_ids,]
+  gd$index <- NULL
+  row.names(gd) <- NULL
+  gd$sqdistgoal <- (gd$cols - gx)^2 + (gd$rows - gy)^2
+  gd$collprobs <- O[t,r_ids]
+  gd
+}
+
+simulate_collision <- function(px,py,gb,O,t) {
+  id <- which(gb$cols == px & gb$rows == py)
+  rbinom(1,1,prob=O[t,id])
+}
+
+#Simplified Version
+L_planner <- function(p,
+                      g,
+                      O,
+                      gb,
+                      valf,
+                      delay=8) {
   p_pos <- data.frame(x=p[1],y=p[2],t=0)
-  O_old <- O
-  O <- ob_moves(O,ptr,ospeeds,oprobs)
-  coll <- collision(O_old[,1],O_old[,2],O[,1],O[,2],p[1],p[2],tol)
-  if (coll[[1]]) {
-    print("Collision!")
-    O_pos <- rbind(O_pos,data.frame(x=coll[[2]],y=coll[[3]],h=O[,3],t=1))
-    p_pos <- rbind(p_pos,data.frame(x=p[1],y=p[2],t=1))
-    return(list(p_pos,O_pos,FALSE))
-  }
-  exceeded_bounds <- which(sqrt(O[,1]^2 + O[,2]^2) > 50)
-  O[exceeded_bounds,1] <- -O_old[exceeded_bounds,1]
-  O[exceeded_bounds,2] <- -O_old[exceeded_bounds,2]
-  O_pos <- rbind(O_pos,data.frame(x=O[,1],y=O[,2],h=O[,3],t=1))
-  replan <- TRUE
-  dp <- NULL
+  dp <- create_uniform_default_policy(delay)
   current_p <- p
-  t <- 1
-  board <- create_board(current_p[1],current_p[2],g[1],g[2],O,obs_st,omin,omax,pt,(1/pspeed))
-  while (t < max_time - 1) {
-    if (replan) {
-      c_board <- board
-      if (is.null(dp)) {
-        dp <- create_uniform_default_policy(pt)
-      }
-      g_id <- which(greater_equals_plus(g[1],(c_board$cols - 1/2)) & 
-                      lesser_equals_plus(g[1],(c_board$cols + 1/2)) &
-                      greater_equals_plus(g[2],(c_board$rows - 1/2)) & 
-                      lesser_equals_plus(g[2],(c_board$rows + 1/2)))
-      res <- LRL(dp,costf,c_board,g)
+  idx <- 1
+  tr <- NULL
+  if (current_p[1] == g[1] & current_p[2] == g[2]) {
+    return(list(p_pos,O,TRUE,g))
+  }
+  for (t in 1:NROW(O)) {
+    if (idx > NROW(tr)) {
+      c_board <- simulate_board(current_p[1],current_p[2],g[1],g[2],gb,O,t,delay)
+      res <- LRL(dp,valf,c_board,g)
       tr <- max_trajectory(current_p,res[[1]],c_board)
       idx <- 2
-      replan <- FALSE
     }
-    dx <- tr[idx,1] - current_p[1]
-    dy <- tr[idx,2] - current_p[2]
-    if (dx > 0) {
-      h <- 360
+    current_p <- c(tr[idx,1],tr[idx,2])
+    p_pos <- rbind(p_pos,data.frame(x=current_p[1],y=current_p[2],t=t))
+    if (simulate_collision(current_p[1],current_p[2],gb,O,t)) {
+      return(list(p_pos,O,FALSE,g))
     }
-    else if (dx < 0) {
-      h <- 180
-    }
-    else {
-      if (dy > 0) {
-        h <- 90
-      }
-      else {
-        h <- 270
-      }
-    }
-    if (length(g_id) != 0) {
-      if (equals_plus(tr[idx,1],c_board[g_id[1],1]) & equals_plus(tr[idx,2],c_board[g_id[1],2])) {
-        h <- find_direction(current_p[1],current_p[2],g[1],g[2])
-        g_dist <- point_dist(current_p[1],current_p[2],g[1],g[2])
-        if (g_dist < prate) {
-          prev_p <- current_p
-          current_p <- g
-          coll <- collision(prev_p[1],prev_p[2],current_p[1],current_p[2],O[,1],O[,2],tol)
-          if (coll[[1]]) {
-            print("Collision!")
-            p_pos <- rbind(p_pos,data.frame(x=coll[[2]],y=coll[[3]],t=t))
-            return(list(p_pos,O_pos,FALSE))
-          }
-          coll <- collision(prev_p[1],prev_p[2],current_p[1],current_p[2],g[1],g[2],tol)
-          if (coll[[1]]) {
-            print("Goal!")
-            p_pos <- rbind(p_pos,data.frame(x=coll[[2]],y=coll[[3]],t=t))
-            return(list(p_pos,O_pos,TRUE))
-          }
-          print("Error! Should have collided or reached goal!")
-          return(list(p_pos,O_pos,FALSE))
-        }
-        for (i in 1:(g_dist %/% prate)) {
-          prev_p <- current_p
-          current_p[1] <- prev_p[1] + prate*cos_plus(h)
-          current_p[2] <- prev_p[2] + prate*sin_plus(h)
-          coll <- collision(prev_p[1],prev_p[2],current_p[1],current_p[2],O[,1],O[,2],tol)
-          if (coll[[1]]) {
-            print("Collision!")
-            p_pos <- rbind(p_pos,data.frame(x=coll[[2]],y=coll[[3]],t=t))
-            return(list(p_pos,O_pos,FALSE))
-          }
-          coll <- collision(prev_p[1],prev_p[2],current_p[1],current_p[2],g[1],g[2],tol)
-          if (coll[[1]]) {
-            print("Goal!")
-            p_pos <- rbind(p_pos,data.frame(x=coll[[2]],y=coll[[3]],t=t))
-            return(list(p_pos,O_pos,TRUE))
-          }
-          p_pos <- rbind(p_pos,data.frame(x=current_p[1],y=current_p[2],t=t))
-          t <- t + 1
-          O_old <- O
-          O <- ob_moves(O,ptr,ospeeds,oprobs)
-          coll <- collision(O_old[,1],O_old[,2],O[,1],O[,2],current_p[1],current_p[2],tol)
-          if (coll[[1]]) {
-            print("Collision!")
-            O_pos <- rbind(O_pos,data.frame(x=coll[[2]],y=coll[[3]],h=O[,3],t=t))
-            p_pos <- rbind(p_pos,data.frame(x=current_p[1],y=current_p[2],t=t))
-            return(list(p_pos,O_pos,FALSE))
-          }
-          exceeded_bounds <- which(sqrt(O[,1]^2 + O[,2]^2) > 50)
-          O[exceeded_bounds,1] <- -O_old[exceeded_bounds,1]
-          O[exceeded_bounds,2] <- -O_old[exceeded_bounds,2]
-          O_pos <- rbind(O_pos,data.frame(x=O[,1],y=O[,2],h=O[,3],t=t))
-        }
-        prev_p <- current_p
-        current_p <- g
-        coll <- collision(prev_p[1],prev_p[2],current_p[1],current_p[2],O[,1],O[,2],tol)
-        if (coll[[1]]) {
-          print("Collision!")
-          p_pos <- rbind(p_pos,data.frame(x=coll[[2]],y=coll[[3]],t=t))
-          return(list(p_pos,O_pos,FALSE))
-        }
-        coll <- collision(prev_p[1],prev_p[2],current_p[1],current_p[2],g[1],g[2],tol)
-        if (coll[[1]]) {
-          print("Goal!")
-          p_pos <- rbind(p_pos,data.frame(x=coll[[2]],y=coll[[3]],t=t))
-          return(list(p_pos,O_pos,TRUE))
-        }
-        print("Error! Should have collided or reached goal!")
-        return(list(p_pos,O_pos,FALSE))
-      }
-    }
-    for (i in 1:(1 %/% prate)) {
-      prev_p <- current_p
-      current_p[1] <- prev_p[1] + prate*cos_plus(h)
-      current_p[2] <- prev_p[2] + prate*sin_plus(h)
-      coll <- collision(prev_p[1],prev_p[2],current_p[1],current_p[2],O[,1],O[,2],tol)
-      if (coll[[1]]) {
-        print("Collision!")
-        p_pos <- rbind(p_pos,data.frame(x=coll[[2]],y=coll[[3]],t=t))
-        return(list(p_pos,O_pos,FALSE))
-      }
-      coll <- collision(prev_p[1],prev_p[2],current_p[1],current_p[2],g[1],g[2],tol)
-      if (coll[[1]]) {
-        print("Goal!")
-        p_pos <- rbind(p_pos,data.frame(x=coll[[2]],y=coll[[3]],t=t))
-        return(list(p_pos,O_pos,TRUE))
-      }
-      p_pos <- rbind(p_pos,data.frame(x=current_p[1],y=current_p[2],t=t))
-      t <- t + 1
-      O_old <- O
-      O <- ob_moves(O,ptr,ospeeds,oprobs)
-      coll <- collision(O_old[,1],O_old[,2],O[,1],O[,2],current_p[1],current_p[2],tol)
-      if (coll[[1]]) {
-        print("Collision!")
-        O_pos <- rbind(O_pos,data.frame(x=coll[[2]],y=coll[[3]],h=O[,3],t=t))
-        p_pos <- rbind(p_pos,data.frame(x=current_p[1],y=current_p[2],t=t))
-        return(list(p_pos,O_pos,FALSE))
-      }
-      exceeded_bounds <- which(sqrt(O[,1]^2 + O[,2]^2) > 50)
-      O[exceeded_bounds,1] <- -O_old[exceeded_bounds,1]
-      O[exceeded_bounds,2] <- -O_old[exceeded_bounds,2]
-      O_pos <- rbind(O_pos,data.frame(x=O[,1],y=O[,2],h=O[,3],t=t))
-    }
-    if (!equals_plus((1 / prate),(1 %/% prate))) {
-      prev_p <- current_p
-      current_p <- c(tr[idx,1],tr[idx,2])
-      coll <- collision(prev_p[1],prev_p[2],current_p[1],current_p[2],O[,1],O[,2],tol)
-      if (coll[[1]]) {
-        print("Collision!")
-        p_pos <- rbind(p_pos,data.frame(x=coll[[2]],y=coll[[3]],t=t))
-        return(list(p_pos,O_pos,FALSE))
-      }
-      coll <- collision(prev_p[1],prev_p[2],current_p[1],current_p[2],g[1],g[2],tol)
-      if (coll[[1]]) {
-        print("Goal!")
-        p_pos <- rbind(p_pos,data.frame(x=coll[[2]],y=coll[[3]],t=t))
-        return(list(p_pos,O_pos,TRUE))
-      }
-      p_pos <- rbind(p_pos,data.frame(x=current_p[1],y=current_p[2],t=t))
-      t <- t + 1
-      O_old <- O
-      O <- ob_moves(O,ptr,ospeeds,oprobs)
-      coll <- collision(O_old[,1],O_old[,2],O[,1],O[,2],current_p[1],current_p[2],tol)
-      if (coll[[1]]) {
-        print("Collision!")
-        O_pos <- rbind(O_pos,data.frame(x=coll[[2]],y=coll[[3]],h=O[,3],t=t))
-        p_pos <- rbind(p_pos,data.frame(x=current_p[1],y=current_p[2],t=t))
-        return(list(p_pos,O_pos,FALSE))
-      }
-      exceeded_bounds <- which(sqrt(O[,1]^2 + O[,2]^2) > 50)
-      O[exceeded_bounds,1] <- -O_old[exceeded_bounds,1]
-      O[exceeded_bounds,2] <- -O_old[exceeded_bounds,2]
-      O_pos <- rbind(O_pos,data.frame(x=O[,1],y=O[,2],h=O[,3],t=t))
-    }
-    else {
-      current_p <- c(tr[idx,1],tr[idx,2])
+    if (current_p[1] == g[1] & current_p[2] == g[2]) {
+      return(list(p_pos,O,TRUE,g))
     }
     idx <- idx + 1
-    if (idx > nrow(tr)) {
-      replan <- TRUE
-    }
-    else {
-      c_cost <- total_cost(dp,costf,c_board,tr[(idx-1):nrow(tr),],g)
-      board <- create_board(tr[idx,1],tr[idx,2],g[1],g[2],O,obs_st,omin,omax,pt,(1/pspeed))
-      replan <- checkFutureTr(c_cost,g,tr[(idx-1):nrow(tr),],board,dp,costf,eps)
-    }
   }
-  print("Ran out of time!")
-  return(list(p_pos,O_pos,FALSE))
+  print("Out of time!")
+  return(list(p_pos,O,FALSE,g))
 }

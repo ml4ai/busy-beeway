@@ -12,99 +12,44 @@ runif_circle <- function(n,R,center = c(0,0)) {
   res
 }
 
-run_sim <- function() {
-  lives <- 3
+run_sim_fixed_delay <- function(b1,b2,sessions,t=200,delay=8,gb_length=50,o_prob=0.5,ub_cp=1) {
   orig_goals <- 7
-  pspeed <- 8
-  pt <- 8
-  ospeeds <- c(4.0,8.0,12.0,16.0)
-  oprobs <- c(0.25,0.34,0.25,0.15)
-  ptr <- 1/30
-  st <- 1/4
-  max_time <- 2000
-  k <- 50000
-  eps <- Inf
-  tol <- 0.3
-  b1 <- 1
-  b2 <- 9
   
-  cf1 <- create_cf(b1,b2)
-  
-  obs_st <- generate_ses(ospeeds,oprobs,k,st,ptr,(1/pspeed),pt)
+  vf1 <- create_vf(b1,b2)
   
   D <- list()
-  d <- NULL
-  goals <- orig_goals
-  p <- runif_circle(1,50)
-  O_r <- runif_circle(50,50)
-  O <- data.frame(x=O_r[[1]],y=O_r[[2]],h=runif(50,1,360))
-  repeat {
-    p <- runif_circle(1,50)
-    if (all(greater_equals_plus(sqrt((p[1] - O[,1])^2 + (p[2] - O[,2])^2),1))) {
-      break
-    }
-  }
-  repeat {
-    g_h <- runif(1,1,360)
-    g_r <- rnorm(1,30,1)
-    g <- c(p[1] + g_r*cos_plus(g_h),p[2] + g_r*sin_plus(g_h))
-    if (lesser_equals_plus(sqrt(g[1]^2 + g[2]^2),50)) {
-      break
-    }
-  }
-  
-  repeat {
-    d <- LSES_planner(p,g,O,obs_st,eps,cf1,pspeed,ospeeds,oprobs,pt,max_time,ptr,tol)
-    reset_all <- !d[[3]]
-    d[[4]] <- g
-    D <- rbind(D,d)
-    if (reset_all) {
-      lives <- lives - 1
-      if (lives < 0) {
-        print("You Lost!")
-        return(D)
-      }
-      goals <- orig_goals
-      p <- runif_circle(1,50)
-      O_r <- runif_circle(50,50)
-      O <- data.frame(x=O_r[[1]],y=O_r[[2]],h=runif(50,1,360))
-      repeat {
-        p <- runif_circle(1,50)
-        if (all(greater_equals_plus(sqrt((p[1] - O[,1])^2 + (p[2] - O[,2])^2),1))) {
+  p <- c(0,0)
+  g <- c(0,30)
+  gb <- simulate_global_board(gb_length)
+  gb_dim <- length(-gb_length:gb_length)
+  for (i in 1:sessions) {
+    lives <- 3
+    O <- simulate_coll_probs(gb_dim,gb_dim,t,o_prob,ub_cp)
+    O[1,which(gb[,1] == p[1] & gb[,2] == p[2])] <- 0
+    goals <- orig_goals
+    repeat {
+      d <- L_planner(p,g,O,gb,vf1,delay)
+      D <- rbind(D,d)
+      O <- simulate_coll_probs(gb_dim,gb_dim,t,o_prob,ub_cp)
+      O[1,which(gb[,1] == p[1] & gb[,2] == p[2])] <- 0
+      if (!d[[3]]) {
+        lives <- lives - 1
+        if (lives < 0) {
+          print("You Lost!")
           break
         }
+        goals <- orig_goals
       }
-      repeat {
-        g_h <- runif(1,1,360)
-        g_r <- rnorm(1,30,1)
-        g <- c(p[1] + g_r*cos_plus(g_h),p[2] + g_r*sin_plus(g_h))
-        if (lesser_equals_plus(sqrt(g[1]^2 + g[2]^2),50)) {
-          break
-        }
-      }
-    }
-    else {
-      goals <- goals - 1
-      if (goals <= 0) {
-        print("You Won!")
-        return(D)
-      }
-      p <- d[[1]]
-      p_t <- p[nrow(p),3]
-      p <- c(p[nrow(p),1],p[nrow(p),2])
-      O <- d[[2]]
-      O <- O[which(O$t == p_t),]
-      O <- data.frame(x=O[,1],y=O[,2],h=O[,3])
-      repeat {
-        g_h <- runif(1,1,360)
-        g_r <- rnorm(1,30,1)
-        g <- c(p[1] + g_r*cos_plus(g_h),p[2] + g_r*sin_plus(g_h))
-        if (lesser_equals_plus(sqrt(g[1]^2 + g[2]^2),50)) {
+      else {
+        goals <- goals - 1
+        if (goals <= 0) {
+          print("You Won!")
           break
         }
       }
     }
   }
+  D
 }
 
 animate_sim <- function(D,i) {
