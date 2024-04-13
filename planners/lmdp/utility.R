@@ -68,3 +68,8 @@ runif_circle <- function(n,R,center = c(0,0)) {
   }
   res
 }
+
+gen_coll_prob <- function(d1,d2,m,s,mind=0,maxd=16) {
+  s <- ptruncnorm(d2,mind,maxd,m,s) - ptruncnorm(d1,mind,maxd,m,s)
+  s
+}

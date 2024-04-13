@@ -1,4 +1,4 @@
-source("~/busy-beeway/planners/lmdp/lmdp.R")
+source("~/busy-beeway/planners/lmdp/ioc_graph.R")
 source("~/busy-beeway/planners/lmdp/ioc_data.R")
 
 logsumexp <- function(X) {
