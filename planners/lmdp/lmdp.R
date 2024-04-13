@@ -333,56 +333,6 @@ create_board <- function(px,py,gx,gy,O,obs_st,omin,omax,grid_length,time_step,ps
   gd
 }
 
-generate_obs_ses <- function(O) {
-  max_t <- max(O$t)
-  max_id <- max(O$id)
-  df <- NULL
-  for (l in 1:max_t) {
-    d <- c()
-    for (i in 1:max_id) {
-      ids <- which(O$id == i)
-      d <- c(d,sqrt(diff(O[ids,1],lag=l)^2 + diff(O[ids,2],lag=l)^2))
-    }
-    df <- rbind(df,data.frame(m=mean(d),sd=sd(d),t=l,ss=length(d)))
-  }
-  df
-}
-
-merge_obs_st <- function(obs_st1,obs_st2) {
-  max_t <- max(max(obs_st1$t),max(obs_st2$t))
-  df <- NULL
-  for (t in 1:max_t) {
-    id1 <- which(obs_st1$t == t)
-    id2 <- which(obs_st2$t == t)
-    
-    if (length(id1) > 0 & length(id2) == 0) {
-      df <- rbind(df,obs_st1[id1,])
-    }
-    else if (length(id1) == 0 & length(id2) > 0) {
-      df <- rbind(df,obs_st2[id2,])
-    }
-    else {
-      n <- obs_st1[id1,4]
-      x_bar <- obs_st1[id1,1]
-      m <- obs_st2[id2,4]
-      y_bar <- obs_st2[id2,1]
-      
-      z_ss <- n + m
-      
-      z_bar <- (n*x_bar + m*y_bar)/z_ss
-      
-      x_var <- (obs_st1[id1,2])^2
-      y_var <- (obs_st2[id2,2])^2
-      
-      z_var <- (((n - 1)*x_var + (m - 1)*y_var)/(z_ss - 1)) + 
-        ((n*m*(x_bar - y_bar)^2)/(z_ss*(z_ss - 1)))
-      
-      df <- rbind(df,data.frame(m=z_bar,sd=sqrt(z_var),t=t,ss=z_ss))
-    }
-  }
-  df
-}
-
 gen_coll_prob <- function(d1,d2,m,s,mind=0,maxd=16) {
   s <- ptruncnorm(d2,mind,maxd,m,s) - ptruncnorm(d1,mind,maxd,m,s)
   s
