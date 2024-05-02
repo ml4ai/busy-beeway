@@ -1,12 +1,28 @@
-library("igraph")
 source("~/busy-beeway/planners/lmdp/utility.R")
 
-compute_threat_level <- function(px,py,O,mu,sig,tol=0.3) {
-  Ux <- px - O[,1]
-  Uy <- py - O[,2]
+create_vf <- function(b1,b2) {
+  valfunc <- function(states) {
+    val <- b1*states$rd_goal + b2*states$threat_level
+    val
+  }
+  valfunc
+}
+
+
+compute_threat_level <- function(px,py,O,mu,sig,rho=0.3) {
+  not_inside <- point_dist(px,py,O[,1],O[,2]) > rho
   
-  Vx <- O[,1] + cos_plus_vec(O[,3])
-  Vy <- O[,2] + sin_plus_vec(O[,3])
+  inside <- !not_inside
+  
+  O_outside <- O[which(not_inside),]
+  
+  O_inside <- O[which(inside),]
+  
+  Ux <- px - O_outside[,1]
+  Uy <- py - O_outside[,2]
+  
+  Vx <- O_outside[,1] + cos_plus_vec(O_outside[,3])
+  Vy <- O_outside[,2] + sin_plus_vec(O_outside[,3])
   
   UV <- Ux*Vx + Uy*Vy
   
@@ -18,13 +34,9 @@ compute_threat_level <- function(px,py,O,mu,sig,tol=0.3) {
   
   d <- sqrt(U_2x^2 + U_2y^2)
   
-  int_idx <- which(d < tol)
+  int_idx <- which(d < rho)
   
-  if (length(int_idx) > 0) {
-    print("test")
-  }
-  
-  m <- sqrt(tol^2-d[int_idx]^2)
+  m <- sqrt(rho^2-d[int_idx]^2)
   
   W_1x <- U_1x[int_idx] + m*Vx[int_idx]
   
@@ -34,100 +46,72 @@ compute_threat_level <- function(px,py,O,mu,sig,tol=0.3) {
   
   W_2y <- U_1y[int_idx] - m*Vy[int_idx]
   
-  P_1x <- O[int_idx,1] + W_1x
+  P_1x <- O_outside[int_idx,1] + W_1x
   
-  P_1y <- O[int_idx,2] + W_1y
+  P_1y <- O_outside[int_idx,2] + W_1y
   
-  P_2x <- O[int_idx,1] + W_2x
+  P_2x <- O_outside[int_idx,1] + W_2x
   
-  P_2y <- O[int_idx,2] + W_2y
+  P_2y <- O_outside[int_idx,2] + W_2y
   
   dist1 <- sqrt(W_2x^2 + W_2y^2)
   
   dist2 <- sqrt(W_1x^2 + W_1y^2)
   
-  p <- rep(0,length(dist1))
+  p_outside <- rep(0,length(dist1))
   
   lidx <- which(dist1 < dist2)
   uidx <- which(dist1 > dist2)
   
-  p[lidx] <- (pnorm(dist2[lidx],mu,sig) - pnorm(dist1[lidx],mu,sig))
+  p_outside[lidx] <- (pnorm(dist2[lidx],mu,sig) - pnorm(dist1[lidx],mu,sig))
   
-  p[uidx] <- (pnorm(dist1[uidx],mu,sig) - pnorm(dist2[uidx],mu,sig))
+  p_outside[uidx] <- (pnorm(dist1[uidx],mu,sig) - pnorm(dist2[uidx],mu,sig))
   
-  sum(p)
+  a <- O_inside[,1] - px
+  b <- O_inside[,2] - py
+  
+  n <- a*cos_plus_vec(O_inside[,3]) + b*sin_plus_vec(O_inside[,3])
+  
+  dist <- -n + sqrt(n^2 - a^2 - b^2 + rho^2)
+  
+  p_inside <- (pnorm(dist,mu,sig) - pnorm(rep(0,length(dist)),mu,sig))
+  
+  p <- sum(p_outside) + sum(p_inside)
+  
+  p
 }
 
-create_state_graph <- function(size,sample_size=29) {
-  n <- sample_size + 1
-  g <- make_star(n,mode="out")
-  for (i in 1:(size-1)) {
-    g <- g + make_star(n,mode="out")
-    g <- add_edges(g,c(n*(i - 1) + 1,n*(i) + 1))
-  }
-  g <- add_vertices(g,1)
-  g <- add_edges(g,c(n*(size-1) + 1,n*(size) + 1))
-  g
-}
-
-create_passive_dynamics <- function(size,sample_size=29) {
-  g <- create_state_graph(size,sample_size)
-  m <- as_adjacency_matrix(g,sparse=FALSE)
-  m <- m/rowSums(m)
-  diag(m)[which(is.nan(diag(m)))] <- 1.0
-  m[which(is.nan(m))] <- 0.0
-  m
-}
-
-create_state_space <- function(p_df,gx,gy,O,obs_st,size,sample_size=29,tol=0.3) {
-  g <- create_state_graph(size,sample_size)
-  n <- sample_size + 1
-  t <- 0
-  c_radius <- point_dist(p_df[1,1],p_df[1,2],p_df[2,1],p_df[2,2])
-  for (i in 1:length(V(g))) {
-    if (i == (n*(t) + 1)) {
-      V(g)$x[i] <- p_df[t+1,1]
-      V(g)$y[i] <- p_df[t+1,2]
-      V(g)$rd_goal[i] <- (V(g)$x[i] - gx)^2 + (V(g)$y[i] - gy)^2
-      if (t == 0) {
-        V(g)$threat_level[i] <- 0
-      }
-      else {
-        V(g)$threat_level[i] <- compute_threat_level(V(g)$x[i],V(g)$y[i],O,obs_st[t,1],obs_st[t,2],tol)
-      }
-    }
-    else {
-      samp <- runif_circle(1,c_radius,center=c(p_df[t+1,1],p_df[t+1,2]))
-      V(g)$x[i] <- samp[1]
-      V(g)$y[i] <- samp[2]
-      V(g)$rd_goal[i] <- (V(g)$x[i] - gx)^2 + (V(g)$y[i] - gy)^2
-      V(g)$threat_level[i] <- compute_threat_level(V(g)$x[i],V(g)$y[i],O,obs_st[t+1,1],obs_st[t+1,2],tol)
-    }
+create_state_space_data <- function(p_df,g,O,obs_st,delT=3,sample_size=29,rho=0.3) {
+  trans <- NULL
+  off_trans <- list()
+  ts <- delT + 1
+  for (t in 2:nrow(p_df)) {
+    m_n_samps <- runif_on_circle(sample_size,
+                                 point_dist(p_df[t,1],p_df[t,2],p_df[t-1,1],p_df[t-1,2]),
+                                 center=c(p_df[t-1,1],p_df[t-1,2]))
+    m_n_samps[[1]] <- c(m_n_samps[[1]],p_df[t,1])
+    m_n_samps[[2]] <- c(m_n_samps[[2]],p_df[t,2])
+    rd_goal_samps <- (m_n_samps[[1]] - g[1])^2 + (m_n_samps[[2]] - g[2])^2
+    rd_goal_samps <- (rd_goal_samps - min(rd_goal_samps))/(max(rd_goal_samps) - min(rd_goal_samps))
     
-    if (i == (n*(t + 1))) {
-      t <- t + 1
-      if (t <= size) {
-        c_radius <- point_dist(p_df[t,1],p_df[t,2],p_df[t+1,1],p_df[t+1,2])
+    rd_goal_tr <- rd_goal_samps[length(rd_goal_samps)]
+    threat_level_samps <- rep(0,sample_size + 1)
+    o_t <- (t-2)-delT
+    if (o_t >= 0) {
+      for (i in 1:length(threat_level_samps)) {
+        threat_level_samps[i] <- compute_threat_level(m_n_samps[[1]][i],
+                                                      m_n_samps[[2]][i],
+                                                      O[which(O$t == o_t),],
+                                                      obs_st[ts,1],
+                                                      obs_st[ts,2],
+                                                      rho)
       }
     }
+    threat_level_tr <- threat_level_samps[length(threat_level_samps)]
+    trans <- rbind(trans, data.frame(rd_goal=rd_goal_tr, threat_level=threat_level_tr))
+    off_trans <- rbind(off_trans,list(data.frame(rd_goal=rd_goal_samps,threat_level=threat_level_samps)))
   }
-  V(g)$rd_goal <- (V(g)$rd_goal - min(V(g)$rd_goal))/(max(V(g)$rd_goal) - min(V(g)$rd_goal))
-  g
-}
-
-generate_obs_ses <- function(O) {
-  max_t <- max(O$t)
-  max_id <- max(O$id)
-  df <- NULL
-  for (l in 1:max_t) {
-    d <- c()
-    for (i in 1:max_id) {
-      ids <- which(O$id == i)
-      d <- c(d,sqrt(diff(O[ids,1],lag=l)^2 + diff(O[ids,2],lag=l)^2))
-    }
-    df <- rbind(df,data.frame(m=mean(d),sd=sd(d),t=l,ss=length(d)))
-  }
-  df
+  list(trans,off_trans)
 }
 
 merge_obs_st <- function(obs_st1,obs_st2) {
@@ -158,8 +142,31 @@ merge_obs_st <- function(obs_st1,obs_st2) {
       
       z_var <- (((n - 1)*x_var + (m - 1)*y_var)/(z_ss - 1)) + 
         ((n*m*(x_bar - y_bar)^2)/(z_ss*(z_ss - 1)))
-      
       df <- rbind(df,data.frame(m=z_bar,sd=sqrt(z_var),t=t,ss=z_ss))
+    }
+  }
+  df
+}
+
+generate_obs_ses <- function(O) {
+  if (is.data.frame(O)) {
+    max_t <- max(O$t)
+    max_id <- max(O$id)
+    df <- NULL
+    for (l in 1:max_t) {
+      d <- c()
+      for (i in 1:max_id) {
+        ids <- which(O$id == i)
+        d <- c(d,sqrt(diff(O[ids,1],lag=l)^2 + diff(O[ids,2],lag=l)^2))
+      }
+      df <- rbind(df,data.frame(m=mean(d),sd=sd(d),t=l,ss=as.numeric(length(d))))
+    }
+  }
+  else {
+    df <- generate_obs_ses(O[[1]])
+    for (i in 2:length(O)) {
+      c_df <- generate_obs_ses(O[[i]])
+      df <- merge_obs_st(df,c_df)
     }
   }
   df
