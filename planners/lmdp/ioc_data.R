@@ -1,4 +1,4 @@
-source("~/busy-beeway/planners/lmdp/ioc_graph.R")
+source("~/busy-beeway/planners/lmdp/ioc_state_space.R")
 
 process_session <- function(D,obs_st,delT=3,sample_size=100,rho=0.3) {
   dat <- list()
