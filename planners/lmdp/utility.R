@@ -1,3 +1,5 @@
+library("ggplot2")
+
 cos_plus <- function(degrees) {
   if (equals_plus(degrees, 90) | equals_plus(degrees, 270)) {
     return(0)
@@ -57,9 +59,22 @@ point_dist <- function(x1,y1,x2,y2) {
   sqrt((x2 - x1)^2 + (y2 - y1)^2)
 }
 
+# Randomly samples in a circle
 runif_circle <- function(n,R,center = c(0,0)) {
   r <- R * sqrt(runif(n))
-  theta <- runif(n,1,360) 
+  theta <- runif(n,0,360) 
+  if (n == 1) {
+    res <- c(center[1] + r * cos_plus(theta),center[2] + r * sin_plus(theta))
+  }
+  else {
+    res <- list(center[1] + r * cos_plus_vec(theta),center[2] + r * sin_plus_vec(theta))
+  }
+  res
+}
+
+# Randomly samples on the circumference of a circle
+runif_on_circle <- function(n,r,center = c(0,0)) {
+  theta <- runif(n,0,360) 
   if (n == 1) {
     res <- c(center[1] + r * cos_plus(theta),center[2] + r * sin_plus(theta))
   }
@@ -72,4 +87,20 @@ runif_circle <- function(n,R,center = c(0,0)) {
 gen_coll_prob <- function(d1,d2,m,s,mind=0,maxd=16) {
   s <- ptruncnorm(d2,mind,maxd,m,s) - ptruncnorm(d1,mind,maxd,m,s)
   s
+}
+
+plot_trajectory <- function(dat) {
+  ggplot(data=dat) + geom_path(mapping=aes(x=posX,y=posY))
+}
+
+plot_weight_dist <- function(res) {
+  ggplot() + 
+    geom_point(res,mapping=aes(x=b1,y=b2,color=rl)) + 
+    scale_color_gradient(low="orange",high="blue")
+}
+
+plot_tuning_dist <- function(res) {
+  ggplot() + 
+    geom_point(res,mapping=aes(x=delT,y=rho,color=rl)) + 
+    scale_color_gradient(low="orange",high="blue")
 }
