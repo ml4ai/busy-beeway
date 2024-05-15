@@ -1,4 +1,6 @@
 library("ggplot2")
+library("gganimate")
+library("truncnorm")
 
 cos_plus <- function(degrees) {
   if (equals_plus(degrees, 90) | equals_plus(degrees, 270)) {
@@ -55,8 +57,12 @@ frac <- function(x) {
   }
 }
 
+point_dist_sq <- function(x1,y1,x2,y2) {
+  (x2 - x1)^2 + (y2 - y1)^2
+}
+
 point_dist <- function(x1,y1,x2,y2) {
-  sqrt((x2 - x1)^2 + (y2 - y1)^2)
+  sqrt(point_dist_sq(x1,y1,x2,y2))
 }
 
 # Randomly samples in a circle
@@ -89,6 +95,52 @@ gen_coll_prob <- function(d1,d2,m,s,mind=0,maxd=16) {
   s
 }
 
+closestpointonline <- function(ax,ay,bx,by,px,py) {
+  apx <- px - ax
+  apy <- py - ay
+  abx <- bx - ax
+  aby <- by - ay
+  
+  ab2 <- abx^2 + aby^2
+  
+  apab <- apx*abx + apy*aby
+  
+  t <- apab/ab2
+  t[which(is.na(t))] <- 0
+  t[which(t < 0)] <- 0
+  t[which(t > 1)] <- 1
+  list(ax + abx*t,ay+aby*t)
+}
+
+pointCollide <- function(x1,y1,x2,y2,tol) {
+  (x1-x2)^2 + (y1-y2)^2 < (2*tol)^2
+}
+
+collision <- function(prevX,prevY,curX,curY,px,py,tol = 0.3) {
+  CP <- closestpointonline(prevX,prevY,curX,curY,px,py)
+  cpX <- CP[[1]]
+  cpY <- CP[[2]]
+  list(any(pointCollide(cpX,cpY,px,py,tol)),cpX,cpY)
+}
+
+find_direction <- function(x1,y1,x2,y2) {
+  y <- y2 - y1
+  x <- x2 - x1
+  if (equals_plus(y,0) & x > 0) {
+    h <- 360
+  }
+  else if (greater_equals_plus(y,0)) {
+    h <- atan2(y,x)*180/pi
+  }
+  else if (y < 0) {
+    h <- (atan2(y,x) + 2*pi)*180/pi
+  }
+  else {
+    h <- NaN
+  }
+  h
+}
+
 plot_trajectory <- function(dat) {
   ggplot(data=dat) + geom_path(mapping=aes(x=posX,y=posY))
 }
@@ -103,4 +155,18 @@ plot_tuning_dist <- function(res) {
   ggplot() + 
     geom_point(res,mapping=aes(x=delT,y=rho,color=rl)) + 
     scale_color_gradient(low="orange",high="blue")
+}
+
+animate_sim <- function(D,i) {
+  P <- D[[i,1]]
+  O <- D[[i,2]]
+  g <- data.frame(x=D[[i,4]][1],y=D[[i,4]][2])
+  ggplot(O,aes(x,y))+
+    geom_text(aes(label='W'),color="darkred",size=3) +
+    geom_point(data=P,aes(x,y),size=3) +
+    geom_text(data=g,aes(x,y,label='G'),color = "green",size=5) +
+    scale_x_continuous(limits = c(-50,50)) +
+    scale_y_continuous(limits = c(-50,50)) +
+    labs(title = 'Time Step: {frame_time}') +
+    transition_time(t)
 }
