@@ -1,5 +1,6 @@
 source("~/busy-beeway/planners/lmdp/utility.R")
-source("~/busy-beeway/planners/lmdp/ioc_state_space.R")
+source("~/busy-beeway/planners/lmdp/mct_state_space.R")
+source("~/busy-beeway/planners/lmdp/value_functions.R")
 
 toss_magic_coin <- function(outcome,s_prob) {
   new_outcome <- rbinom(1,1,s_prob)
@@ -23,7 +24,7 @@ sim_session <- function(b1,
                         N=10) {
   
   p_dat <- create_p_dat(delT)
-  vf1 <- create_vf_mct(b1,b2,b2*25)
+  vf1 <- create_vf_mct(b1,b2,b1*25)
   P <- data.frame(bet=0,t=-delT)
   O <- data.frame(outcome=rbinom(1,1,0.5),s_prob=0.5,t=-delT)
   bets <- c(5,10,15,20,25)
@@ -37,7 +38,7 @@ sim_session <- function(b1,
   }
 
   for (t in 1:N) {
-    new_states <- create_state_space_data_mct(bets,P,O,delT,p_dat,t)
+    new_states <- create_state_space_data(bets,P,O,delT,p_dat,t)
     v <- vf1(new_states)
     z <- exp(-v)
     P <- rbind(P,data.frame(bet=bets[which.max(z)],t=t))

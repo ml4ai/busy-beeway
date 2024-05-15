@@ -1,5 +1,6 @@
 source("~/busy-beeway/planners/lmdp/utility.R")
-source("~/busy-beeway/planners/lmdp/ioc_state_space.R")
+source("~/busy-beeway/planners/lmdp/bb_state_space.R")
+source("~/busy-beeway/planners/lmdp/value_functions.R")
 
 move_obstacles <- function(O,ospeeds,oprobs) {
   n_obs <- nrow(O)
