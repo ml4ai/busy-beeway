@@ -14,10 +14,12 @@ rdunif <- function(n,a,b) {
 }
 
 compute_log_rl <- function(dat,b_1,b_2,lambda) {
-  vf <- create_vf(b_1,b_2)
+  vf <- create_vf_bb(b_1,b_2)
   rl <- 0
+  n_sum <- 0 
   for (i in 1:length(dat)) {
     trans <- dat[[i]][[1]]
+    n_sum <- n_sum + nrow(trans)
     off_trans <- dat[[i]][[2]]
     
     b_prime <- sum(vf(trans))
@@ -31,7 +33,7 @@ compute_log_rl <- function(dat,b_1,b_2,lambda) {
     
     rl <- rl + (b_prime + b_count)
   }
-  rl + lambda*(b_1^2+b_2^2)
+  (1/n_sum)*(rl + lambda*(b_1^2+b_2^2))
 }
 
 #B2 with respect to B1 (i.e., L(B2)/L(B1))
@@ -40,17 +42,17 @@ compute_2M_rl <- function(dat,B1,B2,lambda=1) {
 }
 
 compute_grad_hess <- function(dat,b_1,b_2,lambda) {
-  vf <- create_vf(b_1,b_2)
-  b_1_vf <- create_vf(1,0)
-  b_2_vf <- create_vf(0,1)
+  vf <- create_vf_bb(b_1,b_2)
+  b_1_vf <- create_vf_bb(1,0)
+  b_2_vf <- create_vf_bb(0,1)
   grad <- c(0,0)
   hess <- matrix(0,2,2)
-  
+  n_sum <- 0
   for (i in 1:length(dat)) {
   
     trans <- dat[[i]][[1]]
     off_trans <- dat[[i]][[2]]
-    
+    n_sum <- n_sum + nrow(trans)
     b_1_prime <- sum(b_1_vf(trans))
     b_2_prime <- sum(b_2_vf(trans))
     
@@ -95,21 +97,26 @@ compute_grad_hess <- function(dat,b_1,b_2,lambda) {
     hess[1,2] <- hess[1,2] + b_cov
     hess[2,1] <- hess[2,1] + b_cov
   }
-  grad[1] <- grad[1] + lambda*(2*b_1)
-  grad[2] <- grad[2] + lambda*(2*b_2)
+  grad[1] <- (1/n_sum)*(grad[1] + lambda*(2*b_1))
+  grad[2] <- (1/n_sum)*(grad[2] + lambda*(2*b_2))
   
-  hess[1,1] <- hess[1,1] + lambda*2
-  hess[2,2] <- hess[2,2] + lambda*2
+  hess[1,1] <- (1/n_sum)*(hess[1,1] + lambda*2)
+  hess[2,2] <- (1/n_sum)*(hess[2,2] + lambda*2)
   
-  hess[1,2] <- hess[1,2]
-  hess[2,1] <- hess[2,1]
+  hess[1,2] <- (1/n_sum)*(hess[1,2])
+  hess[2,1] <- (1/n_sum)*(hess[2,1])
   list(grad,hess)
 }
 
 #newton's method
 newton_2_var <- function(dat,guess = NULL,max_iter=10000,tol=0.0001,lambda=1) {
   if (is.null(guess)) {
-    B <- rnorm(2,1,1/sqrt(2*lambda))
+    if (lambda > 0) {
+      B <- rnorm(2,0,1/sqrt(2*lambda))
+    }
+    else {
+      B <- rnorm(2,0,1)
+    }
   }
   else {
     B <- guess
@@ -120,7 +127,7 @@ newton_2_var <- function(dat,guess = NULL,max_iter=10000,tol=0.0001,lambda=1) {
   hess <- res[[2]]
   n_direction <- solve(hess,-grad)
   l_sq <- ((grad %*% -n_direction)/2)[1]
-  while (nit < max_iter & l_sq >= tol) {
+  while (nit < max_iter & l_sq >= tol & !is.nan(l_sq)) {
     B <- B + n_direction
     nit <- nit + 1
     res <- compute_grad_hess(dat,B[1],B[2],lambda)
@@ -130,7 +137,7 @@ newton_2_var <- function(dat,guess = NULL,max_iter=10000,tol=0.0001,lambda=1) {
     l_sq <- ((grad %*% -n_direction)/2)[1]
   }
   rl <- compute_log_rl(dat,B[1],B[2],lambda)
-  list(B,rl)
+  list(B,rl,l_sq,nit)
 }
 
 newton_2_var_loocv_helper <- function(s,
