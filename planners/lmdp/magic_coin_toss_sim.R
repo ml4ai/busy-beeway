@@ -38,10 +38,11 @@ sim_session <- function(b1,
   }
 
   for (t in 1:N) {
-    new_states <- create_state_space_data(bets,P,O,delT,p_dat,t)
+    new_states <- create_state_space(bets,P,O,delT,p_dat,t)
     v <- vf1(new_states)
     z <- exp(-v)
-    P <- rbind(P,data.frame(bet=bets[which.max(z)],t=t))
+    max_z <- sample(which(equals_plus(z,max(z))),1)
+    P <- rbind(P,data.frame(bet=bets[max_z],t=t))
     toss <- toss_magic_coin(O[which(O$t == t-1),1],O[which(O$t == t-1),2])
     O <- rbind(O,data.frame(outcome=toss[[1]],s_prob=toss[[2]],t=t))
   }
