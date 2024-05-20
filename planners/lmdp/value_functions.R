@@ -14,3 +14,11 @@ create_vf_mct <- function(b1,b2,c) {
   }
   valfunc
 }
+
+create_vf_tid <- function(b1,b2) {
+  valfunc <- function(states) {
+    val <- b1*states$min_g_edist + b2*states$min_y_edist
+    val
+  }
+  valfunc
+}
