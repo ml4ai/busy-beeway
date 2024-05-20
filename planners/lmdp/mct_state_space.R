@@ -41,7 +41,7 @@ create_p_dat <- function(delT) {
   list(head_dat,tail_dat)
 }
 
-create_state_space_data <- function(bets,P,O,delT,p_dat,t) {
+create_state_space <- function(bets,P,O,delT,p_dat,t) {
   o_t <- (t-1) - delT
   O_t <- O[which(O$t == o_t),]
   p_bet <- P[which(P$t > o_t & P$t < t),1]
