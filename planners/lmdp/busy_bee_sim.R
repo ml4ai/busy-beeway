@@ -67,7 +67,7 @@ sim_attempt <- function(p,g,O,obs_st,vf1,delT,rho,pspeed,ospeeds,oprobs,state_sa
     
     v <- vf1(m_n_df)
     z <- exp(-v)
-    max_z <- which.max(z)
+    max_z <- sample(which(equals_plus(z,max(z))),1)
     new_P <- data.frame(x=m_n_df[max_z,1],y=m_n_df[max_z,2],t=t)
     coll <- collision(c_P[,1],c_P[,2],new_P[,1],new_P[,2],c_O[,1],c_O[,2],0.3)
     if (coll[[1]]) {
