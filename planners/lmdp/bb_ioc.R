@@ -1,5 +1,5 @@
 source("~/busy-beeway/planners/lmdp/value_functions.R")
-source("~/busy-beeway/planners/lmdp/ioc_data.R")
+source("~/busy-beeway/planners/lmdp/bb_data.R")
 library("parallel")
 library("parallelly")
 
