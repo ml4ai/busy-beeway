@@ -78,3 +78,19 @@ create_state_space <- function(bets,P,O,delT,p_dat,t) {
   }
   b_states
 }
+
+create_state_space_data <- function(P,O,bets,delT,p_dat) {
+  trans <- NULL
+  off_trans <- list()
+  for (t in 1:length(which(P$t > 0))) {
+    b_states <- create_state_space(bets,P,O,delT,p_dat,t)
+    p_bet <- P[which(P$t == t),1]
+    p_eg <- b_states[which(b_states$bet == p_bet),2]
+    p_el <- b_states[which(b_states$bet == p_bet),3]
+    trans <- rbind(trans,data.frame(expected_gain=p_eg,expected_loss=p_el))
+    
+    off_trans <- rbind(off_trans,list(data.frame(expected_gain=b_states$expected_gain,
+                                                 expected_loss=b_states$expected_loss)))
+  }
+  list(trans,off_trans)
+}
