@@ -2,6 +2,18 @@ library("ggplot2")
 library("gganimate")
 library("truncnorm")
 
+min_max_rescale <- function(v,a=0,b=1) {
+  v_min <- min(v)
+  v_max <- max(v)
+  if (equals_plus(v_max,v_min)) {
+    v <- rep(a,length(v))
+  }
+  else {
+    v <- a + (((v - v_min)*(b-a))/(v_max - v_min))
+  }
+  v
+}
+
 cos_plus <- function(degrees) {
   if (equals_plus(degrees, 90) | equals_plus(degrees, 270)) {
     return(0)
