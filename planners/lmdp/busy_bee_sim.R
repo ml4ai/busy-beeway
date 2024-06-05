@@ -111,7 +111,8 @@ create_sim_obs_st <- function(ospeeds,oprobs,n_obs,timesteps) {
   generate_obs_ses(O)
 }
 
-sim_session <- function(b1,
+sim_session <- function(b0,
+                        b1,
                         b2,
                         pspeed = 4.0,
                         ospeeds = c(2.0,4.0,6.0,8.0),
@@ -122,7 +123,7 @@ sim_session <- function(b1,
                         n_obs = 50) {
   lives <- 3
   orig_goals <- 7
-  vf1 <- create_vf_bb(b1,b2)
+  vf1 <- create_vf_bb(b0,b1,b2)
   obs_st <- create_sim_obs_st(ospeeds,oprobs,n_obs,30)
   D <- list()
   goals <- orig_goals
@@ -206,7 +207,8 @@ sim_session <- function(b1,
   }
 }
 
-run_sim <- function(b1,
+run_sim <- function(b0,
+                    b1,
                     b2,
                     sessions = 3,
                     pspeed = 4.0,
@@ -218,7 +220,8 @@ run_sim <- function(b1,
                     n_obs = 50) {
   dat <- NULL
   for (s in 1:sessions) {
-    dat <- rbind(dat,sim_session(b1,
+    dat <- rbind(dat,sim_session(b0,
+                                 b1,
                                  b2,
                                  pspeed,
                                  ospeeds,
