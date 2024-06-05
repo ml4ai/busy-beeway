@@ -132,3 +132,22 @@ create_state_space <- function(p,O,grid,delT,t_dat,grid_dist,t) {
   }
   new_states
 }
+
+create_state_space_data <- function(P,O,grid,delT,t_dat,grid_dist) {
+  trans <- NULL
+  off_trans <- list()
+  for (t in 1:(nrow(P)-1)) {
+    b_states <- create_state_space(c(P[t,1],P[t,2]),O,grid,delT,t_dat,grid_dist,t)
+    p_x <- P[t+1,1]
+    p_y <- P[t+1,2]
+    p_idx <- which(equals_plus(b_states$x,p_x) & equals_plus(b_states$y,p_y))
+    p_g <- b_states[p_idx,3]
+    p_y <- b_states[p_idx,4]
+    
+    trans <- rbind(trans,data.frame(min_g_edist=p_g,min_y_edist=p_y))
+    
+    off_trans <- rbind(off_trans,list(data.frame(min_g_edist=b_states$min_g_edist,
+                                                 min_y_edist=b_states$min_y_edist)))
+  }
+  list(trans,off_trans)
+}
