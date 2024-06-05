@@ -72,10 +72,27 @@ create_state_space <- function(bets,P,O,delT,p_dat,t) {
         pos_p <- c(pos_p,p_dat[[p]][[2]])
       }
     }
-    pos_p <- pos_p/sum(pos_p)
-    neg_p <- neg_p/sum(neg_p)
-    b_states <- rbind(b_states,data.frame(bet=b,expected_gain=sum(pos_r*pos_p),expected_loss=abs(sum(neg_r*neg_p))))
+    s_pos_p <- sum(pos_p)
+    s_neg_p <- sum(neg_p)
+    if (equals_plus(s_pos_p,0)) {
+      pos_p <- rep(0,length(pos_p))
+    }
+    else {
+      pos_p <- pos_p/sum(pos_p)
+    }
+    
+    if (equals_plus(s_neg_p,0)) {
+      neg_p <- rep(0,length(neg_p))
+    }
+    else {
+      neg_p <- neg_p/sum(neg_p)
+    }
+    b_states <- rbind(b_states,data.frame(bet=b,inv_expected_gain=sum(pos_r*pos_p),expected_loss=abs(sum(neg_r*neg_p))))
   }
+  a <- 0
+  b <- 1
+  b_states$inv_expected_gain <- (b + a) - min_max_rescale(b_states$inv_expected_gain,a,b)
+  b_states$expected_loss <- min_max_rescale(b_states$expected_loss,a,b)
   b_states
 }
 
@@ -87,9 +104,9 @@ create_state_space_data <- function(P,O,bets,delT,p_dat) {
     p_bet <- P[which(P$t == t),1]
     p_eg <- b_states[which(b_states$bet == p_bet),2]
     p_el <- b_states[which(b_states$bet == p_bet),3]
-    trans <- rbind(trans,data.frame(expected_gain=p_eg,expected_loss=p_el))
+    trans <- rbind(trans,data.frame(inv_expected_gain=p_eg,expected_loss=p_el))
     
-    off_trans <- rbind(off_trans,list(data.frame(expected_gain=b_states$expected_gain,
+    off_trans <- rbind(off_trans,list(data.frame(inv_expected_gain=b_states$inv_expected_gain,
                                                  expected_loss=b_states$expected_loss)))
   }
   list(trans,off_trans)
