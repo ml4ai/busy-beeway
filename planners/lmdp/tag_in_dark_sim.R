@@ -95,7 +95,8 @@ move_targets <- function(O,P,grid_length) {
   new_O
 }
 
-sim_session <- function(b1,
+sim_session <- function(b0,
+                        b1,
                         b2,
                         t_dat,
                         delT=2,
@@ -105,7 +106,7 @@ sim_session <- function(b1,
                         n_yellow=5) {
   grid_seq <- 1:grid_length
   colors <- c(rep(0,n_green),rep(1,n_yellow))
-  vf1 <- create_vf_tid(b1,b2)
+  vf1 <- create_vf_tid(b0,b1,b2)
   grid <- expand.grid(x=grid_seq, y=grid_seq)
   grid_dist <- as.matrix(dist(matrix(c(grid$x,grid$y),nrow(grid),2),
                               method="manhattan",
@@ -147,4 +148,31 @@ sim_session <- function(b1,
   yellow_left <- nrow(O[which(O$t == time_limit & O$color == 1),])
   score <- 5*(n_green - green_left) + 10*(n_yellow - yellow_left)
   list(P,O,green_left,yellow_left,score)
+}
+
+run_sim <- function(b0,
+                    b1,
+                    b2,
+                    sessions=100,
+                    t_samps=1000,
+                    delT=2,
+                    time_limit=30,
+                    grid_length=10,
+                    n_green=10,
+                    n_yellow=5) {
+  grid <- expand.grid(x=1:grid_length, y=1:grid_length)
+  t_dat <- create_t_dat(delT,grid,t_samps)
+  dat <- list()
+  for (s in 1:sessions) {
+    dat <- rbind(dat,list(sim_session(b0,
+                                      b1,
+                                      b2,
+                                      t_dat,
+                                      delT,
+                                      time_limit,
+                                      grid_length,
+                                      n_green,
+                                      n_yellow)))
+  }
+  dat
 }
