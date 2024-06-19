@@ -61,12 +61,16 @@ compute_grad_hess <- function(dat,b_0,b_1,b_2,lambda) {
     for (n in 1:length(off_trans)) {
       v <- vf(off_trans[[n]])
       z <- exp(-v)
-      
+
       b_0_v <- b_0_vf(off_trans[[n]])
       
       b_1_v <- b_1_vf(off_trans[[n]])
       
       b_2_v <- b_2_vf(off_trans[[n]])
+      
+      if (any(is.nan(b_0_v))) {
+        print(off_trans[[n]])
+      }
       
       b_0_v_sq <- b_0_v^2
       b_1_v_sq <- b_1_v^2
@@ -80,7 +84,7 @@ compute_grad_hess <- function(dat,b_0,b_1,b_2,lambda) {
       E_0 <- sum(b_0_v*pi_bar)
       E_1 <- sum(b_1_v*pi_bar)
       E_2 <- sum(b_2_v*pi_bar)
-      
+     
       b_0_count <- b_0_count + E_0
       b_1_count <- b_1_count + E_1
       b_2_count <- b_2_count + E_2
@@ -98,7 +102,7 @@ compute_grad_hess <- function(dat,b_0,b_1,b_2,lambda) {
     grad[1] <- grad[1] + (b_0_prime - b_0_count)
     grad[2] <- grad[2] + (b_1_prime - b_1_count)
     grad[3] <- grad[3] + (b_2_prime - b_2_count)
-    
+  
     hess[1,1] <- hess[1,1] + b_0_var
     hess[2,2] <- hess[2,2] + b_1_var
     hess[3,3] <- hess[3,3] + b_2_var
@@ -110,6 +114,7 @@ compute_grad_hess <- function(dat,b_0,b_1,b_2,lambda) {
     hess[3,1] <- hess[3,1] + b_0_2_cov
     hess[3,2] <- hess[3,2] + b_1_2_cov
   }
+  
   grad[1] <- (1/n_sum)*(grad[1] + lambda*(2*b_0))
   grad[2] <- (1/n_sum)*(grad[2] + lambda*(2*b_1))
   grad[3] <- (1/n_sum)*(grad[3] + lambda*(2*b_2))
@@ -140,6 +145,7 @@ newton_3_var <- function(dat,guess = NULL,max_iter=10000,tol=0.0001,lambda=1) {
   else {
     B <- guess
   }
+
   nit <- 0
   res <- compute_grad_hess(dat,B[1],B[2],B[3],lambda)
   grad <- res[[1]]

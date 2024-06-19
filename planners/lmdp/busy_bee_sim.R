@@ -37,7 +37,7 @@ sim_attempt <- function(p,g,O,obs_st,vf1,delT,rho,pspeed,ospeeds,oprobs,state_sa
       p_dist <- rtruncnorm(1,0,pspeed,pspeed,0.1)/30
     }
     p_dist <- min(point_dist(c_P[,1],c_P[,2],g[1],g[2]),p_dist)
-    m_n_samps <- runif_on_circle(state_samples,p_dist,c(c_P[,1],c_P[,2]))
+    m_n_samps <- runif_on_circle(state_samples - 1,p_dist,c(c_P[,1],c_P[,2]))
     g_heading <- find_direction(c_P[,1],c_P[,2],g[1],g[2])
     g_samp_x <- c_P[,1] + p_dist*cos_plus(g_heading)
     g_samp_y <- c_P[,2] + p_dist*sin_plus(g_heading)
@@ -49,7 +49,7 @@ sim_attempt <- function(p,g,O,obs_st,vf1,delT,rho,pspeed,ospeeds,oprobs,state_sa
     m_n_df <- data.frame(x=m_n_samps[[1]],
                          y=m_n_samps[[2]],
                          rd_goal=rd_goal_samps)
-    threat_level_samps <- rep(0,state_samples + 1)
+    threat_level_samps <- rep(0,state_samples)
     o_t <- (t-1)-delT
     if (o_t >= 0) {
       for (i in 1:length(threat_level_samps)) {
@@ -111,8 +111,7 @@ create_sim_obs_st <- function(ospeeds,oprobs,n_obs,timesteps) {
   generate_obs_ses(O)
 }
 
-sim_session <- function(b0,
-                        b1,
+sim_session <- function(b1,
                         b2,
                         pspeed = 4.0,
                         ospeeds = c(2.0,4.0,6.0,8.0),
@@ -123,7 +122,6 @@ sim_session <- function(b0,
                         n_obs = 50) {
   lives <- 3
   orig_goals <- 7
-  vf1 <- create_vf_bb(b0,b1,b2)
   obs_st <- create_sim_obs_st(ospeeds,oprobs,n_obs,30)
   D <- list()
   goals <- orig_goals
@@ -207,8 +205,7 @@ sim_session <- function(b0,
   }
 }
 
-run_sim <- function(b0,
-                    b1,
+run_sim <- function(b1,
                     b2,
                     sessions = 3,
                     pspeed = 4.0,
@@ -220,8 +217,7 @@ run_sim <- function(b0,
                     n_obs = 50) {
   dat <- NULL
   for (s in 1:sessions) {
-    dat <- rbind(dat,sim_session(b0,
-                                 b1,
+    dat <- rbind(dat,sim_session(b1,
                                  b2,
                                  pspeed,
                                  ospeeds,

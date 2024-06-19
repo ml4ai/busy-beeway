@@ -1,6 +1,6 @@
-create_vf_bb <- function(b0,b1,b2) {
+create_vf_bb <- function(B) {
   valfunc <- function(states) {
-    val <- b0 + b1*states$rd_goal + b2*states$threat_level
+    val <- B[1]*states$r_goal_heading + B[2]*states$rd_goal
     val
   }
   valfunc

@@ -139,6 +139,9 @@ sim_session <- function(b0,
     if (length(caught) > 0) {
       caught <- sample(caught,1)
       O <- rbind(O,new_O[-caught,])  
+      if (nrow(new_O[-caught,]) == 0) {
+        break
+      }
     }
     else {
       O <- temp_O

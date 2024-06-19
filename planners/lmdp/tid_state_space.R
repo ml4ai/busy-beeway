@@ -118,6 +118,13 @@ create_state_space <- function(p,O,grid,delT,t_dat,grid_dist,t) {
           }
         }
       }
+      if (is.infinite(min_g_edist)) {
+        min_g_edist <- 0
+      }
+
+      if (is.infinite(min_y_edist)) {
+        min_y_edist <- 0
+      }
       new_states <- rbind(new_states,data.frame(x=grid[n_p,1],
                                                 y=grid[n_p,2],
                                                 min_g_edist=min_g_edist,

@@ -73,26 +73,51 @@ compute_threat_level <- function(px,py,O,mu,sig,rho=0.3) {
   p
 }
 
-create_state_space_data <- function(p_df,g,O,obs_st,delT=3,sample_size=29,rho=0.3,normalize=FALSE) {
+create_state_space_data <- function(p_df,g,O,obs_st,delT=3,sample_size=29,rho=0.3) {
   trans <- NULL
   off_trans <- list()
   ts <- delT + 1
   rd_goal_vec <- c()
   threat_level_vec <- c()
   for (t in 2:nrow(p_df)) {
-    m_n_samps <- runif_on_circle(sample_size,
-                                 point_dist(p_df[t,1],p_df[t,2],p_df[t-1,1],p_df[t-1,2]),
-                                 center=c(p_df[t-1,1],p_df[t-1,2]))
-    m_n_samps[[1]] <- c(m_n_samps[[1]],p_df[t,1])
-    m_n_samps[[2]] <- c(m_n_samps[[2]],p_df[t,2])
+    p_dist_sq <- point_dist_sq(p_df[t,1],p_df[t,2],p_df[t-1,1],p_df[t-1,2])
+    p_dist <- sqrt(p_dist_sq)
+    g_heading <- find_direction(p_df[t-1,1],p_df[t-1,2],g[1],g[2])
+    g_vec_x <- p_dist*cos_plus(g_heading)
+    g_vec_y <- p_dist*sin_plus(g_heading)
+    g_samp_x <- p_df[t-1,1] + g_vec_x
+    g_samp_y <- p_df[t-1,2] + g_vec_y
+    if (equals_plus(point_dist(p_df[t,1],p_df[t,2],g_samp_x,g_samp_y),0)) {
+      m_n_samps <- runif_on_circle(sample_size - 1,
+                                   p_dist,
+                                   center=c(p_df[t-1,1],p_df[t-1,2]))
+      m_n_samps[[1]] <- c(m_n_samps[[1]],p_df[t,1])
+      m_n_samps[[2]] <- c(m_n_samps[[2]],p_df[t,2])
+    }
+    else {
+      m_n_samps <- runif_on_circle(sample_size - 2,
+                                   p_dist,
+                                   center=c(p_df[t-1,1],p_df[t-1,2]))
+      m_n_samps[[1]] <- c(m_n_samps[[1]],g_samp_x)
+      m_n_samps[[2]] <- c(m_n_samps[[2]],g_samp_y)
+      m_n_samps[[1]] <- c(m_n_samps[[1]],p_df[t,1])
+      m_n_samps[[2]] <- c(m_n_samps[[2]],p_df[t,2])
+    }
+    vec_xs <- m_n_samps[[1]] - p_df[t-1,1]
+    vec_ys <- m_n_samps[[2]] - p_df[t-1,2]
+    goal_heading <- (g_vec_x * vec_xs + g_vec_y * vec_ys)/p_dist_sq
+    goal_heading[which(goal_heading > 1)] <- 1
+    goal_heading[which(goal_heading < -1)] <- -1
+    r_goal_heading <- 1 - goal_heading
+    r_goal_heading_tr <- r_goal_heading[sample_size]
     rd_goal_samps <- point_dist_sq(m_n_samps[[1]],m_n_samps[[2]],g[1],g[2])
     rd_goal_samps <- (rd_goal_samps - min(rd_goal_samps))/(max(rd_goal_samps) - min(rd_goal_samps))
     
-    rd_goal_tr <- rd_goal_samps[length(rd_goal_samps)]
-    threat_level_samps <- rep(0,sample_size + 1)
+    rd_goal_tr <- rd_goal_samps[sample_size]
+    threat_level_samps <- rep(0,sample_size)
     o_t <- (t-2)-delT
     if (o_t >= 0) {
-      for (i in 1:length(threat_level_samps)) {
+      for (i in 1:sample_size) {
         threat_level_samps[i] <- compute_threat_level(m_n_samps[[1]][i],
                                                       m_n_samps[[2]][i],
                                                       O[which(O$t == o_t),],
@@ -101,19 +126,9 @@ create_state_space_data <- function(p_df,g,O,obs_st,delT=3,sample_size=29,rho=0.
                                                       rho)
       }
     }
-    threat_level_tr <- threat_level_samps[length(threat_level_samps)]
-    trans <- rbind(trans, data.frame(rd_goal=rd_goal_tr, threat_level=threat_level_tr))
-    off_trans <- rbind(off_trans,list(data.frame(rd_goal=rd_goal_samps,threat_level=threat_level_samps)))
-    rd_goal_vec <- c(rd_goal_vec,rd_goal_samps)
-    threat_level_vec <- c(threat_level_vec,threat_level_samps)
-  }
-  if (normalize) {
-    trans$rd_goal <- (trans$rd_goal - mean(rd_goal_vec))/sd(rd_goal_vec)
-    trans$threat_level <- (trans$threat_level - mean(threat_level_vec))/sd(threat_level_vec)
-    for (n in 1:length(off_trans)) {
-      off_trans[[n]]$rd_goal <- (off_trans[[n]]$rd_goal - mean(rd_goal_vec))/sd(rd_goal_vec)
-      off_trans[[n]]$threat_level <- (off_trans[[n]]$threat_level - mean(threat_level_vec))/sd(threat_level_vec)
-    }
+    threat_level_tr <- threat_level_samps[sample_size]
+    trans <- rbind(trans, data.frame(r_goal_heading=r_goal_heading_tr,rd_goal=rd_goal_tr, threat_level=threat_level_tr))
+    off_trans <- rbind(off_trans,list(data.frame(r_goal_heading=r_goal_heading,rd_goal=rd_goal_samps,threat_level=threat_level_samps)))
   }
   list(trans,off_trans)
 }
