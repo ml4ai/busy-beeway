@@ -1,6 +1,14 @@
 create_vf_bb <- function(B) {
   valfunc <- function(states) {
-    val <- B[1]*states$r_goal_heading + B[2]*states$rd_goal
+    val <- B[1]*states$goal_distance + 
+      B[2]*states$min_obstacle_distance +
+      B[3]*states$min_obstacle_bee_heading +
+      B[4]*(states$goal_distance*states$min_obstacle_distance) +
+      B[5]*(states$goal_distance*states$min_obstacle_bee_heading) +
+      B[6]*(states$min_obstacle_distance*states$min_obstacle_bee_heading) +
+      B[7]*(states$goal_distance *
+              states$min_obstacle_distance *
+              states$min_obstacle_bee_heading)
     val
   }
   valfunc

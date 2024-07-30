@@ -5,7 +5,7 @@ library("truncnorm")
 min_max_rescale <- function(v,a=0,b=1) {
   v_min <- min(v)
   v_max <- max(v)
-  if (equals_plus(v_max,v_min)) {
+  if (equals_plus(v_max - v_min,0)) {
     v <- rep(a,length(v))
   }
   else {
@@ -58,6 +58,19 @@ ccw <- function(ax,ay,bx,by,cx,cy) {
 
 intersects <- function(ax,ay,bx,by,cx,cy,dx,dy) {
   ccw(ax,ay,bx,by,cx,cy)*ccw(ax,ay,bx,by,dx,dy) < 0 & ccw(cx,cy,dx,dy,ax,ay)*ccw(cx,cy,dx,dy,bx,by) < 0
+}
+
+ray_intersects <- function(as_x,as_y,ad_x,ad_y,bs_x,bs_y,bd_x,bd_y) {
+  dx <- bs_x - as_x
+  dy <- bs_y - as_y
+  
+  det <- bd_x * ad_y - bd_y * ad_x
+  u_num <- dy * bd_x - dx * bd_y
+  v_num <- dy * ad_x - dx * ad_y
+  normal_int <- greater_equals_plus(u_num * det,0) & greater_equals_plus(v_num * det,0) & !equals_plus(det,0)
+  coincide <- equals_plus(u_num,0) & equals_plus(v_num,0) & equals_plus(det,0)
+  collide <- greater_equals_plus((bs_x - as_x)/ad_x,0) & equals_plus((bs_x - as_x)/ad_x,(bs_y - as_y)/ad_y)
+  normal_int | (coincide & collide)
 }
 
 frac <- function(x) {

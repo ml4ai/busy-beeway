@@ -1,5 +1,6 @@
 source("~/busy-beeway/planners/lmdp/value_functions.R")
 source("~/busy-beeway/planners/lmdp/bb_data.R")
+source("~/busy-beeway/data/data_processing.R")
 library("parallel")
 library("parallelly")
 
@@ -122,7 +123,11 @@ newtons_method <- function(dat,n_params,guess = NULL,max_iter=10000,tol=0.0001,l
   bta <- 0.5
   t <- 1
   
-  while(compute_log_rl(dat,B+t*n_direction,lambda) > compute_log_rl(dat,B,lambda) + alp*t*n_l_sq) {
+  b_iter <- max_iter
+  b_nit <- 0
+  while(compute_log_rl(dat,B+t*n_direction,lambda) > (compute_log_rl(dat,B,lambda) + alp*t*n_l_sq) &
+        b_nit < b_iter) {
+    b_nit <- b_nit + 1
     t <- bta*t
   }
   
@@ -137,7 +142,10 @@ newtons_method <- function(dat,n_params,guess = NULL,max_iter=10000,tol=0.0001,l
     l_sq <- -n_l_sq/2
     
     t <- 1
-    while(compute_log_rl(dat,B+t*n_direction,lambda) > compute_log_rl(dat,B,lambda) + alp*t*n_l_sq) {
+    b_nit <- 0
+    while(compute_log_rl(dat,B+t*n_direction,lambda) > (compute_log_rl(dat,B,lambda) + alp*t*n_l_sq) &
+          b_nit < b_iter) {
+      b_nit <- b_nit + 1
       t <- bta*t
     }
   }
@@ -147,30 +155,80 @@ newtons_method <- function(dat,n_params,guess = NULL,max_iter=10000,tol=0.0001,l
 
 newton_loocv_helper <- function(s,
                                 n_params,
-                                D,
-                                obs_st,
+                                lvl,
+                                pth,
+                                control,
                                 sample_size,
-                                s_delT,
-                                s_rho,
+                                p_pairs,
                                 guess,
                                 max_iter,
                                 tol,
                                 lambda) {
-  dat <- process_session(D,obs_st,s_delT[s],sample_size,s_rho[s])
-  rl_m <- 0
-  for (d in 1:length(dat)) {
-    d_test <- dat[d]
-    d_train <- dat[-d]
-    sol <- newtons_method(d_train,n_params,guess,max_iter,tol,lambda)
-    rl_m <- rl_m + compute_log_rl(d_test,sol[[1]],lambda)
+  delT <- p_pairs[s,1]
+  rho <- p_pairs[s,2]
+  skip <- p_pairs[s,3]
+  if (lvl == 0) {
+    D <- load_BB_data(pth,skip,control)
   }
-  rl_m <- rl_m/length(dat)
-  sol <- newtons_method(dat,n_params,guess,max_iter,tol,lambda)
-  df <- data.frame(t(sol[[1]]))
-  df$delT <- s_delT[s]
-  df$rho <- s_rho[s]
-  df$training_rl <- sol[[2]]
-  df$mean_loocv_rl <- rl_m
+  else {
+    D <- load_lvl_data(lvl,pth,skip,control)
+  }
+  dat <- process_session(D,delT,rho,sample_size)
+  if (length(dat) > 1) {
+    rl <- c()
+    for (d in 1:length(dat)) {
+      d_test <- dat[d]
+      d_train <- dat[-d]
+      sol <- tryCatch({
+        newtons_method(d_train,n_params,guess,max_iter,tol,lambda)
+      }, error = function(e) {
+        NULL
+      })
+      if (!is.null(sol)) {
+        rl <- c(rl,exp(compute_log_rl(d_test,sol[[1]],lambda)))
+      }
+    }
+    rl_m <- mean(rl)
+    rl_sd <- sd(rl)
+  }
+  else {
+    rl_m <- NA
+    rl_sd <- NA
+  }
+  sol <- tryCatch({
+    newtons_method(dat,n_params,guess,max_iter,tol,lambda)
+  }, error = function(e) {
+    NULL
+  })
+  if (!is.null(sol)) {
+    if (n_params == 1) {
+      df <- data.frame(X1=sol[[1]])
+    }
+    else {
+      df <- data.frame(t(sol[[1]]))
+    }
+    df$delT <- delT
+    df$rho <- rho
+    df$skip <- skip
+    df$training_rl <- exp(sol[[2]])
+    df$mean_loocv_rl <- rl_m
+    df$sd_loocv_rl <- rl_sd
+  }
+  else {
+    df <- data.frame(t(rep(NA,n_params)))
+    if (n_params == 1) {
+      df <- data.frame(X1=NA)
+    }
+    else {
+      df <- data.frame(t(rep(NA,n_params)))
+    }
+    df$delT <- delT
+    df$rho <- rho
+    df$skip <- skip
+    df$training_rl <- NA
+    df$mean_loocv_rl <- NA
+    df$sd_loocv_rl <- NA
+  }
   df
 }
 
@@ -178,13 +236,14 @@ newton_loocv_helper <- function(s,
 #Here delT and rho variables set limits of sampling distributions.
 #Tries to use as many cores to parallel process by default. 
 #Set cores < 2 to not parallel process.
-newton_loocv <- function(D,
+newton_loocv <- function(lvl,
+                         pth,
+                         control,
                          n_params,
-                         obs_st,
-                         sample_size=500,
+                         sample_size=1000,
+                         skip=c(0,10),
                          delT=c(0,10),
                          rho=c(0,10),
-                         p_samples=100,
                          guess = NULL,
                          max_iter=10000,
                          tol=0.0001,
@@ -193,20 +252,22 @@ newton_loocv <- function(D,
   
   start_time <- Sys.time()
   sols <- NULL
-  s_delT <- sample(delT[1]:delT[2],p_samples,replace=TRUE)
-  s_rho <- sample(seq(rho[1],rho[2],by=0.5),p_samples,replace=TRUE)
+  s_delT <- delT[1]:delT[2]
+  s_rho <- rho[1]:rho[2]
+  s_skip <- skip[1]:skip[2]
+  p_pairs <- expand.grid(delT=s_delT,rho=s_rho,skip=s_skip)
   if (is.null(cores)) {
     cores <- detectCores()
   }
   if (supportsMulticore() & cores > 1) {
-    res <- mclapply(1:p_samples,
+    res <- mclapply(1:nrow(p_pairs),
                     newton_loocv_helper,
-                    D=D,
                     n_params=n_params,
-                    obs_st=obs_st,
+                    lvl=lvl,
+                    pth=pth,
+                    control=control,
                     sample_size=sample_size,
-                    s_delT=s_delT,
-                    s_rho=s_rho,
+                    p_pairs=p_pairs,
                     guess=guess,
                     max_iter=max_iter,
                     tol=tol,
@@ -215,22 +276,59 @@ newton_loocv <- function(D,
     sols <- Reduce(rbind,res)
   }
   else {
-    for (s in 1:p_samples) {
-      dat <- process_session(D,obs_st,s_delT[s],sample_size,s_rho[s])
-      rl_m <- 0
-      for (d in 1:length(dat)) {
-        d_test <- dat[d]
-        d_train <- dat[-d]
-        sol <- newtons_method(d_train,n_params,guess,max_iter,tol,lambda)
-        rl_m <- rl_m + compute_log_rl(d_test,sol[[1]],lambda)
+    for (s in 1:nrow(p_pairs)) {
+      delT <- p_pairs[s,1]
+      rho <- p_pairs[s,2]
+      skip <- p_pairs[s,3]
+      if (lvl == 0) {
+        D <- load_BB_data(pth,skip,control)
       }
-      rl_m <- rl_m/length(dat)
-      sol <- newtons_method(dat,n_params,guess,max_iter,tol,lambda)
-      df <- data.frame(t(sol[[1]]))
-      df$delT <- s_delT[s]
-      df$rho <- s_rho[s]
-      df$training_rl <- sol[[2]]
-      df$mean_loocv_rl <- rl_m
+      else {
+        D <- load_lvl_data(lvl,pth,skip,control)
+      }
+      dat <- process_session(D,delT,rho,sample_size)
+      if (length(dat) > 1) {
+        rl <- c()
+        for (d in 1:length(dat)) {
+          d_test <- dat[d]
+          d_train <- dat[-d]
+          sol <- tryCatch({
+            return(newtons_method(d_train,n_params,guess,max_iter,tol,lambda))
+          }, error = function(e) {
+            return(NULL)
+          })
+          if (!is.null(sol)) {
+            rl <- c(rl,exp(compute_log_rl(d_test,sol[[1]],lambda)))
+          }
+        }
+        rl_m <- mean(rl)
+        rl_sd <- sd(rl)
+      }
+      else {
+        rl_m <- NA
+        rl_sd <- NA
+      }
+      df <- tryCatch({
+        sol <- newtons_method(dat,n_params,guess,max_iter,tol,lambda)
+        df <- data.frame(t(sol[[1]]))
+        df$delT <- delT
+        df$rho <- rho
+        df$skip <- skip
+        df$training_rl <- exp(sol[[2]])
+        df$mean_loocv_rl <- rl_m
+        df$sd_loocv_rl <- rl_sd
+        return(df)
+        
+      }, error = function(e) {
+        df <- data.frame(t(rep(NA,n_params)))
+        df$delT <- delT
+        df$rho <- rho
+        df$skip <- skip
+        df$training_rl <- NA
+        df$mean_loocv_rl <- NA
+        df$sd_loocv_rl <- NA
+        return(df)
+      })
       sols <- rbind(sols,df)
     }
   }

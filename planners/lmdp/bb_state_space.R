@@ -1,92 +1,14 @@
 source("~/busy-beeway/planners/lmdp/utility.R")
 
-#For Busy Beeway
-compute_threat_level <- function(px,py,O,mu,sig,rho=0.3) {
-  not_inside <- point_dist(px,py,O[,1],O[,2]) > rho
-  
-  inside <- !not_inside
-  
-  O_outside <- O[which(not_inside),]
-  
-  O_inside <- O[which(inside),]
-  
-  Ux <- px - O_outside[,1]
-  Uy <- py - O_outside[,2]
-  
-  Vx <- O_outside[,1] + cos_plus_vec(O_outside[,3])
-  Vy <- O_outside[,2] + sin_plus_vec(O_outside[,3])
-  
-  UV <- Ux*Vx + Uy*Vy
-  
-  U_1x <- UV*Vx
-  U_1y <- UV*Vy
-  
-  U_2x <- Ux - U_1x
-  U_2y <- Uy - U_1y
-  
-  d <- sqrt(U_2x^2 + U_2y^2)
-  
-  int_idx <- which(d < rho)
-  
-  m <- sqrt(rho^2-d[int_idx]^2)
-  
-  W_1x <- U_1x[int_idx] + m*Vx[int_idx]
-  
-  W_1y <- U_1y[int_idx] + m*Vy[int_idx]
-  
-  W_2x <- U_1x[int_idx] - m*Vx[int_idx]
-  
-  W_2y <- U_1y[int_idx] - m*Vy[int_idx]
-  
-  P_1x <- O_outside[int_idx,1] + W_1x
-  
-  P_1y <- O_outside[int_idx,2] + W_1y
-  
-  P_2x <- O_outside[int_idx,1] + W_2x
-  
-  P_2y <- O_outside[int_idx,2] + W_2y
-  
-  dist1 <- sqrt(W_2x^2 + W_2y^2)
-  
-  dist2 <- sqrt(W_1x^2 + W_1y^2)
-  
-  p_outside <- rep(0,length(dist1))
-  
-  lidx <- which(dist1 < dist2)
-  uidx <- which(dist1 > dist2)
-  
-  p_outside[lidx] <- (pnorm(dist2[lidx],mu,sig) - pnorm(dist1[lidx],mu,sig))
-  
-  p_outside[uidx] <- (pnorm(dist1[uidx],mu,sig) - pnorm(dist2[uidx],mu,sig))
-  
-  a <- O_inside[,1] - px
-  b <- O_inside[,2] - py
-  
-  n <- a*cos_plus_vec(O_inside[,3]) + b*sin_plus_vec(O_inside[,3])
-  
-  dist <- -n + sqrt(n^2 - a^2 - b^2 + rho^2)
-  
-  p_inside <- (pnorm(dist,mu,sig) - pnorm(rep(0,length(dist)),mu,sig))
-  
-  p <- sum(p_outside) + sum(p_inside)
-  
-  p
-}
-
-create_state_space_data <- function(p_df,g,O,obs_st,delT=3,sample_size=29,rho=0.3) {
+create_state_space_data <- function(p_df,g,O,delT=3,rho=3,sample_size=29) {
   trans <- NULL
   off_trans <- list()
   ts <- delT + 1
-  rd_goal_vec <- c()
-  threat_level_vec <- c()
   for (t in 2:nrow(p_df)) {
-    p_dist_sq <- point_dist_sq(p_df[t,1],p_df[t,2],p_df[t-1,1],p_df[t-1,2])
-    p_dist <- sqrt(p_dist_sq)
+    p_dist <- point_dist(p_df[t,1],p_df[t,2],p_df[t-1,1],p_df[t-1,2])
     g_heading <- find_direction(p_df[t-1,1],p_df[t-1,2],g[1],g[2])
-    g_vec_x <- p_dist*cos_plus(g_heading)
-    g_vec_y <- p_dist*sin_plus(g_heading)
-    g_samp_x <- p_df[t-1,1] + g_vec_x
-    g_samp_y <- p_df[t-1,2] + g_vec_y
+    g_samp_x <- p_df[t-1,1] + p_dist*cos_plus(g_heading)
+    g_samp_y <- p_df[t-1,2] + p_dist*sin_plus(g_heading)
     if (equals_plus(point_dist(p_df[t,1],p_df[t,2],g_samp_x,g_samp_y),0)) {
       m_n_samps <- runif_on_circle(sample_size - 1,
                                    p_dist,
@@ -105,30 +27,61 @@ create_state_space_data <- function(p_df,g,O,obs_st,delT=3,sample_size=29,rho=0.
     }
     vec_xs <- m_n_samps[[1]] - p_df[t-1,1]
     vec_ys <- m_n_samps[[2]] - p_df[t-1,2]
-    goal_heading <- (g_vec_x * vec_xs + g_vec_y * vec_ys)/p_dist_sq
-    goal_heading[which(goal_heading > 1)] <- 1
-    goal_heading[which(goal_heading < -1)] <- -1
-    r_goal_heading <- 1 - goal_heading
-    r_goal_heading_tr <- r_goal_heading[sample_size]
-    rd_goal_samps <- point_dist_sq(m_n_samps[[1]],m_n_samps[[2]],g[1],g[2])
-    rd_goal_samps <- (rd_goal_samps - min(rd_goal_samps))/(max(rd_goal_samps) - min(rd_goal_samps))
     
-    rd_goal_tr <- rd_goal_samps[sample_size]
-    threat_level_samps <- rep(0,sample_size)
+    goal_distance <- point_dist(m_n_samps[[1]],m_n_samps[[2]],g[1],g[2])
+    goal_distance_tr <- goal_distance[sample_size] 
+    
+    min_obstacle_distance <- rep(-1,sample_size)
+    min_obstacle_bee_heading <- rep(-1,sample_size)
     o_t <- (t-2)-delT
     if (o_t >= 0) {
+      O_t <- O[which(O$t == o_t),]
+
       for (i in 1:sample_size) {
-        threat_level_samps[i] <- compute_threat_level(m_n_samps[[1]][i],
-                                                      m_n_samps[[2]][i],
-                                                      O[which(O$t == o_t),],
-                                                      obs_st[ts,1],
-                                                      obs_st[ts,2],
-                                                      rho)
+        r_ids <- which(ray_intersects(p_df[t-1,1],
+                                        p_df[t-1,2],
+                                        vec_xs[i],
+                                        vec_ys[i],
+                                        O_t[,1],
+                                        O_t[,2],
+                                        cos_plus_vec(O_t[,3]),
+                                        sin_plus_vec(O_t[,3])))
+        if (length(r_ids) != 0) {
+          O_r <- O_t[r_ids,]
+          obs_mags <- point_dist(p_df[t-1,1],p_df[t-1,2],O_r[,1],O_r[,2])
+          b_o_vec_xs <- O_r[,1] - p_df[t-1,1]
+          b_o_vec_ys <- O_r[,2] - p_df[t-1,2]
+          o_vec_xs <- cos_plus_vec(O_r[,3])
+          o_vec_ys <- sin_plus_vec(O_r[,3])
+          obs_dists_sq <- point_dist_sq(m_n_samps[[1]][i],
+                                        m_n_samps[[2]][i],
+                                        O_r[,1],
+                                        O_r[,2])
+          min_o <- which.min(obs_dists_sq)
+          o_b_dist <- sqrt(obs_dists_sq[min_o])
+          if (lesser_equals_plus(o_b_dist,rho)) {
+            min_obstacle_distance[i] <- o_b_dist
+            o_b_vec_x <- m_n_samps[[1]][i] - O_r[min_o,1]
+
+            o_b_vec_y <- m_n_samps[[2]][i] - O_r[min_o,2]
+
+            min_obstacle_bee_heading[i] <- (o_vec_xs[min_o] * o_b_vec_x + 
+                                              o_vec_ys[min_o] * o_b_vec_y)/o_b_dist
+          }
+        }
       }
     }
-    threat_level_tr <- threat_level_samps[sample_size]
-    trans <- rbind(trans, data.frame(r_goal_heading=r_goal_heading_tr,rd_goal=rd_goal_tr, threat_level=threat_level_tr))
-    off_trans <- rbind(off_trans,list(data.frame(r_goal_heading=r_goal_heading,rd_goal=rd_goal_samps,threat_level=threat_level_samps)))
+    
+    min_obstacle_distance_tr <- min_obstacle_distance[sample_size]
+    min_obstacle_bee_heading_tr <- min_obstacle_bee_heading[sample_size]
+
+    trans <- rbind(trans, data.frame(goal_distance=goal_distance_tr,
+                                     min_obstacle_distance=min_obstacle_distance_tr,
+                                     min_obstacle_bee_heading=min_obstacle_bee_heading_tr))
+ 
+    off_trans <- rbind(off_trans,list(data.frame(goal_distance=goal_distance,
+                                                 min_obstacle_distance=min_obstacle_distance,
+                                                 min_obstacle_bee_heading=min_obstacle_bee_heading)))
   }
   list(trans,off_trans)
 }
