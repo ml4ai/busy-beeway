@@ -53,3 +53,5 @@ rsconnect/
 *.gif
 *.csv
 data/*
+__pycache__/
+*.pdf
