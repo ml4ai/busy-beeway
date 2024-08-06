@@ -1,6 +1,7 @@
 from flax import linen as nn
 import jax.numpy as jnp
 
+
 class T_NN(nn.Module):
     @nn.compact
     def __call__(self, s, a, t):
@@ -12,5 +13,9 @@ class T_NN(nn.Module):
 
         s = s + t
         a = a + t
-        i = jnp.stack([a,s],axis=1).transpose(0,2,1,3).reshape(batch_size,2*seq_length,256)
+        i = (
+            jnp.stack([a, s], axis=1)
+            .transpose(0, 2, 1, 3)
+            .reshape(batch_size, 2 * seq_length, 256)
+        )
         return i
