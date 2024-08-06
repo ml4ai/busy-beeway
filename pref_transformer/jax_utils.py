@@ -3,6 +3,7 @@ import jax
 import jax.numpy as jnp
 import optax
 
+
 class JaxRNG(object):
     def __init__(self, seed):
         self.rng = jax.random.PRNGKey(seed)
@@ -29,6 +30,7 @@ def extend_and_repeat(tensor, axis, repeat):
 def mse_loss(val, target):
     return jnp.mean(jnp.square(val - target))
 
+
 def cross_ent_loss(logits, target):
 
     if len(target.shape) == 1:
@@ -36,13 +38,15 @@ def cross_ent_loss(logits, target):
     else:
         label = target
 
-    loss = jnp.mean(optax.softmax_cross_entropy(
-        logits=logits,
-        labels=label))
+    loss = jnp.mean(optax.softmax_cross_entropy(logits=logits, labels=label))
     return loss
 
+
 def kld_loss(p, q):
-    return jnp.mean(jnp.sum(jnp.where(p != 0, p * (jnp.log(p) - jnp.log(q)), 0), axis=-1))
+    return jnp.mean(
+        jnp.sum(jnp.where(p != 0, p * (jnp.log(p) - jnp.log(q)), 0), axis=-1)
+    )
+
 
 def custom_softmax(array, axis=-1, temperature=1.0):
     array = array / temperature
@@ -54,6 +58,7 @@ def pref_accuracy(logits, target):
     target_class = jnp.argmax(target, axis=1)
     return jnp.mean(predicted_class == target_class)
 
+
 def value_and_multi_grad(fun, n_outputs, argnums=0, has_aux=False):
     def select_output(index):
         def wrapped(*args, **kwargs):
@@ -63,12 +68,14 @@ def value_and_multi_grad(fun, n_outputs, argnums=0, has_aux=False):
             else:
                 x = fun(*args, **kwargs)
                 return x[index]
+
         return wrapped
 
     grad_fns = tuple(
         jax.value_and_grad(select_output(i), argnums=argnums, has_aux=has_aux)
         for i in range(n_outputs)
     )
+
     def multi_grad_fn(*args, **kwargs):
         grads = []
         values = []
@@ -77,6 +84,7 @@ def value_and_multi_grad(fun, n_outputs, argnums=0, has_aux=False):
             values.append(value)
             grads.append(grad)
         return (tuple(values), *aux), tuple(grads)
+
     return multi_grad_fn
 
 
