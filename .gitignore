@@ -55,3 +55,4 @@ rsconnect/
 data/*
 __pycache__/
 *.pdf
+.ipynb_checkpoints/
