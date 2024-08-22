@@ -137,6 +137,7 @@ closestpointonline <- function(ax,ay,bx,by,px,py) {
   list(ax + abx*t,ay+aby*t)
 }
 
+#2*tol because both have radius of 0.3
 pointCollide <- function(x1,y1,x2,y2,tol) {
   (x1-x2)^2 + (y1-y2)^2 < (2*tol)^2
 }
