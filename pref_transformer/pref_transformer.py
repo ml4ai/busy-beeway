@@ -131,7 +131,9 @@ class PT(nn.Module):
             attn_mask = jnp.ones((batch_size, seq_length), dtype=jnp.float32)
 
         embd_states = nn.Dense(features=256)(states)
-        embd_timesteps = nn.Embed(num_embeddings=1001, features=256)(timesteps)
+        embd_timesteps = nn.Embed(num_embeddings=415, features=256)(
+            timesteps
+        )
 
         embd_states = embd_states + embd_timesteps
 

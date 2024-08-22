@@ -24,6 +24,7 @@ def train_model(
         variant=None, seed=seed, base_log_dir=save_dir, include_exp_prefix_sub_dir=False
     )
     set_random_seed(seed)
+    rng = np.random.default_rng(seed)
     data_size, query_len, observation_dim = training_data["observations"].shape
     eval_data_size = test_data["observations"].shape[0]
     trans = PT()
@@ -31,16 +32,20 @@ def train_model(
     interval = int(data_size / batch_size)
     eval_interval = int(eval_data_size / batch_size)
     early_stop = EarlyStopping(min_delta=1e-3, patience=10)
+    c_best_epoch = np.nan
+    c_criteria_key = np.nan
     for epoch in range(n_epochs + 1):
         metrics = {
             "epoch": epoch,
             "train_time": np.nan,
             "reward/trans_loss": [],
             "reward/eval_trans_loss": [],
+            "best_epoch" : c_best_epoch,
+            f"{criteria_key}_best": c_criteria_key,
         }
         if epoch:
             # train phase
-            shuffled_idx = np.random.permutation(data_size)
+            shuffled_idx = rng.permutation(data_size)
             for i in range(interval):
                 start_pt = i * batch_size
                 end_pt = min((i + 1) * batch_size, data_size)
@@ -86,8 +91,10 @@ def train_model(
                 print("Met early stopping criteria, breaking...")
                 break
             elif epoch > 0 and early_stop.has_improved:
-                metrics["best_epoch"] = epoch
-                metrics[f"{key}_best"] = criteria
+                c_best_epoch = epoch
+                c_criteria_key = criteria
+                metrics["best_epoch"] = c_best_epoch
+                metrics[f"{criteria_key}_best"] = c_criteria_key
                 save_data = {"reward_model": reward_model, "epoch": epoch}
                 save_pickle(save_data, "best_model.pkl", save_dir)
 
