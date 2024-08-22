@@ -5,6 +5,7 @@ from utils import Timer, index_batch, prefix_metrics, save_pickle, set_random_se
 from jax_utils import batch_to_jax
 from flax.training.early_stopping import EarlyStopping
 from logging_utils import logger, setup_logger
+import os.path as osp
 
 
 def train_model(
@@ -16,10 +17,11 @@ def train_model(
     do_early_stop=False,
     criteria_key="reward/eval_trans_loss",
     seed=2024,
-    save_dir="/Users/lorenchamplin/busy-beeway/pref_transformer/logs",
+    save_dir="~/busy-beeway/pref_transformer/logs",
     save_model=True,
 ):
-
+    
+    save_dir = osp.expanduser(save_dir)
     setup_logger(
         variant=None, seed=seed, base_log_dir=save_dir, include_exp_prefix_sub_dir=False
     )
