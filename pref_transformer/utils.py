@@ -25,6 +25,10 @@ def save_pickle(obj, filename, output_dir):
     with open(os.path.join(output_dir, filename), 'wb') as fout:
         pickle.dump(obj, fout)
 
+def load_pickle(filename):
+    with open(os.path.expanduser(filename), 'rb') as fin:
+        return pickle.load(fin)
+
 class Timer(object):
 
     def __init__(self):
