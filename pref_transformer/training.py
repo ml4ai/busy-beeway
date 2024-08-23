@@ -23,11 +23,11 @@ class PrefTransformer(object):
         optimizer_class = optax.adamw
         # May need to reconfigure for our data
         scheduler_class = optax.warmup_cosine_decay_schedule(
-            init_value=1e-4,
+            init_value=0,
             peak_value=1e-4 * 10,
-            warmup_steps=7600,
-            decay_steps=76000,
-            end_value=1e-4,
+            warmup_steps=6500,
+            decay_steps=65000,
+            end_value=0,
         )
 
         tx = optimizer_class(scheduler_class)
