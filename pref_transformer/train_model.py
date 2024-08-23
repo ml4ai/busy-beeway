@@ -20,7 +20,7 @@ def train_model(
     save_dir="~/busy-beeway/pref_transformer/logs",
     save_model=True,
 ):
-    
+
     save_dir = osp.expanduser(save_dir)
     setup_logger(
         variant=None, seed=seed, base_log_dir=save_dir, include_exp_prefix_sub_dir=False
@@ -31,8 +31,8 @@ def train_model(
     eval_data_size = test_data["observations"].shape[0]
     trans = PT()
     reward_model = PrefTransformer(trans, observation_dim)
-    interval = int(data_size / batch_size)
-    eval_interval = int(eval_data_size / batch_size)
+    interval = int(data_size / batch_size) + 1
+    eval_interval = int(eval_data_size / batch_size) + 1
     early_stop = EarlyStopping(min_delta=1e-3, patience=10)
     c_best_epoch = np.nan
     c_criteria_key = np.nan
@@ -42,7 +42,7 @@ def train_model(
             "train_time": np.nan,
             "reward/trans_loss": [],
             "reward/eval_trans_loss": [],
-            "best_epoch" : c_best_epoch,
+            "best_epoch": c_best_epoch,
             f"{criteria_key}_best": c_criteria_key,
         }
         if epoch:
