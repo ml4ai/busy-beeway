@@ -34,7 +34,9 @@ class PrefTransformer(object):
             jnp.zeros((10, 25, self.observation_dim)),
             jnp.ones((10, 25), dtype=jnp.int32),
         )
-        self._train_state = TrainState.create(params=trans_params, tx=tx, apply_fn=self.trans.apply)
+        self._train_state = TrainState.create(
+            params=trans_params, tx=tx, apply_fn=self.trans.apply
+        )
 
     def evaluation(self, batch):
         return {
@@ -57,7 +59,7 @@ def _train_pref_step(state, batch, rng):
     grad_fn = jax.value_and_grad(pref_loss_fn, argnums=1)
     loss, grads = grad_fn(state, state.params, batch, rng)
 
-    new_train_state = state.apply_gradients(grad=grads)
+    new_train_state = state.apply_gradients(grads=grads)
 
     return new_train_state, loss
 
