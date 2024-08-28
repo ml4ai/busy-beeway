@@ -17,7 +17,7 @@ def train_pt(
     do_early_stop=False,
     criteria_key="eval_loss",
     seed=2024,
-    save_dir="~/busy-beeway/pref_transformer/logs",
+    save_dir="~/busy-beeway/transformers/logs",
     save_model=True,
 ):
 

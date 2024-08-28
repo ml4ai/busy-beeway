@@ -44,55 +44,55 @@ def main(argv):
     pd_not_loaded = True
     if parallel:
         try:
-            RF = load_features_from_parquet("~/busy-beeway/pref_transformer/rf_save")
+            RF = load_features_from_parquet("~/busy-beeway/transformers/rf_save")
         except FileNotFoundError:
             try:
-                stats = load_stats("~/busy-beeway/pref_transformer/p_stats.npy")
+                stats = load_stats("~/busy-beeway/transformers/p_stats.npy")
             except FileNotFoundError:
                 CD = load_participant_data_p(p_id=p_id, path=path, control=3)
                 stats = generate_stats(
-                    CD, save_data="~/busy-beeway/pref_transformer/p_stats.npy"
+                    CD, save_data="~/busy-beeway/transformers/p_stats.npy"
                 )
             D = load_participant_data_p(p_id=p_id, path=path)
             pd_not_loaded = False
             RD = goal_only_replay_p(D, stats, seed=seed)
             RF = compute_features_p(
-                RD, arc_sweep, save_dir="~/busy-beeway/pref_transformer/rf_save"
+                RD, arc_sweep, save_dir="~/busy-beeway/transformers/rf_save"
             )
         try:
-            F = load_features_from_parquet("~/busy-beeway/pref_transformer/f_save")
+            F = load_features_from_parquet("~/busy-beeway/transformers/f_save")
         except FileNotFoundError:
             if pd_not_loaded:
                 D = load_participant_data_p(p_id=p_id, path=path)
             F = compute_features_p(
-                D, arc_sweep, save_dir="~/busy-beeway/pref_transformer/f_save"
+                D, arc_sweep, save_dir="~/busy-beeway/transformers/f_save"
             )
         create_preference_data(RF, F, fill_size=fill_size, save_data=f"{p_id}.npz")
         sys.exit(0)
 
     try:
-        RF = load_features_from_parquet("~/busy-beeway/pref_transformer/rf_save")
+        RF = load_features_from_parquet("~/busy-beeway/transformers/rf_save")
     except FileNotFoundError:
         try:
-            stats = load_stats("~/busy-beeway/pref_transformer/p_stats.npy")
+            stats = load_stats("~/busy-beeway/transformers/p_stats.npy")
         except FileNotFoundError:
             CD = load_participant_data(p_id=p_id, path=path, control=3)
             stats = generate_stats(
-                CD, save_data="~/busy-beeway/pref_transformer/p_stats.npy"
+                CD, save_data="~/busy-beeway/transformers/p_stats.npy"
             )
         D = load_participant_data(p_id=p_id, path=path)
         pd_not_loaded = False
         RD = goal_only_replay(D, stats, seed=seed)
         RF = compute_features(
-            RD, arc_sweep, save_dir="~/busy-beeway/pref_transformer/rf_save"
+            RD, arc_sweep, save_dir="~/busy-beeway/transformers/rf_save"
         )
     try:
-        F = load_features_from_parquet("~/busy-beeway/pref_transformer/f_save")
+        F = load_features_from_parquet("~/busy-beeway/transformers/f_save")
     except FileNotFoundError:
         if pd_not_loaded:
             D = load_participant_data(p_id=p_id, path=path)
         F = compute_features(
-            D, arc_sweep, save_dir="~/busy-beeway/pref_transformer/f_save"
+            D, arc_sweep, save_dir="~/busy-beeway/transformers/f_save"
         )
     create_preference_data(RF, F, fill_size=fill_size, save_data=f"{p_id}.npz")
     sys.exit(0)
