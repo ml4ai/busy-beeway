@@ -45,7 +45,7 @@ class PrefTransformer(object):
 
     def train(self, batch):
         return {
-            "eval_trans_loss": _train_pref_step(self._train_state, batch, next_rng())
+            "trans_loss": _train_pref_step(self._train_state, batch, next_rng())
         }
 
 
