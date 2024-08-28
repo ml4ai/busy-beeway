@@ -39,25 +39,31 @@ class PrefTransformer(object):
         )
 
     def evaluation(self, batch):
-        return dict(eval_trans_loss = _eval_pref_step(self._train_state, batch, next_rng()))
+        return _eval_pref_step(self._train_state, batch, next_rng())
 
     def train(self, batch):
-        return dict(trans_loss = _train_pref_step(self._train_state, batch, next_rng()))
+        self._train_state, metrics = _train_pref_step(
+            self._train_state, batch, next_rng()
+        )
+        return metrics
 
 
-@partial(jax.jit, static_argnums=0)
+#@partial(jax.jit, static_argnums=0)
+@jax.jit
 def _eval_pref_step(state, batch, rng):
-    return pref_loss_fn(state, state.params, batch, rng)
+    loss = pref_loss_fn(state, state.params, batch, rng)
+    return dict(eval_trans_loss=loss)
 
 
-@partial(jax.jit, static_argnums=0)
+#@partial(jax.jit, static_argnums=0)
+@jax.jit
 def _train_pref_step(state, batch, rng):
     grad_fn = jax.value_and_grad(pref_loss_fn, argnums=1)
     loss, grads = grad_fn(state, state.params, batch, rng)
 
     new_train_state = state.apply_gradients(grads=grads)
-
-    return new_train_state, loss
+    metrics = dict(trans_loss=loss)
+    return new_train_state, metrics
 
 
 class intervention_MLP(object):
