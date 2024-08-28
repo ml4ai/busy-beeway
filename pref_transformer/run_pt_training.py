@@ -11,9 +11,8 @@ from data_utils import (
     load_features_from_parquet,
     load_preference_data,
 )
-from pref_transformer import PT
 from replayer import generate_stats, goal_only_replay, goal_only_replay_p, load_stats
-from train_model import train_model
+from train_model import train_pt
 
 
 def main(argv):
@@ -133,7 +132,7 @@ def main(argv):
         test_data[k] = P_k[shuffle_idx[t_int:]]
     if isinstance(P, np.lib.npyio.NpzFile):
         P.close()
-    train_model(
+    train_pt(
         training_data, test_data, batch_size=batch_size, n_epochs=n_epochs, seed=seed
     )
     sys.exit(0)

@@ -1,5 +1,3 @@
-from functools import partial
-
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -10,7 +8,7 @@ from ml_collections import ConfigDict
 from jax_utils import next_rng, pref_loss_fn
 
 
-class PrefTransformer(object):
+class PrefTransformerTrainer(object):
 
     def __init__(self, trans, observation_dim):
         self.trans = trans
@@ -64,7 +62,7 @@ def _train_pref_step(state, batch, rng):
     return new_train_state, metrics
 
 
-class intervention_MLP(object):
+class interventionMLPTrainer(object):
 
     def __init__(self, imlp, observation_dim):
         self.imlp = imlp
@@ -75,8 +73,8 @@ class intervention_MLP(object):
         scheduler_class = optax.warmup_cosine_decay_schedule(
             init_value=0,
             peak_value=1e-4,
-            warmup_steps=650,
-            decay_steps=6500,
+            warmup_steps=65,
+            decay_steps=650,
             end_value=0,
         )
 

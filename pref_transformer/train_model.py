@@ -1,4 +1,4 @@
-from training import PrefTransformer
+from training import PrefTransformerTrainer
 from pref_transformer import PT
 import numpy as np
 from utils import Timer, index_batch, save_pickle, set_random_seed
@@ -8,7 +8,7 @@ from logging_utils import logger, setup_logger
 import os.path as osp
 
 
-def train_model(
+def train_pt(
     training_data,
     test_data,
     batch_size=256,
@@ -30,7 +30,7 @@ def train_model(
     data_size, query_len, observation_dim = training_data["observations"].shape
     eval_data_size = test_data["observations"].shape[0]
     trans = PT()
-    reward_model = PrefTransformer(trans, observation_dim)
+    model = PrefTransformerTrainer(trans, observation_dim)
     interval = int(data_size / batch_size) + 1
     eval_interval = int(eval_data_size / batch_size) + 1
     early_stop = EarlyStopping(min_delta=1e-3, patience=10)
@@ -56,7 +56,7 @@ def train_model(
                     batch = batch_to_jax(
                         index_batch(training_data, shuffled_idx[start_pt:end_pt])
                     )
-                    for key, val in reward_model.train(batch).items():
+                    for key, val in model.train(batch).items():
                         metrics[key].append(val)
             metrics["train_time"] = train_timer()
         else:
@@ -73,7 +73,7 @@ def train_model(
                 batch_eval = batch_to_jax(
                     index_batch(test_data, list(range(eval_start_pt, eval_end_pt)))
                 )
-                for key, val in reward_model.evaluation(batch_eval).items():
+                for key, val in model.evaluation(batch_eval).items():
                     metrics[key].append(val)
             criteria = np.mean(metrics[criteria_key])
             early_stop = early_stop.update(criteria)
@@ -93,7 +93,7 @@ def train_model(
                 c_criteria_key = criteria
                 metrics["best_epoch"] = c_best_epoch
                 metrics[f"{criteria_key}_best"] = c_criteria_key
-                save_data = {"reward_model": reward_model, "epoch": epoch}
+                save_data = {"model": model, "epoch": epoch}
                 save_pickle(save_data, "best_model.pkl", save_dir)
 
         for key, val in metrics.items():
@@ -105,5 +105,5 @@ def train_model(
         logger.record_dict(metrics)
         logger.dump_tabular(with_prefix=False, with_timestamp=False)
     if save_model:
-        save_data = {"reward_model": reward_model, "epoch": epoch}
+        save_data = {"model": model, "epoch": epoch}
         save_pickle(save_data, "model.pkl", save_dir)
