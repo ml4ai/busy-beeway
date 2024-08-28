@@ -48,13 +48,13 @@ class PrefTransformer(object):
         return metrics
 
 
-@partial(jax.jit, static_argnums=0)
+@jax.jit
 def _eval_pref_step(state, batch, rng):
     loss = pref_loss_fn(state, state.params, batch, rng)
     return dict(eval_loss=loss)
 
 
-@partial(jax.jit, static_argnums=0)
+@jax.jit
 def _train_pref_step(state, batch, rng):
     grad_fn = jax.value_and_grad(pref_loss_fn, argnums=1)
     loss, grads = grad_fn(state, state.params, batch, rng)
@@ -99,14 +99,12 @@ class intervention_MLP(object):
         return metrics
 
 
-# @partial(jax.jit, static_argnums=0)
 @jax.jit
 def _eval_imlp_step(state, batch, rng):
     loss, acc = imlp_loss_fn(state, state.params, batch, rng)
     return dict(eval_loss=loss, eval_acc=acc)
 
 
-# @partial(jax.jit, static_argnums=0)
 @jax.jit
 def _train_imlp_step(state, batch, rng):
     grad_fn = jax.value_and_grad(imlp_loss_fn, argnums=1, has_aux=True)
