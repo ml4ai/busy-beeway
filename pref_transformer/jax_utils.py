@@ -88,6 +88,47 @@ def value_and_multi_grad(fun, n_outputs, argnums=0, has_aux=False):
     return multi_grad_fn
 
 
+def pref_loss_fn(state, train_params, batch, rng):
+    obs_1 = batch["observations"]
+    obs_2 = batch["observations_2"]
+    timestep_1 = batch["timesteps"]
+    timestep_2 = batch["timesteps_2"]
+    am_1 = batch["attn_mask"]
+    am_2 = batch["attn_mask_2"]
+    labels = batch["labels"]
+
+    B, T, _ = batch["observations"].shape
+
+    rng, _ = jax.random.split(rng)
+
+    trans_pred_1, _ = state.apply(
+        train_params,
+        obs_1,
+        timestep_1,
+        training=False,
+        attn_mask=am_1,
+        rngs={"dropout": rng},
+    )
+    trans_pred_2, _ = state.apply(
+        train_params,
+        obs_2,
+        timestep_2,
+        training=False,
+        attn_mask=am_2,
+        rngs={"dropout": rng},
+    )
+
+    trans_pred_1 = trans_pred_1["weighted_sum"]
+    trans_pred_2 = trans_pred_2["weighted_sum"]
+
+    sum_pred_1 = jnp.mean(trans_pred_1.reshape(B, T), axis=1).reshape(-1, 1)
+    sum_pred_2 = jnp.mean(trans_pred_2.reshape(B, T), axis=1).reshape(-1, 1)
+
+    logits = jnp.concatenate([sum_pred_1, sum_pred_2], axis=1)
+
+    return cross_ent_loss(logits, labels)
+
+
 @jax.jit
 def batch_to_jax(batch):
     return jax.tree_util.tree_map(jax.device_put, batch)
