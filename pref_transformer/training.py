@@ -1,15 +1,13 @@
 from functools import partial
 
-from ml_collections import ConfigDict
-
 import jax
 import jax.numpy as jnp
-
-import optax
 import numpy as np
+import optax
 from flax.training.train_state import TrainState
+from ml_collections import ConfigDict
 
-from jax_utils import next_rng, value_and_multi_grad, mse_loss, cross_ent_loss, kld_loss
+from jax_utils import next_rng, pref_loss_fn
 
 
 class PrefTransformer(object):
@@ -17,8 +15,6 @@ class PrefTransformer(object):
     def __init__(self, trans, observation_dim):
         self.trans = trans
         self.observation_dim = observation_dim
-
-        self._train_states = {}
 
         optimizer_class = optax.adamw
         # May need to reconfigure for our data
@@ -38,154 +34,30 @@ class PrefTransformer(object):
             jnp.zeros((10, 25, self.observation_dim)),
             jnp.ones((10, 25), dtype=jnp.int32),
         )
-        self._train_states["trans"] = TrainState.create(
-            params=trans_params, tx=tx, apply_fn=None
-        )
-
-        model_keys = ["trans"]
-        self._model_keys = tuple(model_keys)
-        self._total_steps = 0
+        self._train_state = TrainState.create(params=trans_params, tx=tx, apply_fn=None)
 
     def evaluation(self, batch):
-        metrics = self._eval_pref_step(self._train_states, next_rng(), batch)
-        return metrics
-
-    @partial(jax.jit, static_argnames=("self"))
-    def _eval_pref_step(self, train_states, rng, batch):
-
-        def loss_fn(train_params, rng):
-            obs_1 = batch["observations"]
-            obs_2 = batch["observations_2"]
-            timestep_1 = batch["timesteps"]
-            timestep_2 = batch["timesteps_2"]
-            am_1 = batch["attn_mask"]
-            am_2 = batch["attn_mask_2"]
-            labels = batch["labels"]
-
-            B, T, _ = batch["observations"].shape
-
-            rng, _ = jax.random.split(rng)
-
-            trans_pred_1, _ = self.trans.apply(
-                train_params["trans"],
-                obs_1,
-                timestep_1,
-                training=False,
-                attn_mask=am_1,
-                rngs={"dropout": rng},
-            )
-            trans_pred_2, _ = self.trans.apply(
-                train_params["trans"],
-                obs_2,
-                timestep_2,
-                training=False,
-                attn_mask=am_2,
-                rngs={"dropout": rng},
-            )
-
-            trans_pred_1 = trans_pred_1["weighted_sum"]
-            trans_pred_2 = trans_pred_2["weighted_sum"]
-
-            sum_pred_1 = jnp.mean(trans_pred_1.reshape(B, T), axis=1).reshape(-1, 1)
-            sum_pred_2 = jnp.mean(trans_pred_2.reshape(B, T), axis=1).reshape(-1, 1)
-
-            logits = jnp.concatenate([sum_pred_1, sum_pred_2], axis=1)
-
-            return cross_ent_loss(logits, label_target)
-
-        train_params = {key: train_states[key].params for key in self.model_keys}
-
-        return {"eval_trans_loss": loss_fn(train_params, rng)}
-
-    def train(self, batch):
-        self._total_steps += 1
-        self._train_states, metrics = self._train_pref_step(
-            self._train_states, next_rng(), batch
-        )
-        return metrics
-
-    @partial(jax.jit, static_argnames=("self"))
-    def _train_pref_step(self, train_states, rng, batch):
-
-        def loss_fn(train_params, rng):
-            obs_1 = batch["observations"]
-            obs_2 = batch["observations_2"]
-            timestep_1 = batch["timesteps"]
-            timestep_2 = batch["timesteps_2"]
-            am_1 = batch["attn_mask"]
-            am_2 = batch["attn_mask_2"]
-            labels = batch["labels"]
-
-            B, T, _ = batch["observations"].shape
-
-            rng, _ = jax.random.split(rng)
-
-            trans_pred_1, _ = self.trans.apply(
-                train_params["trans"],
-                obs_1,
-                timestep_1,
-                training=True,
-                attn_mask=am_1,
-                rngs={"dropout": rng},
-            )
-            trans_pred_2, _ = self.trans.apply(
-                train_params["trans"],
-                obs_2,
-                timestep_2,
-                training=True,
-                attn_mask=am_2,
-                rngs={"dropout": rng},
-            )
-
-            trans_pred_1 = trans_pred_1["weighted_sum"]
-            trans_pred_2 = trans_pred_2["weighted_sum"]
-
-            sum_pred_1 = jnp.mean(trans_pred_1.reshape(B, T), axis=1).reshape(-1, 1)
-            sum_pred_2 = jnp.mean(trans_pred_2.reshape(B, T), axis=1).reshape(-1, 1)
-
-            logits = jnp.concatenate([sum_pred_1, sum_pred_2], axis=1)
-
-            loss_collection = {}
-
-            rng, split_rng = jax.random.split(rng)
-
-            """ reward function loss """
-            label_target = jax.lax.stop_gradient(labels)
-            trans_loss = cross_ent_loss(logits, label_target)
-            loss_collection["trans"] = trans_loss
-            return tuple(loss_collection[key] for key in self.model_keys), locals()
-
-        train_params = {key: train_states[key].params for key in self.model_keys}
-        (_, aux_values), grads = value_and_multi_grad(
-            loss_fn, len(self.model_keys), has_aux=True
-        )(train_params, rng)
-
-        new_train_states = {
-            key: train_states[key].apply_gradients(grads=grads[i][key])
-            for i, key in enumerate(self.model_keys)
+        return {
+            "eval_trans_loss": _eval_pref_step(self._train_state, batch, next_rng())
         }
 
-        metrics = dict(
-            trans_loss=aux_values["trans_loss"],
-        )
+    def train(self, batch):
+        return {"eval_trans_loss": _train_pref_step(self._train_state,batch,next_rng())}
 
-        return new_train_states, metrics
 
-    @property
-    def model_keys(self):
-        return self._model_keys
+@jax.jit
+def _eval_pref_step(state, batch, rng):
+    return pref_loss_fn(state, state.params, batch, rng)
 
-    @property
-    def train_states(self):
-        return self._train_states
 
-    @property
-    def train_params(self):
-        return {key: self.train_states[key].params for key in self.model_keys}
+@jax.jit
+def _train_pref_step(state, batch, rng):
+    grad_fn = jax.value_and_grad(pref_loss_fn, argnums=1)
+    loss, grads = grad_fn(state, state.params, batch, rng)
 
-    @property
-    def total_steps(self):
-        return self._total_steps
+    new_train_state = state.apply_gradients(grad=grads)
+
+    return new_train_state, loss
 
 
 class intervention_MLP(object):
