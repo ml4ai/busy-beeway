@@ -101,7 +101,7 @@ def pref_loss_fn(state, train_params, batch, rng):
 
     rng, _ = jax.random.split(rng)
 
-    trans_pred_1, _ = state.apply(
+    trans_pred_1, _ = state.apply_fn(
         train_params,
         obs_1,
         timestep_1,
@@ -109,7 +109,7 @@ def pref_loss_fn(state, train_params, batch, rng):
         attn_mask=am_1,
         rngs={"dropout": rng},
     )
-    trans_pred_2, _ = state.apply(
+    trans_pred_2, _ = state.apply_fn(
         train_params,
         obs_2,
         timestep_2,

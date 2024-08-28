@@ -34,7 +34,7 @@ class PrefTransformer(object):
             jnp.zeros((10, 25, self.observation_dim)),
             jnp.ones((10, 25), dtype=jnp.int32),
         )
-        self._train_state = TrainState.create(params=trans_params, tx=tx, apply_fn=None)
+        self._train_state = TrainState.create(params=trans_params, tx=tx, apply_fn=self.trans.apply)
 
     def evaluation(self, batch):
         return {
@@ -42,7 +42,9 @@ class PrefTransformer(object):
         }
 
     def train(self, batch):
-        return {"eval_trans_loss": _train_pref_step(self._train_state,batch,next_rng())}
+        return {
+            "eval_trans_loss": _train_pref_step(self._train_state, batch, next_rng())
+        }
 
 
 @jax.jit
