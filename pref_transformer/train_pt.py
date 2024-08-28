@@ -46,7 +46,7 @@ def main(argv):
     fill_size = None
     train_split = 23 / 28
     batch_size = 64
-    n_epochs = 1000
+    n_epochs = 100
     arc_sweep = (10, 360, 10)
     seed = 2024
 

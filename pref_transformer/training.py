@@ -24,9 +24,9 @@ class PrefTransformer(object):
         # May need to reconfigure for our data
         scheduler_class = optax.warmup_cosine_decay_schedule(
             init_value=0,
-            peak_value=1e-4 * 10,
-            warmup_steps=6500,
-            decay_steps=65000,
+            peak_value=1e-5,
+            warmup_steps=650,
+            decay_steps=6500,
             end_value=0,
         )
 
