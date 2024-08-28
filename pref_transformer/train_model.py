@@ -15,7 +15,7 @@ def train_model(
     n_epochs=76000,
     eval_period=5,
     do_early_stop=False,
-    criteria_key="reward/eval_trans_loss",
+    criteria_key="eval_loss",
     seed=2024,
     save_dir="~/busy-beeway/pref_transformer/logs",
     save_model=True,
@@ -40,8 +40,8 @@ def train_model(
         metrics = {
             "epoch": epoch,
             "train_time": np.nan,
-            "reward/trans_loss": [],
-            "reward/eval_trans_loss": [],
+            "training_loss": [],
+            "eval_loss": [],
             "best_epoch": c_best_epoch,
             f"{criteria_key}_best": c_criteria_key,
         }
@@ -56,14 +56,12 @@ def train_model(
                     batch = batch_to_jax(
                         index_batch(training_data, shuffled_idx[start_pt:end_pt])
                     )
-                    for key, val in prefix_metrics(
-                        reward_model.train(batch), "reward"
-                    ).items():
+                    for key, val in reward_model.train(batch).items():
                         metrics[key].append(val)
             metrics["train_time"] = train_timer()
         else:
             # for using early stopping with train loss.
-            metrics["reward/trans_loss"] = np.nan
+            metrics["training_loss"] = np.nan
 
         # eval phase
         if epoch % eval_period == 0:
@@ -75,9 +73,7 @@ def train_model(
                 batch_eval = batch_to_jax(
                     index_batch(test_data, list(range(eval_start_pt, eval_end_pt)))
                 )
-                for key, val in prefix_metrics(
-                    reward_model.evaluation(batch_eval), "reward"
-                ).items():
+                for key, val in reward_model.evaluation(batch_eval).items():
                     metrics[key].append(val)
             criteria = np.mean(metrics[criteria_key])
             early_stop = early_stop.update(criteria)

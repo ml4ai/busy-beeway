@@ -129,6 +129,29 @@ def pref_loss_fn(state, train_params, batch, rng):
     return cross_ent_loss(logits, labels)
 
 
+def imlp_loss_fn(state, train_params, batch, rng):
+    obs = batch["observations"]
+    labels = batch["labels"]
+
+    rng, _ = jax.random.split(rng)
+
+    imlp_pred = state.apply_fn(
+        train_params,
+        obs,
+        training=False,
+        rngs={"dropout": rng},
+    )
+
+    rng, split_rng = jax.random.split(rng)
+
+    """ reward function loss """
+    pred_labels = (imlp_pred > 0).astype(jnp.float32)
+    label_target = jax.lax.stop_gradient(labels)
+    imlp_loss = optax.sigmoid_binary_cross_entropy(imlp_pred, label_target).mean()
+    imlp_acc = (pred_labels == labels).mean()
+    return imlp_loss, imlp_acc
+
+
 @jax.jit
 def batch_to_jax(batch):
     return jax.tree_util.tree_map(jax.device_put, batch)
