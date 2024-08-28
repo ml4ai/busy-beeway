@@ -24,9 +24,9 @@ class PrefTransformer(object):
         # May need to reconfigure for our data
         scheduler_class = optax.warmup_cosine_decay_schedule(
             init_value=0,
-            peak_value=1e-5,
-            warmup_steps=650,
-            decay_steps=6500,
+            peak_value=1e-4,
+            warmup_steps=65,
+            decay_steps=650,
             end_value=0,
         )
 
@@ -95,7 +95,7 @@ class PrefTransformer(object):
 
         train_params = {key: train_states[key].params for key in self.model_keys}
 
-        return {"eval_trans_loss": loss_fn(train_params,rng)}
+        return {"eval_trans_loss": loss_fn(train_params, rng)}
 
     def train(self, batch):
         self._total_steps += 1
@@ -246,7 +246,9 @@ class intervention_MLP(object):
             """ reward function loss """
             pred_labels = (imlp_pred > 0).astype(jnp.float32)
             label_target = jax.lax.stop_gradient(labels)
-            imlp_loss = optax.sigmoid_binary_cross_entropy(imlp_pred, label_target).mean()
+            imlp_loss = optax.sigmoid_binary_cross_entropy(
+                imlp_pred, label_target
+            ).mean()
             imlp_acc = (pred_labels == labels).mean()
             loss_collection["imlp_loss"] = imlp_loss
             loss_collection["imlp_accuracy"] = imlp_acc
@@ -336,7 +338,6 @@ class intervention_MLP(object):
         )
 
         return new_train_states, metrics
-
 
     @property
     def model_keys(self):
