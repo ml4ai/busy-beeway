@@ -1,7 +1,7 @@
 from training import PrefTransformer
 from pref_transformer import PT
 import numpy as np
-from utils import Timer, index_batch, prefix_metrics, save_pickle, set_random_seed
+from utils import Timer, index_batch, save_pickle, set_random_seed
 from jax_utils import batch_to_jax
 from flax.training.early_stopping import EarlyStopping
 from logging_utils import logger, setup_logger
