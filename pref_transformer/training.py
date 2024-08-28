@@ -39,12 +39,10 @@ class PrefTransformer(object):
         )
 
     def evaluation(self, batch):
-        return {
-            "eval_trans_loss": _eval_pref_step(self._train_state, batch, next_rng())
-        }
+        return dict(eval_trans_loss = _eval_pref_step(self._train_state, batch, next_rng()))
 
     def train(self, batch):
-        return {"trans_loss": _train_pref_step(self._train_state, batch, next_rng())}
+        return dict(trans_loss = _train_pref_step(self._train_state, batch, next_rng()))
 
 
 @partial(jax.jit, static_argnums=0)
