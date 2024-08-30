@@ -48,12 +48,12 @@ def main(argv):
     eval_period=1
     n_epochs = 50
     arc_sweep = (10, 360, 10)
-    seed = 2024
+    seed = 31673
 
     pd_not_loaded = True
     if parallel:
         try:
-            P = load_preference_data(f"~/busy-beeway/transformers/{p_id}",sep_files=True,mmap_mode='r+')
+            P = load_preference_data(f"~/busy-beeway/transformers/{p_id}",sep_files=True,mmap_mode='r+',cpu=0)
         except FileNotFoundError:
             try:
                 RF = load_features_from_parquet("~/busy-beeway/transformers/rf_save")
@@ -84,7 +84,7 @@ def main(argv):
             )
     else:
         try:
-            P = load_preference_data(f"~/busy-beeway/transformers/{p_id}",sep_files=True,mmap_mode='r+')
+            P = load_preference_data(f"~/busy-beeway/transformers/{p_id}",sep_files=True,mmap_mode='r+',cpu=0)
         except FileNotFoundError:
             try:
                 RF = load_features_from_parquet("~/busy-beeway/transformers/rf_save")
