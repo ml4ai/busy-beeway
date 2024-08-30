@@ -2,6 +2,7 @@ import os
 from multiprocessing import Pool
 from pathlib import Path
 
+import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
