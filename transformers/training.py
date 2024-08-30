@@ -19,8 +19,8 @@ class PrefTransformerTrainer(object):
         scheduler_class = optax.warmup_cosine_decay_schedule(
             init_value=0,
             peak_value=1e-4,
-            warmup_steps=65,
-            decay_steps=650,
+            warmup_steps=325,
+            decay_steps=3250,
             end_value=0,
         )
 
