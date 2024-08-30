@@ -1,9 +1,11 @@
 import os
+from multiprocessing import Pool
+
 import jax.numpy as jnp
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from multiprocessing import Pool
+from pathlib import Path
 
 
 # Finds distance between a set of coordinates and a single coordinate. vecX and vecY are numpy arrays, px and py are scalars (floats/ints/etc.)
@@ -261,7 +263,7 @@ def compute_run_features(p_df, g, O, arc_sweep=(10, 360, 10)):
                     features[f"max_heading_op_obstacle_headings_{a}"][index] = (
                         obs_headings[0]
                     )
-
+    features["userControl"] = p_df["userControl"].to_numpy()
     features["t"] = p_df["t"].to_numpy()
     return pd.DataFrame(features)
 
@@ -471,7 +473,7 @@ def compute_run_features_p(d):
                     features[f"max_heading_op_obstacle_headings_{a}"][index] = (
                         obs_headings[0]
                     )
-
+    features["userControl"] = p_df["userControl"].to_numpy()
     features["t"] = p_df["t"].to_numpy()
     df = pd.DataFrame(features)
     if save_data:
@@ -745,9 +747,60 @@ def create_preference_data(
             return data
 
 
-def load_preference_data(load_file):
+# If sep_files is false, then it assumes load_data is a single .npz file, otherwise it assumes load_data is a directory
+# and will look for "observations.npy", "observations_2.npy", "timesteps.npy", "timesteps_2.npy", and
+# "labels.npy". Also "attn_mask.npy" and "attn_mask_2.npy" if attn_mask = True
+# mmap_mode is the same as jnp.load or numpy.load and is ignored if loading a single .npz
+def load_preference_data(load_data, sep_files=False, attn_mask=True, mmap_mode=None):
+    load_data = os.path.expanduser(load_data)
+    if not sep_files:
+        return jnp.load(load_data, fix_imports=False)
+    if attn_mask:
+        data = {}
+        for l in [
+            "observations",
+            "observations_2",
+            "timesteps",
+            "timesteps_2",
+            "labels",
+            "attn_mask",
+            "attn_mask_2",
+        ]:
+
+            data[l] = jnp.load(f"{load_data}/{l}.npy", fix_imports=False, mmap_mode=mmap_mode)
+        return data
+
+    data = {}
+    for l in [
+        "observations",
+        "observations_2",
+        "timesteps",
+        "timesteps_2",
+        "labels",
+    ]:
+        data[l] = jnp.load(
+            f"{load_data}/{l}.npy", fix_imports=False, mmap_mode=mmap_mode
+        )
+    return data
+
+
+# This expands a participant .npz file into seperate .npy files in a directory labeled
+# The participant id.
+def expand_preference_data(load_file):
     load_file = os.path.expanduser(load_file)
-    return jnp.load(load_file, fix_imports=False)
+    lf_stem = Path(load_file).stem
+    with jnp.load(load_file, fix_imports=False) as data:
+        try:
+            os.mkdir(lf_stem)
+            for k in data.keys():
+                with open(f"{lf_stem}/{k}.npy", "wb") as f:
+                    d = data[k]
+                    jnp.save(f, d)
+        except FileExistsError:
+            for k in data.keys():
+                with open(f"{lf_stem}/{k}.npy", "wb") as f:
+                    d = data[k]
+                    jnp.save(f, d)
 
 
 def plot_training_validation_loss(load_log, eval_period=5, save_file=None, **kwargs):

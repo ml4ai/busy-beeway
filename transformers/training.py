@@ -62,7 +62,7 @@ def _train_pref_step(state, batch, rng):
     return new_train_state, metrics
 
 
-class interventionMLPTrainer(object):
+class InterventionMLPTrainer(object):
 
     def __init__(self, imlp, observation_dim):
         self.imlp = imlp

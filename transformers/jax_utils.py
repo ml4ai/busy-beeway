@@ -140,7 +140,7 @@ def imlp_loss_fn(state, train_params, batch, rng):
         obs,
         training=False,
         rngs={"dropout": rng},
-    )
+    ).squeeze(axis=-1)
 
     rng, split_rng = jax.random.split(rng)
 

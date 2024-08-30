@@ -52,12 +52,10 @@ def main(argv):
     pd_not_loaded = True
     if parallel:
         try:
-            P = load_preference_data(f"~/busy-beeway/transformers/{p_id}.npz")
+            P = load_preference_data(f"~/busy-beeway/transformers/{p_id}",sep_files=True,mmap_mode='r+')
         except FileNotFoundError:
             try:
-                RF = load_features_from_parquet(
-                    "~/busy-beeway/transformers/rf_save"
-                )
+                RF = load_features_from_parquet("~/busy-beeway/transformers/rf_save")
             except FileNotFoundError:
                 try:
                     stats = load_stats("~/busy-beeway/transformers/p_stats.npy")
@@ -85,12 +83,10 @@ def main(argv):
             )
     else:
         try:
-            P = load_preference_data(f"~/busy-beeway/transformers/{p_id}.npz")
+            P = load_preference_data(f"~/busy-beeway/transformers/{p_id}",sep_files=True,mmap_mode='r+')
         except FileNotFoundError:
             try:
-                RF = load_features_from_parquet(
-                    "~/busy-beeway/transformers/rf_save"
-                )
+                RF = load_features_from_parquet("~/busy-beeway/transformers/rf_save")
             except FileNotFoundError:
                 try:
                     stats = load_stats("~/busy-beeway/transformers/p_stats.npy")

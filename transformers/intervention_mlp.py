@@ -9,5 +9,4 @@ class MLP(nn.Module):
         x = ops.apply_activation(x, activation="relu")
         x = nn.Dropout(rate=0.1)(x, deterministic=not training)
         x = nn.Dense(features=1)(x)
-        x = ops.apply_activation(x, activation="sigmoid")
         return x
