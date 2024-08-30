@@ -1,11 +1,11 @@
 import os
 from multiprocessing import Pool
+from pathlib import Path
 
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from pathlib import Path
 
 
 # Finds distance between a set of coordinates and a single coordinate. vecX and vecY are numpy arrays, px and py are scalars (floats/ints/etc.)
@@ -751,10 +751,43 @@ def create_preference_data(
 # and will look for "observations.npy", "observations_2.npy", "timesteps.npy", "timesteps_2.npy", and
 # "labels.npy". Also "attn_mask.npy" and "attn_mask_2.npy" if attn_mask = True
 # mmap_mode is the same as jnp.load or numpy.load and is ignored if loading a single .npz
-def load_preference_data(load_data, sep_files=False, attn_mask=True, mmap_mode=None):
+# If cpu is not None, then it forces the data to be stored on the cpu with the given id.
+def load_preference_data(
+    load_data, sep_files=False, attn_mask=True, mmap_mode=None, cpu=None
+):
     load_data = os.path.expanduser(load_data)
     if not sep_files:
         return jnp.load(load_data, fix_imports=False)
+    if cpu is None:
+        if attn_mask:
+            data = {}
+            for l in [
+                "observations",
+                "observations_2",
+                "timesteps",
+                "timesteps_2",
+                "labels",
+                "attn_mask",
+                "attn_mask_2",
+            ]:
+
+                data[l] = jnp.load(
+                    f"{load_data}/{l}.npy", fix_imports=False, mmap_mode=mmap_mode
+                )
+            return data
+
+        data = {}
+        for l in [
+            "observations",
+            "observations_2",
+            "timesteps",
+            "timesteps_2",
+            "labels",
+        ]:
+            data[l] = jnp.load(
+                f"{load_data}/{l}.npy", fix_imports=False, mmap_mode=mmap_mode
+            )
+        return data
     if attn_mask:
         data = {}
         for l in [
@@ -766,9 +799,11 @@ def load_preference_data(load_data, sep_files=False, attn_mask=True, mmap_mode=N
             "attn_mask",
             "attn_mask_2",
         ]:
-
-            data[l] = jnp.load(
-                f"{load_data}/{l}.npy", fix_imports=False, mmap_mode=mmap_mode
+            data[l] = jax.device_put(
+                jnp.load(
+                    f"{load_data}/{l}.npy", fix_imports=False, mmap_mode=mmap_mode
+                ),
+                jax.devices(backend="cpu")[cpu],
             )
         return data
 
@@ -780,8 +815,9 @@ def load_preference_data(load_data, sep_files=False, attn_mask=True, mmap_mode=N
         "timesteps_2",
         "labels",
     ]:
-        data[l] = jnp.load(
-            f"{load_data}/{l}.npy", fix_imports=False, mmap_mode=mmap_mode
+        data[l] = jax.device_put(
+            jnp.load(f"{load_data}/{l}.npy", fix_imports=False, mmap_mode=mmap_mode),
+            jax.devices(backend="cpu")[cpu],
         )
     return data
 
