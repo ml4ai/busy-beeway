@@ -767,7 +767,9 @@ def load_preference_data(load_data, sep_files=False, attn_mask=True, mmap_mode=N
             "attn_mask_2",
         ]:
 
-            data[l] = jnp.load(f"{load_data}/{l}.npy", fix_imports=False, mmap_mode=mmap_mode)
+            data[l] = jnp.load(
+                f"{load_data}/{l}.npy", fix_imports=False, mmap_mode=mmap_mode
+            )
         return data
 
     data = {}
@@ -808,12 +810,12 @@ def plot_training_validation_loss(load_log, eval_period=5, save_file=None, **kwa
     L = L[(L.index % eval_period == 0) & (L.index >= eval_period)]
 
     x = L.index.to_numpy()
-    y = L["reward/trans_loss"].to_numpy()
+    y = L["training_loss"].to_numpy()
 
-    y2 = L["reward/eval_trans_loss"].to_numpy()
+    y2 = L["eval_loss"].to_numpy()
 
     xb = L["best_epoch"].to_numpy()[-1]
-    yb = L["reward/eval_trans_loss_best"].to_numpy()[-1]
+    yb = L["eval_loss_best"].to_numpy()[-1]
 
     fig, ax = plt.subplots()
     ax.plot(x, y, label="Training Loss")
