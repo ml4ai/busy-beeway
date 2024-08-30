@@ -25,7 +25,7 @@ def load_attempt_data(
             obs_end = 158
     if control != 2 and control != 3:
         try:
-            p_df = pd.read_csv(p_file, usecols=["posX", "posY", "angle"])
+            p_df = pd.read_csv(p_file, usecols=["posX", "posY", "angle", "userControl"])
         except FileNotFoundError:
             raise FileNotFoundError(
                 f"Could not find player data for level {lvl}, attempt {attempt}. Check that directory {path} exists!"
@@ -696,7 +696,7 @@ def load_attempt_data_p(f):
             obs_end = 158
     if control != 2 and control != 3:
         try:
-            p_df = pd.read_csv(p_file, usecols=["posX", "posY", "angle"])
+            p_df = pd.read_csv(p_file, usecols=["posX", "posY", "angle", "userControl"])
         except FileNotFoundError:
             raise FileNotFoundError(
                 f"Could not find player data for level {lvl}, attempt {attempt}. Check that directory {path} exists!"
@@ -1351,7 +1351,12 @@ def load_experiment_data_p(path, skip=0, control=1, outer_call=True, cores=None)
 # It assumes that the format of the directories within the path are set-up as <experiment>/<participant_id>/<test days>/<data files>. There should be
 # No other types of directories other than experiment folders or there could be unexplained behavior!
 def load_participant_data_p(
-    p_id, path="~/busy-beeway/data/game_data", skip=0, control=1, cores=None
+    p_id,
+    path="~/busy-beeway/data/game_data",
+    skip=0,
+    control=1,
+    outer_call=True,
+    cores=None,
 ):
     S = []
     dir_path = os.path.expanduser(path)
@@ -1361,9 +1366,35 @@ def load_participant_data_p(
             e_path = f"{i.path}/{p_id}"
             s = load_experiment_data_p(e_path, skip, control, False, None)
             S += s
-    if cores is None:
-        cores = os.cpu_count()
-    with Pool(cores) as p:
-        res = p.map(load_attempt_data_p, S)
-        D = list(chain.from_iterable(res))
-        return D
+    if outer_call:
+        if cores is None:
+            cores = os.cpu_count()
+        with Pool(cores) as p:
+            res = p.map(load_attempt_data_p, S)
+            D = list(chain.from_iterable(res))
+            return D
+    return S
+
+
+def get_participant_list_from_dir(
+    path="~/busy-beeway/data/game_data/Experiment_1T5", save_file=None
+):
+    S = []
+    dir_path = os.path.expanduser(path)
+    dir_list = os.scandir(dir_path)
+    for i in dir_list:
+        if i.is_dir():
+            S.append(i.name)
+    if save_file is None:
+        return S
+    with open(save_file, "w") as f:
+        for line in S:
+            f.write(f"{line}\n")
+    return S
+
+def load_participant_list(load_file):
+    S = []
+    with open(load_file, 'r') as file:
+        while line := file.readline():
+            S.append(line.rstrip())
+    return S
