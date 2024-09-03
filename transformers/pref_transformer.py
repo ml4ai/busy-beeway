@@ -93,7 +93,7 @@ class GPT2Block(nn.Module):
             "training": training,
         }
         x, present, _attn_weights = GPT2SelfAttention(
-            embed_dim=self.embd_dim,
+            embd_dim=self.embd_dim,
             num_heads=self.num_heads,
             attn_dropout=self.attn_dropout,
             resid_dropout=self.resid_dropout,
@@ -102,7 +102,7 @@ class GPT2Block(nn.Module):
         residual = x
         x = nn.LayerNorm(epsilon=self.eps)(x)
         x = GPT2MLP(
-            embed_dim=self.embd_dim,
+            embd_dim=self.embd_dim,
             intermediate_dim=self.intermediate_dim,
             resid_dropout=self.resid_dropout,
             activation=self.activation,
