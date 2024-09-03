@@ -43,13 +43,23 @@ def generate_stats(D, save_data=None):
         )
     else:
         save_data = os.path.expanduser(save_data)
-        stats = (
-            np.mean(np.concatenate(p_dists)),
-            np.std(np.concatenate(p_dists), ddof=1),
-            np.mean(np.concatenate(o_dists)),
-            np.std(np.concatenate(o_dists), ddof=1),
-        )
-        np.save(save_data, stats, False, False)
+        try:
+            os.mkdir("cache")
+            stats = (
+                np.mean(np.concatenate(p_dists)),
+                np.std(np.concatenate(p_dists), ddof=1),
+                np.mean(np.concatenate(o_dists)),
+                np.std(np.concatenate(o_dists), ddof=1),
+            )
+            np.save(f"cache/{save_data}", stats, False, False)
+        except FileExistsError:
+            stats = (
+                np.mean(np.concatenate(p_dists)),
+                np.std(np.concatenate(p_dists), ddof=1),
+                np.mean(np.concatenate(o_dists)),
+                np.std(np.concatenate(o_dists), ddof=1),
+            )
+            np.save(f"cache/{save_data}", stats, False, False)
         return stats
 
 

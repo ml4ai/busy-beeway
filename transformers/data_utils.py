@@ -282,23 +282,44 @@ def compute_features(D, arc_sweep=(10, 360, 10), save_dir=None):
     else:
         dir_path = os.path.expanduser(save_dir)
         try:
-            os.mkdir(dir_path)
-            for i, d in enumerate(D):
-                p_df = d["player"]
-                g = d["goal"]
-                O = d["obstacles"]
-                res = compute_run_features(p_df, g, O, arc_sweep)
-                res.to_parquet(f"{dir_path}/sequence_{i}.parquet")
-                dat.append(res)
+            os.mkdir("cache")
+            try:
+                os.mkdir(f"cache/{dir_path}")
+                for i, d in enumerate(D):
+                    p_df = d["player"]
+                    g = d["goal"]
+                    O = d["obstacles"]
+                    res = compute_run_features(p_df, g, O, arc_sweep)
+                    res.to_parquet(f"cache/{dir_path}/sequence_{i}.parquet")
+                    dat.append(res)
+            except FileExistsError:
+                for i, d in enumerate(D):
+                    p_df = d["player"]
+                    g = d["goal"]
+                    O = d["obstacles"]
+                    res = compute_run_features(p_df, g, O, arc_sweep)
+                    res.to_parquet(f"{dir_path}/sequence_{i}.parquet")
+                    dat.append(res)
+            return dat
         except FileExistsError:
-            for i, d in enumerate(D):
-                p_df = d["player"]
-                g = d["goal"]
-                O = d["obstacles"]
-                res = compute_run_features(p_df, g, O, arc_sweep)
-                res.to_parquet(f"{dir_path}/sequence_{i}.parquet")
-                dat.append(res)
-        return dat
+            try:
+                os.mkdir(f"cache/{dir_path}")
+                for i, d in enumerate(D):
+                    p_df = d["player"]
+                    g = d["goal"]
+                    O = d["obstacles"]
+                    res = compute_run_features(p_df, g, O, arc_sweep)
+                    res.to_parquet(f"cache/{dir_path}/sequence_{i}.parquet")
+                    dat.append(res)
+            except FileExistsError:
+                for i, d in enumerate(D):
+                    p_df = d["player"]
+                    g = d["goal"]
+                    O = d["obstacles"]
+                    res = compute_run_features(p_df, g, O, arc_sweep)
+                    res.to_parquet(f"cache/{dir_path}/sequence_{i}.parquet")
+                    dat.append(res)
+            return dat
 
 
 def compute_run_features_p(d):
@@ -499,38 +520,74 @@ def compute_features_p(D, arc_sweep=(10, 360, 10), save_dir=None, cores=None):
         else:
             dir_path = os.path.expanduser(save_dir)
             try:
-                os.mkdir(dir_path)
-                dat = list(
-                    p.map(
-                        compute_run_features_p,
-                        [
-                            (
-                                d["player"],
-                                d["goal"],
-                                d["obstacles"],
-                                arc_sweep,
-                                f"{dir_path}/sequence_{i}.parquet",
-                            )
-                            for i, d in enumerate(D)
-                        ],
+                os.mkdir("cache")
+                try:
+                    os.mkdir(f"cache/{dir_path}")
+                    dat = list(
+                        p.map(
+                            compute_run_features_p,
+                            [
+                                (
+                                    d["player"],
+                                    d["goal"],
+                                    d["obstacles"],
+                                    arc_sweep,
+                                    f"cache/{dir_path}/sequence_{i}.parquet",
+                                )
+                                for i, d in enumerate(D)
+                            ],
+                        )
                     )
-                )
+                except FileExistsError:
+                    dat = list(
+                        p.map(
+                            compute_run_features_p,
+                            [
+                                (
+                                    d["player"],
+                                    d["goal"],
+                                    d["obstacles"],
+                                    arc_sweep,
+                                    f"cache/{dir_path}/sequence_{i}.parquet",
+                                )
+                                for i, d in enumerate(D)
+                            ],
+                        )
+                    )
             except FileExistsError:
-                dat = list(
-                    p.map(
-                        compute_run_features_p,
-                        [
-                            (
-                                d["player"],
-                                d["goal"],
-                                d["obstacles"],
-                                arc_sweep,
-                                f"{dir_path}/sequence_{i}.parquet",
-                            )
-                            for i, d in enumerate(D)
-                        ],
+                try:
+                    os.mkdir(f"cache/{dir_path}")
+                    dat = list(
+                        p.map(
+                            compute_run_features_p,
+                            [
+                                (
+                                    d["player"],
+                                    d["goal"],
+                                    d["obstacles"],
+                                    arc_sweep,
+                                    f"cache/{dir_path}/sequence_{i}.parquet",
+                                )
+                                for i, d in enumerate(D)
+                            ],
+                        )
                     )
-                )
+                except FileExistsError:
+                    dat = list(
+                        p.map(
+                            compute_run_features_p,
+                            [
+                                (
+                                    d["player"],
+                                    d["goal"],
+                                    d["obstacles"],
+                                    arc_sweep,
+                                    f"cache/{dir_path}/sequence_{i}.parquet",
+                                )
+                                for i, d in enumerate(D)
+                            ],
+                        )
+                    )
         return dat
 
 
@@ -629,7 +686,8 @@ def to_jnp(
 # y = 1 for most pairs, but can be 0.5 if the real data mimics the same behavior as the generate data.
 # _2 is appended to the dict labels for F_2
 # This is specifically for real data matched with generated goal only trajectory data.
-# save_data assume default labels
+# save_data assume default labels. Use an extension .npz for it to be saved in one file and omit an extension the
+# arrays to be saved in seperate .npy files.
 def create_preference_data(
     F_1,
     F_2,
@@ -680,6 +738,7 @@ def create_preference_data(
             }
         else:
             save_data = os.path.expanduser(save_data)
+            ext = Path(save_data).suffix
             data = {
                 labels[0]: jnp.stack(obs),
                 labels[1]: jnp.stack(ts),
@@ -689,16 +748,48 @@ def create_preference_data(
                 f"{labels[2]}_2": jnp.stack(ams_2),
                 "labels": jnp.array(lbs),
             }
-            jnp.savez(
-                save_data,
-                observations=data[labels[0]],
-                timesteps=data[labels[1]],
-                attn_mask=data[labels[2]],
-                observations_2=data[f"{labels[0]}_2"],
-                timesteps_2=data[f"{labels[1]}_2"],
-                attn_mask_2=data[f"{labels[2]}_2"],
-                labels=data["labels"],
-            )
+            if ext == ".npz":
+                try:
+                    os.mkdir("preference_data")
+                    jnp.savez(
+                        f"preference_data/{save_data}",
+                        observations=data[labels[0]],
+                        timesteps=data[labels[1]],
+                        attn_mask=data[labels[2]],
+                        observations_2=data[f"{labels[0]}_2"],
+                        timesteps_2=data[f"{labels[1]}_2"],
+                        attn_mask_2=data[f"{labels[2]}_2"],
+                        labels=data["labels"],
+                    )
+                except FileExistsError:
+                    jnp.savez(
+                        f"preference_data/{save_data}",
+                        observations=data[labels[0]],
+                        timesteps=data[labels[1]],
+                        attn_mask=data[labels[2]],
+                        observations_2=data[f"{labels[0]}_2"],
+                        timesteps_2=data[f"{labels[1]}_2"],
+                        attn_mask_2=data[f"{labels[2]}_2"],
+                        labels=data["labels"],
+                    )
+            else:
+                try:
+                    os.mkdir("preference_data")
+                    for k in data.keys():
+                        d = data[k]
+                        jnp.save(
+                            f"preference_data/{save_data}/{k}.npy",
+                            d,
+                            allow_pickle=False,
+                        )
+                except FileExistsError:
+                    for k in data.keys():
+                        d = data[k]
+                        jnp.save(
+                            f"preference_data/{save_data}/{k}.npy",
+                            d,
+                            allow_pickle=False,
+                        )
             return data
         obs = []
         ts = []
@@ -730,6 +821,7 @@ def create_preference_data(
             }
         else:
             save_data = os.path.expanduser(save_data)
+            ext = Path(save_data).suffix
             data = {
                 labels[0]: jnp.stack(obs),
                 labels[1]: jnp.stack(ts),
@@ -737,14 +829,44 @@ def create_preference_data(
                 f"{labels[1]}_2": jnp.stack(ts_2),
                 "labels": jnp.array(lbs),
             }
-            jnp.savez(
-                save_data,
-                observations=data[labels[0]],
-                timesteps=data[labels[1]],
-                observations_2=data[f"{labels[0]}_2"],
-                timesteps_2=data[f"{labels[1]}_2"],
-                labels=data["labels"],
-            )
+            if ext == ".npz":
+                try:
+                    os.mkdir("preference_data")
+                    jnp.savez(
+                        f"preference_data/{save_data}",
+                        observations=data[labels[0]],
+                        timesteps=data[labels[1]],
+                        observations_2=data[f"{labels[0]}_2"],
+                        timesteps_2=data[f"{labels[1]}_2"],
+                        labels=data["labels"],
+                    )
+                except FileExistsError:
+                    jnp.savez(
+                        f"preference_data/{save_data}",
+                        observations=data[labels[0]],
+                        timesteps=data[labels[1]],
+                        observations_2=data[f"{labels[0]}_2"],
+                        timesteps_2=data[f"{labels[1]}_2"],
+                        labels=data["labels"],
+                    )
+            else:
+                try:
+                    os.mkdir("preference_data")
+                    for k in data.keys():
+                        d = data[k]
+                        jnp.save(
+                            f"preference_data/{save_data}/{k}.npy",
+                            d,
+                            allow_pickle=False,
+                        )
+                except FileExistsError:
+                    for k in data.keys():
+                        d = data[k]
+                        jnp.save(
+                            f"preference_data/{save_data}/{k}.npy",
+                            d,
+                            allow_pickle=False,
+                        )
             return data
 
 
@@ -834,12 +956,12 @@ def expand_preference_data(load_file):
             for k in data.keys():
                 with open(f"{lf_stem}/{k}.npy", "wb") as f:
                     d = data[k]
-                    jnp.save(f, d)
+                    jnp.save(f, d, allow_pickle=False)
         except FileExistsError:
             for k in data.keys():
                 with open(f"{lf_stem}/{k}.npy", "wb") as f:
                     d = data[k]
-                    jnp.save(f, d)
+                    jnp.save(f, d, allow_pickle=False)
 
 
 def plot_training_validation_loss(load_log, eval_period=5, save_file=None, **kwargs):
