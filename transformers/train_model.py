@@ -47,6 +47,7 @@ def train_pt(
         activation=kwargs.get("activation", "relu"),
         num_layers=kwargs.get("num_layers", 1),
         embd_dropout=kwargs.get("embd_dropout", 0.1),
+        max_pos=kwargs.get("max_pos",1024),
         eps=kwargs.get("eps", 0.1),
     )
     model = PrefTransformerTrainer(

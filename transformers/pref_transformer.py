@@ -23,13 +23,13 @@ class GPT2SelfAttention(nn.Module):
     num_heads: int = 4
     attn_dropout: float = 0.1
     resid_dropout: float = 0.1
+    max_pos: int = 1024
 
     @nn.compact
     def __call__(
         self, x, layer_past=None, attn_mask=None, head_mask=None, training=False
     ):
         head_dim = self.embd_dim // self.num_heads
-        max_pos = self.embd_dim * self.num_heads
         x = nn.Dense(features=3 * self.embd_dim)(x)
 
         query, key, value = jnp.split(x, 3, axis=2)
@@ -45,7 +45,7 @@ class GPT2SelfAttention(nn.Module):
 
         present = None
         query_len, key_len = query.shape[-2], key.shape[-2]
-        casual_mask = jnp.tril(jnp.ones((1, 1, max_pos, max_pos)))[
+        casual_mask = jnp.tril(jnp.ones((1, 1, self.max_pos, self.max_pos)))[
             :, :, key_len - query_len : key_len, :key_len
         ]
         casual_mask = casual_mask.astype(bool)
@@ -77,6 +77,7 @@ class GPT2Block(nn.Module):
     attn_dropout: float = 0.1
     resid_dropout: float = 0.1
     intermediate_dim: int = 256
+    max_pos: int = 1024
     activation: str = "relu"
     eps: float = 1e-05
 
@@ -97,6 +98,7 @@ class GPT2Block(nn.Module):
             num_heads=self.num_heads,
             attn_dropout=self.attn_dropout,
             resid_dropout=self.resid_dropout,
+            max_pos=self.max_pos,
         )(x, **kwargs)
         x += residual
         residual = x
@@ -120,6 +122,7 @@ class GPT2Model(nn.Module):
     activation: str = "relu"
     num_layers: int = 1
     embd_dropout: float = 0.1
+    max_pos: int = 1024
     eps: float = 1e-05
 
     @nn.compact
@@ -157,6 +160,7 @@ class GPT2Model(nn.Module):
                 attn_dropout=self.attn_dropout,
                 intermediate_dim=self.intermediate_dim,
                 activation=self.activation,
+                max_pos=self.max_pos,
                 eps=self.eps,
             )(x, **kwargs)
 
@@ -181,6 +185,7 @@ class PT(nn.Module):
     activation: str = "relu"
     num_layers: int = 1
     embd_dropout: float = 0.1
+    max_pos: int = 1024
     eps: float = 1e-05
 
     @nn.compact
@@ -207,6 +212,7 @@ class PT(nn.Module):
             activation=self.activation,
             num_layers=self.num_layers,
             embd_dropout=self.embd_dropout,
+            max_pos=self.max_pos,
             eps=self.eps,
         )(input_embds=inputs, attn_mask=attn_mask, training=training)
 
