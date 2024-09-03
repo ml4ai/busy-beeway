@@ -53,7 +53,7 @@ def main(argv):
     )
     parser.add_argument(
         "-s",
-        "--seeds",
+        "--seed",
         type=int,
         default=13138787,
         help="Random seed used throughout the program.",
