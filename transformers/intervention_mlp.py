@@ -3,6 +3,7 @@ import jax.numpy as jnp
 import ops
 
 class MLP(nn.Module):
+    observation_dim: int = 308
     @nn.compact
     def __call__(self, x, training=False):
         x = nn.Dense(features=128)(x)
