@@ -56,3 +56,6 @@ data/*
 __pycache__/
 *.pdf
 .ipynb_checkpoints/
+participant_list.txt
+*.npy
+*.npz
