@@ -14,14 +14,15 @@ from utils import Timer, index_batch, save_pickle, set_random_seed
 def train_pt(
     training_data,
     test_data,
-    batch_size=256,
-    n_epochs=76000,
-    eval_period=5,
+    batch_size=64,
+    n_epochs=50,
+    eval_period=1,
     do_early_stop=False,
     criteria_key="eval_loss",
     seed=2024,
     save_dir="~/busy-beeway/transformers/logs",
     save_model=True,
+    **kwargs,
 ):
 
     save_dir = osp.expanduser(save_dir)
@@ -32,10 +33,30 @@ def train_pt(
     rng = np.random.default_rng(seed)
     data_size, query_len, observation_dim = training_data["observations"].shape
     eval_data_size = test_data["observations"].shape[0]
-    trans = PT()
-    model = PrefTransformerTrainer(trans, observation_dim)
     interval = int(data_size / batch_size) + 1
     eval_interval = int(eval_data_size / batch_size) + 1
+    trans = PT(
+        observation_dim=observation_dim,
+        max_episode_steps=kwargs.get("max_episode_steps", 500),
+        embd_dim=kwargs.get("embd_dim", batch_size),
+        pref_attn_embd_dim=kwargs.get("pref_attn_embd_dim", batch_size),
+        num_heads=kwargs.get("num_heads", 4),
+        attn_dropout=kwargs.get("attn_dropout", 0.1),
+        resid_dropout=kwargs.get("resid_dropout", 0.1),
+        intermediate_dim=kwargs.get("intermediate_dim", 4 * batch_size),
+        activation=kwargs.get("activation", "relu"),
+        num_layers=kwargs.get("num_layers", 1),
+        embd_dropout=kwargs.get("embd_dropout", 0.1),
+        eps=kwargs.get("eps", 0.1),
+    )
+    model = PrefTransformerTrainer(
+        trans,
+        init_value=kwargs.get("init_value", 0),
+        peak_value=kwargs.get("peak_value", 1e-4),
+        warmup_steps=kwargs.get("warmup_steps", int(n_epochs * interval * 0.1)),
+        decay_steps=kwargs.get("decay_steps", int(n_epochs * interval)),
+        end_value=kwargs.get("end_value", 0),
+    )
     early_stop = EarlyStopping(min_delta=1e-3, patience=10)
     c_best_epoch = np.nan
     c_criteria_key = np.nan
@@ -115,9 +136,9 @@ def train_pt(
 def train_imlp(
     training_data,
     test_data,
-    batch_size=256,
-    n_epochs=76000,
-    eval_period=5,
+    batch_size=64,
+    n_epochs=50,
+    eval_period=1,
     do_early_stop=False,
     criteria_key="eval_loss",
     seed=2024,
@@ -133,10 +154,15 @@ def train_imlp(
     rng = np.random.default_rng(seed)
     data_size, query_len, observation_dim = training_data["observations"].shape
     eval_data_size = test_data["observations"].shape[0]
-    imlp = MLP()
-    model = InterventionMLPTrainer(imlp, observation_dim)
     interval = int(data_size / batch_size) + 1
     eval_interval = int(eval_data_size / batch_size) + 1
+    imlp = MLP()
+    model = InterventionMLPTrainer(
+        imlp,
+        observation_dim,
+        decay_steps=int(n_epochs * interval),
+        warmup_steps=int(n_epochs * interval * 0.1),
+    )
     early_stop = EarlyStopping(min_delta=1e-3, patience=10)
     c_best_epoch = np.nan
     c_criteria_key = np.nan
