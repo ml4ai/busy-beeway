@@ -93,7 +93,7 @@ class GPT2Block(nn.Module):
             "training": training,
         }
         x, present, _attn_weights = GPT2SelfAttention(
-            embed_dim=self.embed_dim,
+            embed_dim=self.embd_dim,
             num_heads=self.num_heads,
             attn_dropout=self.attn_dropout,
             resid_dropout=self.resid_dropout,
@@ -102,7 +102,7 @@ class GPT2Block(nn.Module):
         residual = x
         x = nn.LayerNorm(epsilon=self.eps)(x)
         x = GPT2MLP(
-            embed_dim=self.embed_dim,
+            embed_dim=self.embd_dim,
             intermediate_dim=self.intermediate_dim,
             resid_dropout=self.resid_dropout,
             activation=self.activation,
@@ -189,9 +189,9 @@ class PT(nn.Module):
         if attn_mask is None:
             attn_mask = jnp.ones((batch_size, seq_length), dtype=jnp.float32)
 
-        embd_states = nn.Dense(features=self.embed_dim)(states)
+        embd_states = nn.Dense(features=self.embd_dim)(states)
         embd_timesteps = nn.Embed(
-            num_embeddings=self.max_episode_steps + 1, features=self.embed_dim
+            num_embeddings=self.max_episode_steps + 1, features=self.embd_dim
         )(timesteps)
 
         embd_states = embd_states + embd_timesteps
