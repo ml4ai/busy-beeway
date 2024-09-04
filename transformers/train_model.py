@@ -35,9 +35,12 @@ def train_pt(
     eval_data_size = test_data["observations"].shape[0]
     interval = int(data_size / batch_size) + 1
     eval_interval = int(eval_data_size / batch_size) + 1
+    max_pos = 512
+    while query_len > max_pos:
+        max_pos *= 2
     trans = PT(
         observation_dim=observation_dim,
-        max_episode_steps=kwargs.get("max_episode_steps", 500),
+        max_episode_steps=kwargs.get("max_episode_steps", query_len),
         embd_dim=kwargs.get("embd_dim", batch_size),
         pref_attn_embd_dim=kwargs.get("pref_attn_embd_dim", batch_size),
         num_heads=kwargs.get("num_heads", 4),
@@ -47,7 +50,7 @@ def train_pt(
         activation=kwargs.get("activation", "relu"),
         num_layers=kwargs.get("num_layers", 1),
         embd_dropout=kwargs.get("embd_dropout", 0.1),
-        max_pos=kwargs.get("max_pos",1024),
+        max_pos=kwargs.get("max_pos", max_pos),
         eps=kwargs.get("eps", 0.1),
     )
     model = PrefTransformerTrainer(
