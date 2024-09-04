@@ -65,7 +65,11 @@ def rays_intersect(as_x, as_y, ad_x, ad_y, bs_x, bs_y, bd_x, bd_y):
 
 
 def max_seq_length(F):
-    return max([f.shape[0] for f in F])
+    if isinstance(F[0], dict):
+        # Assumes F is a list of test session data dictionaries
+        return max([f["player"].shape[0] for f in F])
+    else:
+        return max([f.shape[0] for f in F])
 
 
 # sa should always be clockwise from player direction, ea should be counter-clockwise from player direction.
@@ -264,7 +268,7 @@ def compute_run_features(p_df, g, O, arc_sweep=(10, 360, 10)):
                     features[f"max_heading_op_obstacle_headings_{a}"][index] = (
                         obs_headings[0]
                     )
-    features["userControl"] = p_df["userControl"].to_numpy()
+    features["userControl"] = p_df["userControl"].to_numpy().astype(int)
     features["t"] = p_df["t"].to_numpy()
     return pd.DataFrame(features)
 
@@ -495,7 +499,7 @@ def compute_run_features_p(d):
                     features[f"max_heading_op_obstacle_headings_{a}"][index] = (
                         obs_headings[0]
                     )
-    features["userControl"] = p_df["userControl"].to_numpy()
+    features["userControl"] = p_df["userControl"].to_numpy().astype(int)
     features["t"] = p_df["t"].to_numpy()
     df = pd.DataFrame(features)
     if save_data:
@@ -775,21 +779,41 @@ def create_preference_data(
             else:
                 try:
                     os.mkdir("preference_data")
-                    for k in data.keys():
-                        d = data[k]
-                        jnp.save(
-                            f"preference_data/{save_data}/{k}.npy",
-                            d,
-                            allow_pickle=False,
-                        )
+                    try:
+                        os.mkdir(f"preference_data/{save_data}")
+                        for k in data.keys():
+                            d = data[k]
+                            jnp.save(
+                                f"preference_data/{save_data}/{k}.npy",
+                                d,
+                                allow_pickle=False,
+                            )
+                    except FileExistsError:
+                        for k in data.keys():
+                            d = data[k]
+                            jnp.save(
+                                f"preference_data/{save_data}/{k}.npy",
+                                d,
+                                allow_pickle=False,
+                            )
                 except FileExistsError:
-                    for k in data.keys():
-                        d = data[k]
-                        jnp.save(
-                            f"preference_data/{save_data}/{k}.npy",
-                            d,
-                            allow_pickle=False,
-                        )
+                    try:
+                        os.mkdir(f"preference_data/{save_data}")
+                        for k in data.keys():
+                            d = data[k]
+                            jnp.save(
+                                f"preference_data/{save_data}/{k}.npy",
+                                d,
+                                allow_pickle=False,
+                            )
+                    except FileExistsError:
+                        for k in data.keys():
+                            d = data[k]
+                            jnp.save(
+                                f"preference_data/{save_data}/{k}.npy",
+                                d,
+                                allow_pickle=False,
+                            )
             return data
         obs = []
         ts = []
@@ -852,21 +876,41 @@ def create_preference_data(
             else:
                 try:
                     os.mkdir("preference_data")
-                    for k in data.keys():
-                        d = data[k]
-                        jnp.save(
-                            f"preference_data/{save_data}/{k}.npy",
-                            d,
-                            allow_pickle=False,
-                        )
+                    try:
+                        os.mkdir(f"preference_data/{save_data}")
+                        for k in data.keys():
+                            d = data[k]
+                            jnp.save(
+                                f"preference_data/{save_data}/{k}.npy",
+                                d,
+                                allow_pickle=False,
+                            )
+                    except FileExistsError:
+                        for k in data.keys():
+                            d = data[k]
+                            jnp.save(
+                                f"preference_data/{save_data}/{k}.npy",
+                                d,
+                                allow_pickle=False,
+                            )
                 except FileExistsError:
-                    for k in data.keys():
-                        d = data[k]
-                        jnp.save(
-                            f"preference_data/{save_data}/{k}.npy",
-                            d,
-                            allow_pickle=False,
-                        )
+                    try:
+                        os.mkdir(f"preference_data/{save_data}")
+                        for k in data.keys():
+                            d = data[k]
+                            jnp.save(
+                                f"preference_data/{save_data}/{k}.npy",
+                                d,
+                                allow_pickle=False,
+                            )
+                    except FileExistsError:
+                        for k in data.keys():
+                            d = data[k]
+                            jnp.save(
+                                f"preference_data/{save_data}/{k}.npy",
+                                d,
+                                allow_pickle=False,
+                            )
             return data
 
 
@@ -893,7 +937,6 @@ def load_preference_data(
                 "attn_mask",
                 "attn_mask_2",
             ]:
-
                 data[l] = jnp.load(
                     f"{load_data}/{l}.npy", fix_imports=False, mmap_mode=mmap_mode
                 )

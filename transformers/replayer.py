@@ -1,18 +1,13 @@
 import itertools
+import os
+from multiprocessing import Pool
 
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import os
-from multiprocessing import Pool
 
-from replayer_utils import (
-    collision,
-    cos_plus,
-    find_direction,
-    sin_plus,
-)
+from replayer_utils import collision, cos_plus, find_direction, sin_plus
 
 
 def generate_stats(D, save_data=None):
@@ -163,6 +158,7 @@ def goal_only_run_replay(
             "posX": p_X_list,
             "posY": p_Y_list,
             "angle": p_A_list,
+            "userControl": 0,
             "t": range(len(p_X_list)),
         }
     )
@@ -282,6 +278,7 @@ def goal_only_run_replay_p(f):
             "posX": p_X_list,
             "posY": p_Y_list,
             "angle": p_A_list,
+            "userControl": 0,
             "t": range(len(p_X_list)),
         }
     )
