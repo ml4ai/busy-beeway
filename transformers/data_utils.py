@@ -2,6 +2,7 @@ import os
 from multiprocessing import Pool
 from pathlib import Path
 
+import h5py
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
@@ -690,8 +691,7 @@ def to_jnp(
 # y = 1 for most pairs, but can be 0.5 if the real data mimics the same behavior as the generate data.
 # _2 is appended to the dict labels for F_2
 # This is specifically for real data matched with generated goal only trajectory data.
-# save_data assume default labels. Use an extension .npz for it to be saved in one file and omit an extension the
-# arrays to be saved in seperate .npy files.
+# save_data takes in a group path for a .hdf5 file
 def create_preference_data(
     F_1,
     F_2,
@@ -741,8 +741,6 @@ def create_preference_data(
                 "labels": jnp.array(lbs),
             }
         else:
-            save_data = os.path.expanduser(save_data)
-            ext = Path(save_data).suffix
             data = {
                 labels[0]: jnp.stack(obs),
                 labels[1]: jnp.stack(ts),
@@ -752,68 +750,21 @@ def create_preference_data(
                 f"{labels[2]}_2": jnp.stack(ams_2),
                 "labels": jnp.array(lbs),
             }
-            if ext == ".npz":
-                try:
-                    os.mkdir("preference_data")
-                    jnp.savez(
-                        f"preference_data/{save_data}",
-                        observations=data[labels[0]],
-                        timesteps=data[labels[1]],
-                        attn_mask=data[labels[2]],
-                        observations_2=data[f"{labels[0]}_2"],
-                        timesteps_2=data[f"{labels[1]}_2"],
-                        attn_mask_2=data[f"{labels[2]}_2"],
-                        labels=data["labels"],
-                    )
-                except FileExistsError:
-                    jnp.savez(
-                        f"preference_data/{save_data}",
-                        observations=data[labels[0]],
-                        timesteps=data[labels[1]],
-                        attn_mask=data[labels[2]],
-                        observations_2=data[f"{labels[0]}_2"],
-                        timesteps_2=data[f"{labels[1]}_2"],
-                        attn_mask_2=data[f"{labels[2]}_2"],
-                        labels=data["labels"],
-                    )
-            else:
-                try:
-                    os.mkdir("preference_data")
-                    try:
-                        os.mkdir(f"preference_data/{save_data}")
-                        for k in data.keys():
-                            d = data[k]
-                            jnp.save(
-                                f"preference_data/{save_data}/{k}.npy",
-                                d,
-                                allow_pickle=False,
-                            )
-                    except FileExistsError:
-                        for k in data.keys():
-                            d = data[k]
-                            jnp.save(
-                                f"preference_data/{save_data}/{k}.npy",
-                                d,
-                                allow_pickle=False,
-                            )
-                except FileExistsError:
-                    try:
-                        os.mkdir(f"preference_data/{save_data}")
-                        for k in data.keys():
-                            d = data[k]
-                            jnp.save(
-                                f"preference_data/{save_data}/{k}.npy",
-                                d,
-                                allow_pickle=False,
-                            )
-                    except FileExistsError:
-                        for k in data.keys():
-                            d = data[k]
-                            jnp.save(
-                                f"preference_data/{save_data}/{k}.npy",
-                                d,
-                                allow_pickle=False,
-                            )
+            with h5py.File("preference_data.hdf5", "a") as f:
+                if save_data in f:
+                    # WARNING if this group already exists, datasets of the same name of "observations","timesteps","attn_mask", etc.
+                    # will be overwritten with this new datasets.
+                    g = f[save_data]
+                    for k in data:
+                        if k in g:
+                            del g[k]
+                            g[k] = data[k]
+                        else:
+                            g[k] = data[k]
+                else:
+                    g = f.create_group(save_data)
+                    for k in data:
+                        g[k] = data[k]
             return data
         obs = []
         ts = []
@@ -844,8 +795,6 @@ def create_preference_data(
                 "labels": jnp.array(lbs),
             }
         else:
-            save_data = os.path.expanduser(save_data)
-            ext = Path(save_data).suffix
             data = {
                 labels[0]: jnp.stack(obs),
                 labels[1]: jnp.stack(ts),
@@ -853,158 +802,22 @@ def create_preference_data(
                 f"{labels[1]}_2": jnp.stack(ts_2),
                 "labels": jnp.array(lbs),
             }
-            if ext == ".npz":
-                try:
-                    os.mkdir("preference_data")
-                    jnp.savez(
-                        f"preference_data/{save_data}",
-                        observations=data[labels[0]],
-                        timesteps=data[labels[1]],
-                        observations_2=data[f"{labels[0]}_2"],
-                        timesteps_2=data[f"{labels[1]}_2"],
-                        labels=data["labels"],
-                    )
-                except FileExistsError:
-                    jnp.savez(
-                        f"preference_data/{save_data}",
-                        observations=data[labels[0]],
-                        timesteps=data[labels[1]],
-                        observations_2=data[f"{labels[0]}_2"],
-                        timesteps_2=data[f"{labels[1]}_2"],
-                        labels=data["labels"],
-                    )
-            else:
-                try:
-                    os.mkdir("preference_data")
-                    try:
-                        os.mkdir(f"preference_data/{save_data}")
-                        for k in data.keys():
-                            d = data[k]
-                            jnp.save(
-                                f"preference_data/{save_data}/{k}.npy",
-                                d,
-                                allow_pickle=False,
-                            )
-                    except FileExistsError:
-                        for k in data.keys():
-                            d = data[k]
-                            jnp.save(
-                                f"preference_data/{save_data}/{k}.npy",
-                                d,
-                                allow_pickle=False,
-                            )
-                except FileExistsError:
-                    try:
-                        os.mkdir(f"preference_data/{save_data}")
-                        for k in data.keys():
-                            d = data[k]
-                            jnp.save(
-                                f"preference_data/{save_data}/{k}.npy",
-                                d,
-                                allow_pickle=False,
-                            )
-                    except FileExistsError:
-                        for k in data.keys():
-                            d = data[k]
-                            jnp.save(
-                                f"preference_data/{save_data}/{k}.npy",
-                                d,
-                                allow_pickle=False,
-                            )
+            with h5py.File("preference_data.hdf5", "a") as f:
+                if save_data in f:
+                    # WARNING if this group already exists, datasets of the same name of "observations","timesteps","attn_mask", etc.
+                    # will be overwritten with this new datasets.
+                    g = f[save_data]
+                    for k in data:
+                        if k in g:
+                            del g[k]
+                            g[k] = data[k]
+                        else:
+                            g[k] = data[k]
+                else:
+                    g = f.create_group(save_data)
+                    for k in data:
+                        g[k] = data[k]
             return data
-
-
-# If sep_files is false, then it assumes load_data is a single .npz file, otherwise it assumes load_data is a directory
-# and will look for "observations.npy", "observations_2.npy", "timesteps.npy", "timesteps_2.npy", and
-# "labels.npy". Also "attn_mask.npy" and "attn_mask_2.npy" if attn_mask = True
-# mmap_mode is the same as jnp.load or numpy.load and is ignored if loading a single .npz
-# If cpu is not None, then it forces the data to be stored on the cpu with the given id.
-def load_preference_data(
-    load_data, sep_files=False, attn_mask=True, mmap_mode=None, cpu=None
-):
-    load_data = os.path.expanduser(load_data)
-    if not sep_files:
-        return jnp.load(load_data, fix_imports=False)
-    if cpu is None:
-        if attn_mask:
-            data = {}
-            for l in [
-                "observations",
-                "observations_2",
-                "timesteps",
-                "timesteps_2",
-                "labels",
-                "attn_mask",
-                "attn_mask_2",
-            ]:
-                data[l] = jnp.load(
-                    f"{load_data}/{l}.npy", fix_imports=False, mmap_mode=mmap_mode
-                )
-            return data
-
-        data = {}
-        for l in [
-            "observations",
-            "observations_2",
-            "timesteps",
-            "timesteps_2",
-            "labels",
-        ]:
-            data[l] = jnp.load(
-                f"{load_data}/{l}.npy", fix_imports=False, mmap_mode=mmap_mode
-            )
-        return data
-    if attn_mask:
-        data = {}
-        for l in [
-            "observations",
-            "observations_2",
-            "timesteps",
-            "timesteps_2",
-            "labels",
-            "attn_mask",
-            "attn_mask_2",
-        ]:
-            data[l] = jax.device_put(
-                jnp.load(
-                    f"{load_data}/{l}.npy", fix_imports=False, mmap_mode=mmap_mode
-                ),
-                jax.devices(backend="cpu")[cpu],
-            )
-        return data
-
-    data = {}
-    for l in [
-        "observations",
-        "observations_2",
-        "timesteps",
-        "timesteps_2",
-        "labels",
-    ]:
-        data[l] = jax.device_put(
-            jnp.load(f"{load_data}/{l}.npy", fix_imports=False, mmap_mode=mmap_mode),
-            jax.devices(backend="cpu")[cpu],
-        )
-    return data
-
-
-# This expands a participant .npz file into seperate .npy files in a directory labeled
-# The participant id.
-def expand_preference_data(load_file):
-    load_file = os.path.expanduser(load_file)
-    lf_stem = Path(load_file).stem
-    with jnp.load(load_file, fix_imports=False) as data:
-        try:
-            os.mkdir(lf_stem)
-            for k in data.keys():
-                with open(f"{lf_stem}/{k}.npy", "wb") as f:
-                    d = data[k]
-                    jnp.save(f, d, allow_pickle=False)
-        except FileExistsError:
-            for k in data.keys():
-                with open(f"{lf_stem}/{k}.npy", "wb") as f:
-                    d = data[k]
-                    jnp.save(f, d, allow_pickle=False)
 
 
 def plot_training_validation_loss(load_log, eval_period=5, save_file=None, **kwargs):

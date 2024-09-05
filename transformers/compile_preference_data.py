@@ -87,12 +87,6 @@ def main(argv):
         action="store_true",
         help="Tries to load movement statistics \nfrom 'p_stats.npy' \nwithin the cache directory of \nthe current working directory (recommended).",
     )
-    parser.add_argument(
-        "-z",
-        "--npz_save",
-        action="store_true",
-        help="Saves compiled preference data as single .npz file (not recommended).",
-    )
     args = parser.parse_args(argv)
     parallel = args.parallel
     path = args.data_dir
@@ -115,10 +109,8 @@ def main(argv):
             else:
                 save_f = None
                 save_rf = None
-            if args.npz_save:
-                save_pref = f"{p_id}.npz"
-            else:
-                save_pref = f"{p_id}"
+                
+            save_pref = f"{p_id}"
 
             pd_not_loaded = True
             if parallel:
@@ -187,10 +179,8 @@ def main(argv):
         else:
             save_f = None
             save_rf = None
-        if args.npz_save:
-            save_pref = f"{p_id}.npz"
-        else:
-            save_pref = f"{p_id}"
+            
+        save_pref = f"{p_id}"
 
         pd_not_loaded = True
         if parallel:

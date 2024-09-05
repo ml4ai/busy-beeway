@@ -12,8 +12,9 @@ from utils import Timer, index_batch, save_pickle, set_random_seed
 
 
 def train_pt(
-    training_data,
-    test_data,
+    data,
+    training_data_idx,
+    test_data_idx,
     batch_size=64,
     n_epochs=50,
     eval_period=1,
@@ -31,8 +32,9 @@ def train_pt(
     )
     set_random_seed(seed)
     rng = np.random.default_rng(seed)
-    data_size, query_len, observation_dim = training_data["observations"].shape
-    eval_data_size = test_data["observations"].shape[0]
+    data_size = training_data_idx.shape[0]
+    _, query_len, observation_dim = data["observations"].shape
+    eval_data_size = test_data_idx.shape[0]
     interval = int(data_size / batch_size) + 1
     eval_interval = int(eval_data_size / batch_size) + 1
     max_pos = 512
@@ -82,7 +84,9 @@ def train_pt(
                 with Timer() as train_timer:
                     # train
                     batch = batch_to_jax(
-                        index_batch(training_data, shuffled_idx[start_pt:end_pt])
+                        index_batch(
+                            data, training_data_idx[shuffled_idx[start_pt:end_pt]]
+                        )
                     )
                     for key, val in model.train(batch).items():
                         metrics[key].append(val)
@@ -99,7 +103,7 @@ def train_pt(
                 )
                 # batch_eval = batch_to_jax(index_batch(pref_eval_dataset, range(eval_start_pt, eval_end_pt)))
                 batch_eval = batch_to_jax(
-                    index_batch(test_data, list(range(eval_start_pt, eval_end_pt)))
+                    index_batch(data, test_data_idx[eval_start_pt:eval_end_pt])
                 )
                 for key, val in model.evaluation(batch_eval).items():
                     metrics[key].append(val)
