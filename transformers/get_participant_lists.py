@@ -9,7 +9,7 @@ import pandas as pd
 
 def main(argv):
     parser = argparse.ArgumentParser(
-        description="Combines preference data for multiple participants",
+        description="Get participant and exclusion list",
         formatter_class=StructuredFormatter,
     )
     parser.add_argument(
