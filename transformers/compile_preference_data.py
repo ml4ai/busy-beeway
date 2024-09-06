@@ -7,7 +7,7 @@ from argformat import StructuredFormatter
 from bb_data_loading import (
     load_participant_data,
     load_participant_data_p,
-    load_participant_list,
+    load_list,
 )
 from data_utils import (
     compute_features,
@@ -27,7 +27,7 @@ def main(argv):
         "p_id",
         metavar="PID",
         type=str,
-        help="Either a single Participant ID or \na .txt file containing a list of Participant IDs to process",
+        help="Either a single Participant ID or \na .txt file containing a list of \nParticipant IDs to process",
     )
     parser.add_argument(
         "-d",
@@ -35,6 +35,19 @@ def main(argv):
         type=str,
         default="~/busy-beeway/data/game_data",
         help="Data Directory.",
+    )
+    parser.add_argument(
+        "-e",
+        "--exclusion_list",
+        type=str,
+        help="List of test sessions to exclude for each participant",
+    )
+    parser.add_argument(
+        "-o",
+        "--output_dir",
+        type="str",
+        default=Path.cwd(),
+        help="Path for saving output. Saves in \ncurrent working directory if not set. \nCached files also get saved here.",
     )
     parser.add_argument(
         "-f",
@@ -90,160 +103,169 @@ def main(argv):
     args = parser.parse_args(argv)
     parallel = args.parallel
     path = args.data_dir
+    o_path = args.output_dir
+    if not Path(o_path).is_dir():
+        raise FileNotFoundError(f"Cannot find output directory {o_path}!")
     fill_size = args.fill_size
     arc_sweep = tuple(args.arc_sweep)
     seed = args.seed
     load_features = args.load_features
     load_p_stats = args.load_stats
-    Path("preference_data").mkdir(parents=True, exist_ok=True)
+    L = load_list(args.exclusion_list)
+
+    Path(f"{o_path}/preference_data").mkdir(parents=True, exist_ok=True)
     if args.cache_stats:
-        Path("cache").mkdir(parents=True, exist_ok=True)
-        save_p_stats = "p_stats.npy"
+        Path(f"{o_path}/cache").mkdir(parents=True, exist_ok=True)
+        save_p_stats = f"{o_path}/cache/p_stats.npy"
     else:
         save_p_stats = None
     p_id = args.p_id
     if Path(p_id).suffix == ".txt":
-        S = load_participant_list(p_id)
+        S = load_list(p_id)
         for p_id in S:
             if args.cache_features:
-                Path("cache").mkdir(parents=True, exist_ok=True)
-                save_f = f"cache/{p_id}_f_save"
-                save_rf = f"cache/{p_id}_rf_save"
+                Path(f"{o_path}/cache").mkdir(parents=True, exist_ok=True)
+                save_f = f"{o_path}/cache/{p_id}_f_save"
+                save_rf = f"{o_path}/cache/{p_id}_rf_save"
             else:
                 save_f = None
                 save_rf = None
 
-            save_pref = f"preference_data/{p_id}.hdf5"
+            save_pref = f"{o_path}/preference_data/{p_id}.hdf5"
 
             pd_not_loaded = True
             if parallel:
                 try:
                     if load_features:
-                        RF = load_features_from_parquet(f"cache/{p_id}_rf_save")
+                        RF = load_features_from_parquet(
+                            f"{o_path}/cache/{p_id}_rf_save"
+                        )
                     else:
                         raise FileNotFoundError
                 except FileNotFoundError:
                     try:
                         if load_p_stats:
-                            stats = load_stats("cache/p_stats.npy")
+                            stats = load_stats(f"{o_path}/cache/p_stats.npy")
                         else:
                             raise FileNotFoundError
                     except FileNotFoundError:
-                        CD = load_participant_data_p(p_id=p_id, path=path, control=3)
+                        CD = load_participant_data_p(p_id=p_id, path=path, control=3,exclusion_list=L)
                         stats = generate_stats(CD, save_data=save_p_stats)
-                    D = load_participant_data_p(p_id=p_id, path=path)
+                    D = load_participant_data_p(p_id=p_id, path=path,exclusion_list=L)
                     pd_not_loaded = False
                     RD = goal_only_replay_p(D, stats, seed=seed)
                     RF = compute_features_p(RD, arc_sweep, save_dir=save_rf)
                 try:
                     if load_features:
-                        F = load_features_from_parquet(f"cache/{p_id}_f_save")
+                        F = load_features_from_parquet(f"{o_path}/cache/{p_id}_f_save")
                     else:
                         raise FileNotFoundError
                 except FileNotFoundError:
                     if pd_not_loaded:
-                        D = load_participant_data_p(p_id=p_id, path=path)
+                        D = load_participant_data_p(p_id=p_id, path=path,exclusion_list=L)
                     F = compute_features_p(D, arc_sweep, save_dir=save_f)
                 create_preference_data(RF, F, fill_size=fill_size, save_data=save_pref)
             else:
                 try:
                     if load_features:
-                        RF = load_features_from_parquet(f"cache/{p_id}_rf_save")
+                        RF = load_features_from_parquet(
+                            f"{o_path}/cache/{p_id}_rf_save"
+                        )
                     else:
                         raise FileNotFoundError
                 except FileNotFoundError:
                     try:
                         if load_p_stats:
-                            stats = load_stats("cache/p_stats.npy")
+                            stats = load_stats(f"{o_path}/cache/p_stats.npy")
                         else:
                             raise FileNotFoundError
                     except FileNotFoundError:
-                        CD = load_participant_data(p_id=p_id, path=path, control=3)
+                        CD = load_participant_data(p_id=p_id, path=path, control=3,exclusion_list=L)
                         stats = generate_stats(CD, save_data=save_p_stats)
-                    D = load_participant_data(p_id=p_id, path=path)
+                    D = load_participant_data(p_id=p_id, path=path,exclusion_list=L)
                     pd_not_loaded = False
                     RD = goal_only_replay(D, stats, seed=seed)
                     RF = compute_features(RD, arc_sweep, save_dir=save_rf)
                 try:
                     if load_features:
-                        F = load_features_from_parquet(f"cache/{p_id}_f_save")
+                        F = load_features_from_parquet(f"{o_path}/cache/{p_id}_f_save")
                     else:
                         raise FileNotFoundError
                 except FileNotFoundError:
                     if pd_not_loaded:
-                        D = load_participant_data(p_id=p_id, path=path)
+                        D = load_participant_data(p_id=p_id, path=path,exclusion_list=L)
                     F = compute_features(D, arc_sweep, save_dir=save_f)
                 create_preference_data(RF, F, fill_size=fill_size, save_data=save_pref)
         sys.exit(0)
     else:
         if args.cache_features:
-            Path("cache").mkdir(parents=True, exist_ok=True)
-            save_f = f"cache/{p_id}_f_save"
-            save_rf = f"cache/{p_id}_rf_save"
+            Path(f"{o_path}/cache").mkdir(parents=True, exist_ok=True)
+            save_f = f"{o_path}/cache/{p_id}_f_save"
+            save_rf = f"{o_path}/cache/{p_id}_rf_save"
         else:
             save_f = None
             save_rf = None
 
-        save_pref = f"preference_data/{p_id}.hdf5"
+        save_pref = f"{o_path}/preference_data/{p_id}.hdf5"
 
         pd_not_loaded = True
         if parallel:
             try:
                 if load_features:
-                    RF = load_features_from_parquet(f"cache/{p_id}_rf_save")
+                    RF = load_features_from_parquet(f"{o_path}/cache/{p_id}_rf_save")
                 else:
                     raise FileNotFoundError
             except FileNotFoundError:
                 try:
                     if load_stats:
-                        stats = load_stats("cache/p_stats.npy")
+                        stats = load_stats(f"{o_path}/cache/p_stats.npy")
                     else:
                         raise FileNotFoundError
                 except FileNotFoundError:
-                    CD = load_participant_data_p(p_id=p_id, path=path, control=3)
+                    CD = load_participant_data_p(p_id=p_id, path=path, control=3,exclusion_list=L)
                     stats = generate_stats(CD, save_data=save_p_stats)
-                D = load_participant_data_p(p_id=p_id, path=path)
+                D = load_participant_data_p(p_id=p_id, path=path,exclusion_list=L)
                 pd_not_loaded = False
                 RD = goal_only_replay_p(D, stats, seed=seed)
                 RF = compute_features_p(RD, arc_sweep, save_dir=save_rf)
             try:
                 if load_features:
-                    F = load_features_from_parquet(f"cache/{p_id}_f_save")
+                    F = load_features_from_parquet(f"{o_path}/cache/{p_id}_f_save")
                 else:
                     raise FileNotFoundError
             except FileNotFoundError:
                 if pd_not_loaded:
-                    D = load_participant_data_p(p_id=p_id, path=path)
+                    D = load_participant_data_p(p_id=p_id, path=path,exclusion_list=L)
                 F = compute_features_p(D, arc_sweep, save_dir=save_f)
             create_preference_data(RF, F, fill_size=fill_size, save_data=save_pref)
             sys.exit(0)
 
         try:
             if load_features:
-                RF = load_features_from_parquet(f"cache/{p_id}_rf_save")
+                RF = load_features_from_parquet(f"{o_path}/cache/{p_id}_rf_save")
             else:
                 raise FileNotFoundError
         except FileNotFoundError:
             try:
                 if load_stats:
-                    stats = load_stats("cache/p_stats.npy")
+                    stats = load_stats(f"{o_path}/cache/p_stats.npy")
                 else:
                     raise FileNotFoundError
             except FileNotFoundError:
-                CD = load_participant_data(p_id=p_id, path=path, control=3)
+                CD = load_participant_data(p_id=p_id, path=path, control=3,exclusion_list=L)
                 stats = generate_stats(CD, save_data=save_p_stats)
-            D = load_participant_data(p_id=p_id, path=path)
+            D = load_participant_data(p_id=p_id, path=path,exclusion_list=L)
             pd_not_loaded = False
             RD = goal_only_replay(D, stats, seed=seed)
             RF = compute_features(RD, arc_sweep, save_dir=save_rf)
         try:
             if load_features:
-                F = load_features_from_parquet(f"cache/{p_id}_f_save")
+                F = load_features_from_parquet(f"{o_path}/cache/{p_id}_f_save")
             else:
                 raise FileNotFoundError
         except FileNotFoundError:
             if pd_not_loaded:
-                D = load_participant_data(p_id=p_id, path=path)
+                D = load_participant_data(p_id=p_id, path=path,exclusion_list=L)
             F = compute_features(D, arc_sweep, save_dir=save_f)
         create_preference_data(RF, F, fill_size=fill_size, save_data=save_pref)
         sys.exit(0)
