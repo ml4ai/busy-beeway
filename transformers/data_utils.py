@@ -3,8 +3,7 @@ from multiprocessing import Pool
 from pathlib import Path
 
 import h5py
-import jax
-import jax.numpy as jnp
+import numpy as np
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -554,23 +553,23 @@ def pad_features(F, fill_size=None):
     return new_F
 
 
-# Takes feature dataframe and transforms into jnp arrays with padding. Returns tuple of features matrix and timestep array for a state sequence
-def run_to_jnp(f, fill_size=500, with_attn_mask=True):
+# Takes feature dataframe and transforms into np arrays with padding. Returns tuple of features matrix and timestep array for a state sequence
+def run_to_np(f, fill_size=500, with_attn_mask=True):
     p_f = pad_run_features(f, fill_size)
     nf = p_f.to_numpy()
     if with_attn_mask:
         attn_mask = np.zeros(nf.shape[0])
         attn_mask[: f.shape[0]] = 1.0
         return (
-            jnp.array(nf[:, 0:-1]),
-            jnp.array(nf[:, -1], dtype=jnp.int32),
-            jnp.array(attn_mask, dtype=jnp.float32),
+            np.array(nf[:, 0:-1]),
+            np.array(nf[:, -1], dtype=np.int32),
+            np.array(attn_mask, dtype=np.float32),
         )
-    return jnp.array(nf[:, 0:-1]), jnp.array(nf[:, -1], dtype=jnp.int32)
+    return np.array(nf[:, 0:-1]), np.array(nf[:, -1], dtype=np.int32)
 
 
-# Takes list of feature dataframes and transforms them into jnp arrays with padding. Returns a dictionary with array of "observations" and array of "timesteps"
-def to_jnp(
+# Takes list of feature dataframes and transforms them into np arrays with padding. Returns a dictionary with array of "observations" and array of "timesteps"
+def to_np(
     F,
     fill_size=None,
     labels=("observations", "timesteps", "attn_mask"),
@@ -584,25 +583,25 @@ def to_jnp(
         ts = []
         ams = []
         for f in F:
-            o, t, am = run_to_jnp(f, fill_size, with_attn_mask)
+            o, t, am = run_to_np(f, fill_size, with_attn_mask)
             obs.append(o)
             ts.append(t)
             ams.append(am)
         return {
-            labels[0]: jnp.stack(obs),
-            labels[1]: jnp.stack(ts),
-            labels[2]: jnp.stack(ams),
+            labels[0]: np.stack(obs),
+            labels[1]: np.stack(ts),
+            labels[2]: np.stack(ams),
         }
     obs = []
     ts = []
     for f in F:
-        o, t = run_to_jnp(f, fill_size, with_attn_mask)
+        o, t = run_to_np(f, fill_size, with_attn_mask)
         obs.append(o)
         ts.append(t)
-    return {labels[0]: jnp.stack(obs), labels[1]: jnp.stack(ts)}
+    return {labels[0]: np.stack(obs), labels[1]: np.stack(ts)}
 
 
-# Takes two lists of feature dataframes transforms them into jnp arrays with padding and matching preference label y.
+# Takes two lists of feature dataframes transforms them into np arrays with padding and matching preference label y.
 # One list is assumed to be real data and the other is generated data based on the real data.
 # Its assumed that F_1 is the generated data and F_2 is the real data.
 # y = 1 for most pairs, but can be 0.5 if the real data mimics the same behavior as the generate data.
@@ -632,8 +631,8 @@ def create_preference_data(
         ams_2 = []
         lbs = []
         for i, f in enumerate(F_1):
-            o, t, am = run_to_jnp(f, fill_size, with_attn_mask)
-            o_2, t_2, am_2 = run_to_jnp(F_2[i], fill_size, with_attn_mask)
+            o, t, am = run_to_np(f, fill_size, with_attn_mask)
+            o_2, t_2, am_2 = run_to_np(F_2[i], fill_size, with_attn_mask)
 
             obs.append(o)
             ts.append(t)
@@ -649,23 +648,23 @@ def create_preference_data(
                 lbs.append(1.0)
         if save_data is None:
             return {
-                labels[0]: jnp.stack(obs),
-                labels[1]: jnp.stack(ts),
-                labels[2]: jnp.stack(ams),
-                f"{labels[0]}_2": jnp.stack(obs_2),
-                f"{labels[1]}_2": jnp.stack(ts_2),
-                f"{labels[2]}_2": jnp.stack(ams_2),
-                "labels": jnp.array(lbs),
+                labels[0]: np.stack(obs),
+                labels[1]: np.stack(ts),
+                labels[2]: np.stack(ams),
+                f"{labels[0]}_2": np.stack(obs_2),
+                f"{labels[1]}_2": np.stack(ts_2),
+                f"{labels[2]}_2": np.stack(ams_2),
+                "labels": np.array(lbs),
             }
         else:
             data = {
-                labels[0]: jnp.stack(obs),
-                labels[1]: jnp.stack(ts),
-                labels[2]: jnp.stack(ams),
-                f"{labels[0]}_2": jnp.stack(obs_2),
-                f"{labels[1]}_2": jnp.stack(ts_2),
-                f"{labels[2]}_2": jnp.stack(ams_2),
-                "labels": jnp.array(lbs),
+                labels[0]: np.stack(obs),
+                labels[1]: np.stack(ts),
+                labels[2]: np.stack(ams),
+                f"{labels[0]}_2": np.stack(obs_2),
+                f"{labels[1]}_2": np.stack(ts_2),
+                f"{labels[2]}_2": np.stack(ams_2),
+                "labels": np.array(lbs),
             }
             with h5py.File(save_data, "a") as f:
                 # WARNING if this file already exists, datasets of the same name of "observations","timesteps","attn_mask", etc.
@@ -683,8 +682,8 @@ def create_preference_data(
         ts_2 = []
         lbs = []
         for i, f in enumerate(F_1):
-            o, t = run_to_jnp(f, fill_size, with_attn_mask)
-            o_2, t_2 = run_to_jnp(F_2[i], fill_size, with_attn_mask)
+            o, t = run_to_np(f, fill_size, with_attn_mask)
+            o_2, t_2 = run_to_np(F_2[i], fill_size, with_attn_mask)
 
             obs.append(o)
             ts.append(t)
@@ -699,19 +698,19 @@ def create_preference_data(
 
         if save_data is None:
             return {
-                labels[0]: jnp.stack(obs),
-                labels[1]: jnp.stack(ts),
-                f"{labels[0]}_2": jnp.stack(obs_2),
-                f"{labels[1]}_2": jnp.stack(ts_2),
-                "labels": jnp.array(lbs),
+                labels[0]: np.stack(obs),
+                labels[1]: np.stack(ts),
+                f"{labels[0]}_2": np.stack(obs_2),
+                f"{labels[1]}_2": np.stack(ts_2),
+                "labels": np.array(lbs),
             }
         else:
             data = {
-                labels[0]: jnp.stack(obs),
-                labels[1]: jnp.stack(ts),
-                f"{labels[0]}_2": jnp.stack(obs_2),
-                f"{labels[1]}_2": jnp.stack(ts_2),
-                "labels": jnp.array(lbs),
+                labels[0]: np.stack(obs),
+                labels[1]: np.stack(ts),
+                f"{labels[0]}_2": np.stack(obs_2),
+                f"{labels[1]}_2": np.stack(ts_2),
+                "labels": np.array(lbs),
             }
             with h5py.File(save_data, "a") as f:
                 # WARNING if this group already exists, datasets of the same name of "observations","timesteps","attn_mask", etc.
