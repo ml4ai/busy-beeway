@@ -656,7 +656,19 @@ def load_test_data(
 
 
 # Path is a directory for a participant for a given experiment over several different days (e.g., Experiment_1T5)
-def load_experiment_data(path, skip=0, control=1):
+# Exclusion list is a list of strings where each is a path to a test session to exclude.
+def load_experiment_data(path, skip=0, control=1, exclusion_list=None):
+    if exclusion_list:
+        D = []
+        dir_path = os.path.expanduser(path)
+        dir_list = os.scandir(dir_path)
+        for i in dir_list:
+            if i.is_dir():
+                if i.path not in exclusion_list:
+                    d = load_test_data(i.path, skip, control)
+                    if d:
+                        D += d
+        return D
     D = []
     dir_path = os.path.expanduser(path)
     dir_list = os.scandir(dir_path)
@@ -669,18 +681,30 @@ def load_experiment_data(path, skip=0, control=1):
 
 
 # p_id is a participant id (e.g., auto-1ba807eecf3cf284). This function will look for experiment data for that paricipant for a given path variable.
-# It assumes that the format of the directories within the path are set-up as <experiment>/<participant_id>/<test days>/<data files>. There should be
-# No other types of directories other than experiment folders or there could be unexplained behavior!
-def load_participant_data(p_id, path="~/busy-beeway/data/game_data", skip=0, control=1):
+# It assumes that the format of the directories within the path are set-up as <experiment>/<participant_id>/<test days>/<data files>. study=1 looks for
+# directories with "T5" at the end.
+def load_participant_data(
+    p_id,
+    path="~/busy-beeway/data/game_data",
+    skip=0,
+    control=1,
+    exclusion_list=None,
+    study=1,
+):
+    if study == 1:
+        e_code = "T5"
+    else:
+        e_code = "D1"
     D = []
     dir_path = os.path.expanduser(path)
     dir_list = os.scandir(dir_path)
     for i in dir_list:
         if i.is_dir():
-            e_path = f"{i.path}/{p_id}"
-            d = load_experiment_data(e_path, skip, control)
-            if d:
-                D += d
+            if i.path.endswith("T5"):
+                e_path = f"{i.path}/{p_id}"
+                d = load_experiment_data(e_path, skip, control, exclusion_list)
+                if d:
+                    D += d
     return D
 
 
@@ -1329,7 +1353,26 @@ def load_test_data_p(path, skip=0, control=1, outer_call=True, cores=None):
 
 
 # Path is a directory for a participant for a given experiment over several different days (e.g., Experiment_1T5)
-def load_experiment_data_p(path, skip=0, control=1, outer_call=True, cores=None):
+def load_experiment_data_p(
+    path, skip=0, control=1, outer_call=True, cores=None, exclusion_list=None
+):
+    if exclusion_list:
+        S = []
+        dir_path = os.path.expanduser(path)
+        dir_list = os.scandir(dir_path)
+        for i in dir_list:
+            if i.is_dir():
+                if i.path not in exclusion_list:
+                    s = load_test_data_p(i.path, skip, control, False, None)
+                    S += s
+        if outer_call:
+            if cores is None:
+                cores = os.cpu_count()
+            with Pool(cores) as p:
+                res = p.map(load_attempt_data_p, S)
+                D = list(chain.from_iterable(res))
+                return D
+        return S
     S = []
     dir_path = os.path.expanduser(path)
     dir_list = os.scandir(dir_path)
@@ -1357,6 +1400,7 @@ def load_participant_data_p(
     control=1,
     outer_call=True,
     cores=None,
+    exclusion_list=None,
 ):
     S = []
     dir_path = os.path.expanduser(path)
@@ -1364,7 +1408,9 @@ def load_participant_data_p(
     for i in dir_list:
         if i.is_dir():
             e_path = f"{i.path}/{p_id}"
-            s = load_experiment_data_p(e_path, skip, control, False, None)
+            s = load_experiment_data_p(
+                e_path, skip, control, False, None, exclusion_list
+            )
             S += s
     if outer_call:
         if cores is None:
@@ -1392,9 +1438,10 @@ def get_participant_list_from_dir(
             f.write(f"{line}\n")
     return S
 
-def load_participant_list(load_file):
+
+def load_list(load_file):
     S = []
-    with open(load_file, 'r') as file:
+    with open(load_file, "r") as file:
         while line := file.readline():
             S.append(line.rstrip())
     return S
