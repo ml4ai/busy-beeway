@@ -45,7 +45,7 @@ def main(argv):
     parser.add_argument(
         "-o",
         "--output_dir",
-        type="str",
+        type=str,
         default=Path.cwd(),
         help="Path for saving output. Saves in \ncurrent working directory if not set. \nCached files also get saved here.",
     )
@@ -149,9 +149,11 @@ def main(argv):
                         else:
                             raise FileNotFoundError
                     except FileNotFoundError:
-                        CD = load_participant_data_p(p_id=p_id, path=path, control=3,exclusion_list=L)
+                        CD = load_participant_data_p(
+                            p_id=p_id, path=path, control=3, exclusion_list=L
+                        )
                         stats = generate_stats(CD, save_data=save_p_stats)
-                    D = load_participant_data_p(p_id=p_id, path=path,exclusion_list=L)
+                    D = load_participant_data_p(p_id=p_id, path=path, exclusion_list=L)
                     pd_not_loaded = False
                     RD = goal_only_replay_p(D, stats, seed=seed)
                     RF = compute_features_p(RD, arc_sweep, save_dir=save_rf)
@@ -162,7 +164,9 @@ def main(argv):
                         raise FileNotFoundError
                 except FileNotFoundError:
                     if pd_not_loaded:
-                        D = load_participant_data_p(p_id=p_id, path=path,exclusion_list=L)
+                        D = load_participant_data_p(
+                            p_id=p_id, path=path, exclusion_list=L
+                        )
                     F = compute_features_p(D, arc_sweep, save_dir=save_f)
                 create_preference_data(RF, F, fill_size=fill_size, save_data=save_pref)
             else:
@@ -180,9 +184,11 @@ def main(argv):
                         else:
                             raise FileNotFoundError
                     except FileNotFoundError:
-                        CD = load_participant_data(p_id=p_id, path=path, control=3,exclusion_list=L)
+                        CD = load_participant_data(
+                            p_id=p_id, path=path, control=3, exclusion_list=L
+                        )
                         stats = generate_stats(CD, save_data=save_p_stats)
-                    D = load_participant_data(p_id=p_id, path=path,exclusion_list=L)
+                    D = load_participant_data(p_id=p_id, path=path, exclusion_list=L)
                     pd_not_loaded = False
                     RD = goal_only_replay(D, stats, seed=seed)
                     RF = compute_features(RD, arc_sweep, save_dir=save_rf)
@@ -193,7 +199,9 @@ def main(argv):
                         raise FileNotFoundError
                 except FileNotFoundError:
                     if pd_not_loaded:
-                        D = load_participant_data(p_id=p_id, path=path,exclusion_list=L)
+                        D = load_participant_data(
+                            p_id=p_id, path=path, exclusion_list=L
+                        )
                     F = compute_features(D, arc_sweep, save_dir=save_f)
                 create_preference_data(RF, F, fill_size=fill_size, save_data=save_pref)
         sys.exit(0)
@@ -222,9 +230,11 @@ def main(argv):
                     else:
                         raise FileNotFoundError
                 except FileNotFoundError:
-                    CD = load_participant_data_p(p_id=p_id, path=path, control=3,exclusion_list=L)
+                    CD = load_participant_data_p(
+                        p_id=p_id, path=path, control=3, exclusion_list=L
+                    )
                     stats = generate_stats(CD, save_data=save_p_stats)
-                D = load_participant_data_p(p_id=p_id, path=path,exclusion_list=L)
+                D = load_participant_data_p(p_id=p_id, path=path, exclusion_list=L)
                 pd_not_loaded = False
                 RD = goal_only_replay_p(D, stats, seed=seed)
                 RF = compute_features_p(RD, arc_sweep, save_dir=save_rf)
@@ -235,7 +245,7 @@ def main(argv):
                     raise FileNotFoundError
             except FileNotFoundError:
                 if pd_not_loaded:
-                    D = load_participant_data_p(p_id=p_id, path=path,exclusion_list=L)
+                    D = load_participant_data_p(p_id=p_id, path=path, exclusion_list=L)
                 F = compute_features_p(D, arc_sweep, save_dir=save_f)
             create_preference_data(RF, F, fill_size=fill_size, save_data=save_pref)
             sys.exit(0)
@@ -252,9 +262,11 @@ def main(argv):
                 else:
                     raise FileNotFoundError
             except FileNotFoundError:
-                CD = load_participant_data(p_id=p_id, path=path, control=3,exclusion_list=L)
+                CD = load_participant_data(
+                    p_id=p_id, path=path, control=3, exclusion_list=L
+                )
                 stats = generate_stats(CD, save_data=save_p_stats)
-            D = load_participant_data(p_id=p_id, path=path,exclusion_list=L)
+            D = load_participant_data(p_id=p_id, path=path, exclusion_list=L)
             pd_not_loaded = False
             RD = goal_only_replay(D, stats, seed=seed)
             RF = compute_features(RD, arc_sweep, save_dir=save_rf)
@@ -265,7 +277,7 @@ def main(argv):
                 raise FileNotFoundError
         except FileNotFoundError:
             if pd_not_loaded:
-                D = load_participant_data(p_id=p_id, path=path,exclusion_list=L)
+                D = load_participant_data(p_id=p_id, path=path, exclusion_list=L)
             F = compute_features(D, arc_sweep, save_dir=save_f)
         create_preference_data(RF, F, fill_size=fill_size, save_data=save_pref)
         sys.exit(0)
