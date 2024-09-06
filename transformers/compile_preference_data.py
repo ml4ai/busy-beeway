@@ -95,7 +95,9 @@ def main(argv):
     seed = args.seed
     load_features = args.load_features
     load_p_stats = args.load_stats
+    Path("preference_data").mkdir(parents=True, exist_ok=True)
     if args.cache_stats:
+        Path("cache").mkdir(parents=True, exist_ok=True)
         save_p_stats = "p_stats.npy"
     else:
         save_p_stats = None
@@ -104,13 +106,14 @@ def main(argv):
         S = load_participant_list(p_id)
         for p_id in S:
             if args.cache_features:
-                save_f = f"{p_id}_f_save"
-                save_rf = f"{p_id}_rf_save"
+                Path("cache").mkdir(parents=True, exist_ok=True)
+                save_f = f"cache/{p_id}_f_save"
+                save_rf = f"cache/{p_id}_rf_save"
             else:
                 save_f = None
                 save_rf = None
-                
-            save_pref = f"{p_id}"
+
+            save_pref = f"preference_data/{p_id}.hdf5"
 
             pd_not_loaded = True
             if parallel:
@@ -174,13 +177,14 @@ def main(argv):
         sys.exit(0)
     else:
         if args.cache_features:
-            save_f = f"{p_id}_f_save"
-            save_rf = f"{p_id}_rf_save"
+            Path("cache").mkdir(parents=True, exist_ok=True)
+            save_f = f"cache/{p_id}_f_save"
+            save_rf = f"cache/{p_id}_rf_save"
         else:
             save_f = None
             save_rf = None
-            
-        save_pref = f"{p_id}"
+
+        save_pref = f"preference_data/{p_id}.hdf5"
 
         pd_not_loaded = True
         if parallel:

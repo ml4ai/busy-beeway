@@ -286,45 +286,15 @@ def compute_features(D, arc_sweep=(10, 360, 10), save_dir=None):
         return dat
     else:
         dir_path = os.path.expanduser(save_dir)
-        try:
-            os.mkdir("cache")
-            try:
-                os.mkdir(f"cache/{dir_path}")
-                for i, d in enumerate(D):
-                    p_df = d["player"]
-                    g = d["goal"]
-                    O = d["obstacles"]
-                    res = compute_run_features(p_df, g, O, arc_sweep)
-                    res.to_parquet(f"cache/{dir_path}/sequence_{i}.parquet")
-                    dat.append(res)
-            except FileExistsError:
-                for i, d in enumerate(D):
-                    p_df = d["player"]
-                    g = d["goal"]
-                    O = d["obstacles"]
-                    res = compute_run_features(p_df, g, O, arc_sweep)
-                    res.to_parquet(f"{dir_path}/sequence_{i}.parquet")
-                    dat.append(res)
-            return dat
-        except FileExistsError:
-            try:
-                os.mkdir(f"cache/{dir_path}")
-                for i, d in enumerate(D):
-                    p_df = d["player"]
-                    g = d["goal"]
-                    O = d["obstacles"]
-                    res = compute_run_features(p_df, g, O, arc_sweep)
-                    res.to_parquet(f"cache/{dir_path}/sequence_{i}.parquet")
-                    dat.append(res)
-            except FileExistsError:
-                for i, d in enumerate(D):
-                    p_df = d["player"]
-                    g = d["goal"]
-                    O = d["obstacles"]
-                    res = compute_run_features(p_df, g, O, arc_sweep)
-                    res.to_parquet(f"cache/{dir_path}/sequence_{i}.parquet")
-                    dat.append(res)
-            return dat
+        Path(dir_path).mkdir(parents=True, exist_ok=True)
+        for i, d in enumerate(D):
+            p_df = d["player"]
+            g = d["goal"]
+            O = d["obstacles"]
+            res = compute_run_features(p_df, g, O, arc_sweep)
+            res.to_parquet(f"{dir_path}/sequence_{i}.parquet")
+            dat.append(res)
+        return dat
 
 
 def compute_run_features_p(d):
@@ -524,75 +494,22 @@ def compute_features_p(D, arc_sweep=(10, 360, 10), save_dir=None, cores=None):
             )
         else:
             dir_path = os.path.expanduser(save_dir)
-            try:
-                os.mkdir("cache")
-                try:
-                    os.mkdir(f"cache/{dir_path}")
-                    dat = list(
-                        p.map(
-                            compute_run_features_p,
-                            [
-                                (
-                                    d["player"],
-                                    d["goal"],
-                                    d["obstacles"],
-                                    arc_sweep,
-                                    f"cache/{dir_path}/sequence_{i}.parquet",
-                                )
-                                for i, d in enumerate(D)
-                            ],
+            Path(dir_path).mkdir(parents=True, exist_ok=True)
+            dat = list(
+                p.map(
+                    compute_run_features_p,
+                    [
+                        (
+                            d["player"],
+                            d["goal"],
+                            d["obstacles"],
+                            arc_sweep,
+                            f"{dir_path}/sequence_{i}.parquet",
                         )
-                    )
-                except FileExistsError:
-                    dat = list(
-                        p.map(
-                            compute_run_features_p,
-                            [
-                                (
-                                    d["player"],
-                                    d["goal"],
-                                    d["obstacles"],
-                                    arc_sweep,
-                                    f"cache/{dir_path}/sequence_{i}.parquet",
-                                )
-                                for i, d in enumerate(D)
-                            ],
-                        )
-                    )
-            except FileExistsError:
-                try:
-                    os.mkdir(f"cache/{dir_path}")
-                    dat = list(
-                        p.map(
-                            compute_run_features_p,
-                            [
-                                (
-                                    d["player"],
-                                    d["goal"],
-                                    d["obstacles"],
-                                    arc_sweep,
-                                    f"cache/{dir_path}/sequence_{i}.parquet",
-                                )
-                                for i, d in enumerate(D)
-                            ],
-                        )
-                    )
-                except FileExistsError:
-                    dat = list(
-                        p.map(
-                            compute_run_features_p,
-                            [
-                                (
-                                    d["player"],
-                                    d["goal"],
-                                    d["obstacles"],
-                                    arc_sweep,
-                                    f"cache/{dir_path}/sequence_{i}.parquet",
-                                )
-                                for i, d in enumerate(D)
-                            ],
-                        )
-                    )
+                        for i, d in enumerate(D)
+                    ],
+                )
+            )
         return dat
 
 
@@ -750,21 +667,15 @@ def create_preference_data(
                 f"{labels[2]}_2": jnp.stack(ams_2),
                 "labels": jnp.array(lbs),
             }
-            with h5py.File("preference_data.hdf5", "a") as f:
-                if save_data in f:
-                    # WARNING if this group already exists, datasets of the same name of "observations","timesteps","attn_mask", etc.
-                    # will be overwritten with this new datasets.
-                    g = f[save_data]
-                    for k in data:
-                        if k in g:
-                            del g[k]
-                            g[k] = data[k]
-                        else:
-                            g[k] = data[k]
-                else:
-                    g = f.create_group(save_data)
-                    for k in data:
-                        g[k] = data[k]
+            with h5py.File(save_data, "a") as f:
+                # WARNING if this file already exists, datasets of the same name of "observations","timesteps","attn_mask", etc.
+                # will be overwritten with new datasets.
+                for k in data:
+                    if k in f:
+                        del f[k]
+                        f.create_dataset(k,data=data[k],compression="lzf")
+                    else:
+                        f.create_dataset(k,data=data[k],compression="lzf")
             return data
         obs = []
         ts = []
@@ -802,21 +713,15 @@ def create_preference_data(
                 f"{labels[1]}_2": jnp.stack(ts_2),
                 "labels": jnp.array(lbs),
             }
-            with h5py.File("preference_data.hdf5", "a") as f:
-                if save_data in f:
-                    # WARNING if this group already exists, datasets of the same name of "observations","timesteps","attn_mask", etc.
-                    # will be overwritten with this new datasets.
-                    g = f[save_data]
-                    for k in data:
-                        if k in g:
-                            del g[k]
-                            g[k] = data[k]
-                        else:
-                            g[k] = data[k]
-                else:
-                    g = f.create_group(save_data)
-                    for k in data:
-                        g[k] = data[k]
+            with h5py.File(save_data, "a") as f:
+                # WARNING if this group already exists, datasets of the same name of "observations","timesteps","attn_mask", etc.
+                # will be overwritten with this new datasets.
+                for k in data:
+                    if k in f:
+                        del f[k]
+                        f.create_dataset(k,data=data[k],compression="lzf")
+                    else:
+                        f.create_dataset(k,data=data[k],compression="lzf")
             return data
 
 
