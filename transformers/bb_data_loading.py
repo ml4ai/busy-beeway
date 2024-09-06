@@ -700,7 +700,7 @@ def load_participant_data(
     dir_list = os.scandir(dir_path)
     for i in dir_list:
         if i.is_dir():
-            if i.path.endswith("T5"):
+            if i.path.endswith(e_code):
                 e_path = f"{i.path}/{p_id}"
                 d = load_experiment_data(e_path, skip, control, exclusion_list)
                 if d:
@@ -1401,17 +1401,23 @@ def load_participant_data_p(
     outer_call=True,
     cores=None,
     exclusion_list=None,
+    study=1,
 ):
+    if study == 1:
+        e_code = "T5"
+    else:
+        e_code = "D1"
     S = []
     dir_path = os.path.expanduser(path)
     dir_list = os.scandir(dir_path)
     for i in dir_list:
         if i.is_dir():
-            e_path = f"{i.path}/{p_id}"
-            s = load_experiment_data_p(
-                e_path, skip, control, False, None, exclusion_list
-            )
-            S += s
+            if i.path.endswith(e_code):
+                e_path = f"{i.path}/{p_id}"
+                s = load_experiment_data_p(
+                    e_path, skip, control, False, None, exclusion_list
+                )
+                S += s
     if outer_call:
         if cores is None:
             cores = os.cpu_count()
