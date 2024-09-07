@@ -601,6 +601,15 @@ def to_np(
     return {labels[0]: np.stack(obs), labels[1]: np.stack(ts)}
 
 
+def get_pref_labels(o_1, gh_idx=1):
+    x = o_1.shape[0]
+    labels = np.ones(x)
+    for i in range(x):
+        if np.all(np.isclose(o_1[i, :, gh_idx], 1)):
+            labels[i] = 0.5
+    return labels
+
+
 # Takes two lists of feature dataframes transforms them into np arrays with padding and matching preference label y.
 # One list is assumed to be real data and the other is generated data based on the real data.
 # Its assumed that F_1 is the generated data and F_2 is the real data.
@@ -611,16 +620,14 @@ def to_np(
 def create_preference_data(
     F_1,
     F_2,
-    fill_size=None,
+    split_size=100,
+    gh_idx=1,
     labels=("observations", "timesteps", "attn_mask"),
     with_attn_mask=True,
     save_data=None,
 ):
 
     assert len(F_1) == len(F_2), "F_1 and F_2 should be equal sizes!"
-
-    if not fill_size:
-        fill_size = max(max_seq_length(F_1), max_seq_length(F_2))
 
     if with_attn_mask:
         obs = []
@@ -631,8 +638,21 @@ def create_preference_data(
         ams_2 = []
         lbs = []
         for i, f in enumerate(F_1):
-            o, t, am = run_to_np(f, fill_size, with_attn_mask)
-            o_2, t_2, am_2 = run_to_np(F_2[i], fill_size, with_attn_mask)
+            fill_size_1 = f.shape[0] + (split_size - (f.shape[0] % split_size))
+            o, t, am = run_to_np(f, fill_size_1, with_attn_mask)
+            n_splits_1 = int(fill_size_1 / split_size)
+            o = o.reshape((n_splits_1, split_size, o.shape[1]))
+            t = t.reshape((n_splits_1, split_size))
+            am = am.reshape((n_splits_1, split_size))
+
+            fill_size_2 = F_2[i].shape[0] + (
+                split_size - (F_2[i].shape[0] % split_size)
+            )
+            o_2, t_2, am_2 = run_to_np(F_2[i], fill_size_2, with_attn_mask)
+            n_splits_2 = int(fill_size_2 / split_size)
+            o_2 = o_2.reshape((n_splits_2, split_size, o_2.shape[1]))
+            t_2 = t_2.reshape((n_splits_2, split_size))
+            am_2 = am_2.reshape((n_splits_2, split_size))
 
             obs.append(o)
             ts.append(t)
@@ -642,29 +662,26 @@ def create_preference_data(
             ts_2.append(t_2)
             ams_2.append(am_2)
 
-            if np.all(np.isclose(F_2[i]["goal_headings"].to_numpy(), 1)):
-                lbs.append(0.5)
-            else:
-                lbs.append(1.0)
+            lbs.append(get_pref_labels(o_2, gh_idx))
         if save_data is None:
             return {
-                labels[0]: np.stack(obs),
-                labels[1]: np.stack(ts),
-                labels[2]: np.stack(ams),
-                f"{labels[0]}_2": np.stack(obs_2),
-                f"{labels[1]}_2": np.stack(ts_2),
-                f"{labels[2]}_2": np.stack(ams_2),
-                "labels": np.array(lbs),
+                labels[0]: np.concatenate(obs),
+                labels[1]: np.concatenate(ts),
+                labels[2]: np.concatenate(ams),
+                f"{labels[0]}_2": np.concatenate(obs_2),
+                f"{labels[1]}_2": np.concatenate(ts_2),
+                f"{labels[2]}_2": np.concatenate(ams_2),
+                "labels": np.concatenate(lbs),
             }
         else:
             data = {
-                labels[0]: np.stack(obs),
-                labels[1]: np.stack(ts),
-                labels[2]: np.stack(ams),
-                f"{labels[0]}_2": np.stack(obs_2),
-                f"{labels[1]}_2": np.stack(ts_2),
-                f"{labels[2]}_2": np.stack(ams_2),
-                "labels": np.array(lbs),
+                labels[0]: np.concatenate(obs),
+                labels[1]: np.concatenate(ts),
+                labels[2]: np.concatenate(ams),
+                f"{labels[0]}_2": np.concatenate(obs_2),
+                f"{labels[1]}_2": np.concatenate(ts_2),
+                f"{labels[2]}_2": np.concatenate(ams_2),
+                "labels": np.concatenate(lbs),
             }
             with h5py.File(save_data, "a") as f:
                 # WARNING if this file already exists, datasets of the same name of "observations","timesteps","attn_mask", etc.
@@ -672,9 +689,9 @@ def create_preference_data(
                 for k in data:
                     if k in f:
                         del f[k]
-                        f.create_dataset(k,data=data[k],compression="lzf")
+                        f.create_dataset(k, data=data[k], compression="lzf")
                     else:
-                        f.create_dataset(k,data=data[k],compression="lzf")
+                        f.create_dataset(k, data=data[k], compression="lzf")
             return data
         obs = []
         ts = []
@@ -682,8 +699,19 @@ def create_preference_data(
         ts_2 = []
         lbs = []
         for i, f in enumerate(F_1):
-            o, t = run_to_np(f, fill_size, with_attn_mask)
-            o_2, t_2 = run_to_np(F_2[i], fill_size, with_attn_mask)
+            fill_size_1 = f.shape[0] + (split_size - (f.shape[0] % split_size))
+            o, t = run_to_np(f, fill_size_1, with_attn_mask)
+            n_splits_1 = int(fill_size_1 / split_size)
+            o = o.reshape((n_splits_1, split_size, o.shape[1]))
+            t = t.reshape((n_splits_1, split_size))
+
+            fill_size_2 = F_2[i].shape[0] + (
+                split_size - (F_2[i].shape[0] % split_size)
+            )
+            o_2, t_2 = run_to_np(F_2[i], fill_size_2, with_attn_mask)
+            n_splits_2 = int(fill_size_2 / split_size)
+            o_2 = o_2.reshape((n_splits_2, split_size, o_2.shape[1]))
+            t_2 = t_2.reshape((n_splits_2, split_size))
 
             obs.append(o)
             ts.append(t)
@@ -691,26 +719,23 @@ def create_preference_data(
             obs_2.append(o_2)
             ts_2.append(t_2)
 
-            if np.all(np.isclose(F_2[i]["goal_headings"].to_numpy(), 1)):
-                lbs.append(0.5)
-            else:
-                lbs.append(1.0)
+            lbs.append(get_pref_labels(o_2, gh_idx))
 
         if save_data is None:
             return {
-                labels[0]: np.stack(obs),
-                labels[1]: np.stack(ts),
-                f"{labels[0]}_2": np.stack(obs_2),
-                f"{labels[1]}_2": np.stack(ts_2),
-                "labels": np.array(lbs),
+                labels[0]: np.concatenate(obs),
+                labels[1]: np.concatenate(ts),
+                f"{labels[0]}_2": np.concatenate(obs_2),
+                f"{labels[1]}_2": np.concatenate(ts_2),
+                "labels": np.concatenate(lbs),
             }
         else:
             data = {
-                labels[0]: np.stack(obs),
-                labels[1]: np.stack(ts),
-                f"{labels[0]}_2": np.stack(obs_2),
-                f"{labels[1]}_2": np.stack(ts_2),
-                "labels": np.array(lbs),
+                labels[0]: np.concatenate(obs),
+                labels[1]: np.concatenate(ts),
+                f"{labels[0]}_2": np.concatenate(obs_2),
+                f"{labels[1]}_2": np.concatenate(ts_2),
+                "labels": np.concatenate(lbs),
             }
             with h5py.File(save_data, "a") as f:
                 # WARNING if this group already exists, datasets of the same name of "observations","timesteps","attn_mask", etc.
@@ -718,9 +743,9 @@ def create_preference_data(
                 for k in data:
                     if k in f:
                         del f[k]
-                        f.create_dataset(k,data=data[k],compression="lzf")
+                        f.create_dataset(k, data=data[k], compression="lzf")
                     else:
-                        f.create_dataset(k,data=data[k],compression="lzf")
+                        f.create_dataset(k, data=data[k], compression="lzf")
             return data
 
 

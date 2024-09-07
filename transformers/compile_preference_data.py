@@ -51,9 +51,9 @@ def main(argv):
     )
     parser.add_argument(
         "-f",
-        "--fill_size",
+        "--split_size",
         type=int,
-        help="Padding size for sequences. \nUses max sequence length by default.",
+        help="Trajectory segment size.",
     )
     parser.add_argument(
         "-a",
@@ -106,12 +106,15 @@ def main(argv):
     o_path = args.output_dir
     if not Path(o_path).is_dir():
         raise FileNotFoundError(f"Cannot find output directory {o_path}!")
-    fill_size = args.fill_size
+    split_size = args.split_size
     arc_sweep = tuple(args.arc_sweep)
     seed = args.seed
     load_features = args.load_features
     load_p_stats = args.load_stats
-    L = load_list(args.exclusion_list)
+    if args.exclusion_list:
+        L = load_list(args.exclusion_list)
+    else:
+        L = None
 
     Path(f"{o_path}/preference_data").mkdir(parents=True, exist_ok=True)
     if args.cache_stats:
@@ -120,7 +123,7 @@ def main(argv):
     else:
         save_p_stats = None
     p_id = args.p_id
-    if Path(p_id).suffix == ".txt":
+    if p_id.endswith(".txt"):
         S = load_list(p_id)
         for p_id in S:
             if args.cache_features:
@@ -171,7 +174,9 @@ def main(argv):
                         )
                     F = compute_features_p(D, arc_sweep, save_dir=save_f)
                     del D
-                create_preference_data(RF, F, fill_size=fill_size, save_data=save_pref)
+                create_preference_data(
+                    RF, F, split_size=split_size, save_data=save_pref
+                )
                 del RF
                 del F
             else:
@@ -211,7 +216,9 @@ def main(argv):
                         )
                     F = compute_features(D, arc_sweep, save_dir=save_f)
                     del D
-                create_preference_data(RF, F, fill_size=fill_size, save_data=save_pref)
+                create_preference_data(
+                    RF, F, split_size=split_size, save_data=save_pref
+                )
                 del RF
                 del F
         sys.exit(0)
@@ -260,7 +267,7 @@ def main(argv):
                     D = load_participant_data_p(p_id=p_id, path=path, exclusion_list=L)
                 F = compute_features_p(D, arc_sweep, save_dir=save_f)
                 del D
-            create_preference_data(RF, F, fill_size=fill_size, save_data=save_pref)
+            create_preference_data(RF, F, split_size=split_size, save_data=save_pref)
             del RF
             del F
             sys.exit(0)
@@ -297,7 +304,7 @@ def main(argv):
                 D = load_participant_data(p_id=p_id, path=path, exclusion_list=L)
             F = compute_features(D, arc_sweep, save_dir=save_f)
             del D
-        create_preference_data(RF, F, fill_size=fill_size, save_data=save_pref)
+        create_preference_data(RF, F, split_size=split_size, save_data=save_pref)
         del RF
         del F
         sys.exit(0)
