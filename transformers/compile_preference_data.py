@@ -153,10 +153,12 @@ def main(argv):
                             p_id=p_id, path=path, control=3, exclusion_list=L
                         )
                         stats = generate_stats(CD, save_data=save_p_stats)
+                        del CD
                     D = load_participant_data_p(p_id=p_id, path=path, exclusion_list=L)
                     pd_not_loaded = False
                     RD = goal_only_replay_p(D, stats, seed=seed)
                     RF = compute_features_p(RD, arc_sweep, save_dir=save_rf)
+                    del RD
                 try:
                     if load_features:
                         F = load_features_from_parquet(f"{o_path}/cache/{p_id}_f_save")
@@ -168,7 +170,10 @@ def main(argv):
                             p_id=p_id, path=path, exclusion_list=L
                         )
                     F = compute_features_p(D, arc_sweep, save_dir=save_f)
+                    del D
                 create_preference_data(RF, F, fill_size=fill_size, save_data=save_pref)
+                del RF
+                del F
             else:
                 try:
                     if load_features:
@@ -188,10 +193,12 @@ def main(argv):
                             p_id=p_id, path=path, control=3, exclusion_list=L
                         )
                         stats = generate_stats(CD, save_data=save_p_stats)
+                        del CD
                     D = load_participant_data(p_id=p_id, path=path, exclusion_list=L)
                     pd_not_loaded = False
                     RD = goal_only_replay(D, stats, seed=seed)
                     RF = compute_features(RD, arc_sweep, save_dir=save_rf)
+                    del RD
                 try:
                     if load_features:
                         F = load_features_from_parquet(f"{o_path}/cache/{p_id}_f_save")
@@ -203,7 +210,10 @@ def main(argv):
                             p_id=p_id, path=path, exclusion_list=L
                         )
                     F = compute_features(D, arc_sweep, save_dir=save_f)
+                    del D
                 create_preference_data(RF, F, fill_size=fill_size, save_data=save_pref)
+                del RF
+                del F
         sys.exit(0)
     else:
         if args.cache_features:
@@ -234,10 +244,12 @@ def main(argv):
                         p_id=p_id, path=path, control=3, exclusion_list=L
                     )
                     stats = generate_stats(CD, save_data=save_p_stats)
+                    del CD
                 D = load_participant_data_p(p_id=p_id, path=path, exclusion_list=L)
                 pd_not_loaded = False
                 RD = goal_only_replay_p(D, stats, seed=seed)
                 RF = compute_features_p(RD, arc_sweep, save_dir=save_rf)
+                del RD
             try:
                 if load_features:
                     F = load_features_from_parquet(f"{o_path}/cache/{p_id}_f_save")
@@ -247,7 +259,10 @@ def main(argv):
                 if pd_not_loaded:
                     D = load_participant_data_p(p_id=p_id, path=path, exclusion_list=L)
                 F = compute_features_p(D, arc_sweep, save_dir=save_f)
+                del D
             create_preference_data(RF, F, fill_size=fill_size, save_data=save_pref)
+            del RF
+            del F
             sys.exit(0)
 
         try:
@@ -266,10 +281,12 @@ def main(argv):
                     p_id=p_id, path=path, control=3, exclusion_list=L
                 )
                 stats = generate_stats(CD, save_data=save_p_stats)
+                del CD
             D = load_participant_data(p_id=p_id, path=path, exclusion_list=L)
             pd_not_loaded = False
             RD = goal_only_replay(D, stats, seed=seed)
             RF = compute_features(RD, arc_sweep, save_dir=save_rf)
+            del RD
         try:
             if load_features:
                 F = load_features_from_parquet(f"{o_path}/cache/{p_id}_f_save")
@@ -279,7 +296,10 @@ def main(argv):
             if pd_not_loaded:
                 D = load_participant_data(p_id=p_id, path=path, exclusion_list=L)
             F = compute_features(D, arc_sweep, save_dir=save_f)
+            del D
         create_preference_data(RF, F, fill_size=fill_size, save_data=save_pref)
+        del RF
+        del F
         sys.exit(0)
 
 
