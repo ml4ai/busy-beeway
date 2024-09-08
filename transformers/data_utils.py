@@ -601,11 +601,11 @@ def to_np(
     return {labels[0]: np.stack(obs), labels[1]: np.stack(ts)}
 
 
-def get_pref_labels(o_1, gh_idx=1):
-    x = o_1.shape[0]
+def get_pref_labels(o, gh_idx=1):
+    x = o.shape[0]
     labels = np.ones(x)
     for i in range(x):
-        if np.all(np.isclose(o_1[i, :, gh_idx], 1)):
+        if np.all(np.isclose(o[i, :, gh_idx], 1)):
             labels[i] = 0.5
     return labels
 
@@ -638,21 +638,17 @@ def create_preference_data(
         ams_2 = []
         lbs = []
         for i, f in enumerate(F_1):
-            fill_size_1 = f.shape[0] + (split_size - (f.shape[0] % split_size))
-            o, t, am = run_to_np(f, fill_size_1, with_attn_mask)
-            n_splits_1 = int(fill_size_1 / split_size)
-            o = o.reshape((n_splits_1, split_size, o.shape[1]))
-            t = t.reshape((n_splits_1, split_size))
-            am = am.reshape((n_splits_1, split_size))
+            fill_size = F_2[i].shape[0] + (split_size - (F_2[i].shape[0] % split_size))
+            n_splits = int(fill_size / split_size)
+            o, t, am = run_to_np(f, fill_size, with_attn_mask)
+            o = o.reshape((n_splits, split_size, o.shape[1]))
+            t = t.reshape((n_splits, split_size))
+            am = am.reshape((n_splits, split_size))
 
-            fill_size_2 = F_2[i].shape[0] + (
-                split_size - (F_2[i].shape[0] % split_size)
-            )
-            o_2, t_2, am_2 = run_to_np(F_2[i], fill_size_2, with_attn_mask)
-            n_splits_2 = int(fill_size_2 / split_size)
-            o_2 = o_2.reshape((n_splits_2, split_size, o_2.shape[1]))
-            t_2 = t_2.reshape((n_splits_2, split_size))
-            am_2 = am_2.reshape((n_splits_2, split_size))
+            o_2, t_2, am_2 = run_to_np(F_2[i], fill_size, with_attn_mask)
+            o_2 = o_2.reshape((n_splits, split_size, o_2.shape[1]))
+            t_2 = t_2.reshape((n_splits, split_size))
+            am_2 = am_2.reshape((n_splits, split_size))
 
             obs.append(o)
             ts.append(t)

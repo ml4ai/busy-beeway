@@ -159,7 +159,7 @@ def main(argv):
                         del CD
                     D = load_participant_data_p(p_id=p_id, path=path, exclusion_list=L)
                     pd_not_loaded = False
-                    RD = goal_only_replay_p(D, stats, seed=seed)
+                    RD = goal_only_replay_p(D, stats, simulate_forward=False,seed=seed)
                     RF = compute_features_p(RD, arc_sweep, save_dir=save_rf)
                     del RD
                 try:
@@ -201,7 +201,7 @@ def main(argv):
                         del CD
                     D = load_participant_data(p_id=p_id, path=path, exclusion_list=L)
                     pd_not_loaded = False
-                    RD = goal_only_replay(D, stats, seed=seed)
+                    RD = goal_only_replay(D, stats, simulate_forward=False,seed=seed)
                     RF = compute_features(RD, arc_sweep, save_dir=save_rf)
                     del RD
                 try:
@@ -254,7 +254,7 @@ def main(argv):
                     del CD
                 D = load_participant_data_p(p_id=p_id, path=path, exclusion_list=L)
                 pd_not_loaded = False
-                RD = goal_only_replay_p(D, stats, seed=seed)
+                RD = goal_only_replay_p(D, stats, simulate_forward=False,seed=seed)
                 RF = compute_features_p(RD, arc_sweep, save_dir=save_rf)
                 del RD
             try:
@@ -291,7 +291,7 @@ def main(argv):
                 del CD
             D = load_participant_data(p_id=p_id, path=path, exclusion_list=L)
             pd_not_loaded = False
-            RD = goal_only_replay(D, stats, seed=seed)
+            RD = goal_only_replay(D, stats, simulate_forward=False,seed=seed)
             RF = compute_features(RD, arc_sweep, save_dir=save_rf)
             del RD
         try:
