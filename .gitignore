@@ -60,3 +60,4 @@ participant_list.txt
 *.npy
 *.npz
 *.hdf5
+*.pptx
