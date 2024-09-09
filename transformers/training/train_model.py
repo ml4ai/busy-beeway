@@ -3,12 +3,12 @@ import os.path as osp
 import numpy as np
 from flax.training.early_stopping import EarlyStopping
 
-from intervention_mlp import MLP
-from jax_utils import batch_to_jax
-from logging_utils import logger, setup_logger
-from pref_transformer import PT
-from training import InterventionMLPTrainer, PrefTransformerTrainer
-from utils import Timer, index_batch, save_pickle, set_random_seed
+from transformers.training.jax_utils import batch_to_jax
+from transformers.training.logging_utils import logger, setup_logger
+from transformers.models.pref_transformer import PT
+from transformers.models.intervention_mlp import MLP
+from transformers.training.training import InterventionMLPTrainer, PrefTransformerTrainer
+from transformers.training.utils import Timer, index_batch, save_pickle, set_random_seed
 
 
 def train_pt(
@@ -42,7 +42,7 @@ def train_pt(
         max_pos *= 2
     trans = PT(
         observation_dim=observation_dim,
-        max_episode_steps=kwargs.get("max_episode_steps", query_len),
+        max_episode_steps=kwargs.get("max_episode_steps", 1219),
         embd_dim=kwargs.get("embd_dim", batch_size),
         pref_attn_embd_dim=kwargs.get("pref_attn_embd_dim", batch_size),
         num_heads=kwargs.get("num_heads", 4),
@@ -142,8 +142,9 @@ def train_pt(
 
 
 def train_imlp(
-    training_data,
-    test_data,
+    data,
+    training_data_idx,
+    test_data_idx,
     batch_size=64,
     n_epochs=50,
     eval_period=1,
@@ -152,6 +153,7 @@ def train_imlp(
     seed=2024,
     save_dir="~/busy-beeway/transformers/logs",
     save_model=True,
+    **kwargs,
 ):
 
     save_dir = osp.expanduser(save_dir)
@@ -160,16 +162,25 @@ def train_imlp(
     )
     set_random_seed(seed)
     rng = np.random.default_rng(seed)
-    data_size, query_len, observation_dim = training_data["observations"].shape
-    eval_data_size = test_data["observations"].shape[0]
+    data_size = training_data_idx.shape[0]
+    _, observation_dim = data["observations"].shape
+    eval_data_size = test_data_idx.shape[0]
     interval = int(data_size / batch_size) + 1
     eval_interval = int(eval_data_size / batch_size) + 1
-    imlp = MLP()
+
+    imlp = MLP(
+        observation_dim=observation_dim,
+        embd_dim=kwargs.get("embd_dim", batch_size),
+        activation=kwargs.get("activation", "relu"),
+        embd_dropout=kwargs.get("embd_dropout", 0.1),
+    )
     model = InterventionMLPTrainer(
         imlp,
-        observation_dim,
-        decay_steps=int(n_epochs * interval),
-        warmup_steps=int(n_epochs * interval * 0.1),
+        init_value=kwargs.get("init_value", 0),
+        peak_value=kwargs.get("peak_value", 1e-4),
+        warmup_steps=kwargs.get("warmup_steps", int(n_epochs * interval * 0.1)),
+        decay_steps=kwargs.get("decay_steps", int(n_epochs * interval)),
+        end_value=kwargs.get("end_value", 0),
     )
     early_stop = EarlyStopping(min_delta=1e-3, patience=10)
     c_best_epoch = np.nan
@@ -194,7 +205,9 @@ def train_imlp(
                 with Timer() as train_timer:
                     # train
                     batch = batch_to_jax(
-                        index_batch(training_data, shuffled_idx[start_pt:end_pt])
+                        index_batch(
+                            data, training_data_idx[shuffled_idx[start_pt:end_pt]]
+                        )
                     )
                     for key, val in model.train(batch).items():
                         metrics[key].append(val)
@@ -212,7 +225,7 @@ def train_imlp(
                 )
                 # batch_eval = batch_to_jax(index_batch(pref_eval_dataset, range(eval_start_pt, eval_end_pt)))
                 batch_eval = batch_to_jax(
-                    index_batch(test_data, list(range(eval_start_pt, eval_end_pt)))
+                    index_batch(data, test_data_idx[eval_start_pt:eval_end_pt])
                 )
                 for key, val in model.evaluation(batch_eval).items():
                     metrics[key].append(val)

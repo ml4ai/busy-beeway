@@ -5,7 +5,7 @@ import optax
 from flax.training.train_state import TrainState
 from ml_collections import ConfigDict
 
-from jax_utils import next_rng, pref_loss_fn
+from transformers.training.jax_utils import next_rng, pref_loss_fn
 
 
 class PrefTransformerTrainer(object):

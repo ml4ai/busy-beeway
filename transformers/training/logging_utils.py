@@ -21,7 +21,7 @@ import time
 
 import tempfile
 
-from tabulate import tabulate
+from transformers.training.tabulate import tabulate
 
 
 class TerminalTablePrinter(object):

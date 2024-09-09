@@ -142,12 +142,8 @@ def imlp_loss_fn(state, train_params, batch, rng):
         rngs={"dropout": rng},
     ).squeeze(axis=-1)
 
-    rng, split_rng = jax.random.split(rng)
-
-    """ reward function loss """
     pred_labels = (imlp_pred > 0).astype(jnp.float32)
-    label_target = jax.lax.stop_gradient(labels)
-    imlp_loss = optax.sigmoid_binary_cross_entropy(imlp_pred, label_target).mean()
+    imlp_loss = optax.sigmoid_binary_cross_entropy(imlp_pred, labels).mean()
     imlp_acc = (pred_labels == labels).mean()
     return imlp_loss, imlp_acc
 

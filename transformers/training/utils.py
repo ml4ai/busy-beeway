@@ -2,7 +2,7 @@ import random
 import time
 import cloudpickle as pickle
 import os
-from jax_utils import init_rng
+from transformers.training.jax_utils import init_rng
 import numpy as np
 
 
