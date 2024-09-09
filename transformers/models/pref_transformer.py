@@ -1,6 +1,6 @@
 from flax import linen as nn
 import jax.numpy as jnp
-import ops
+import transformers.models.ops
 
 
 class GPT2MLP(nn.Module):
@@ -174,8 +174,8 @@ class GPT2Model(nn.Module):
 
 
 class PT(nn.Module):
-    observation_dim: int = 308
-    max_episode_steps: int = 500
+    observation_dim: int = 327
+    max_episode_steps: int = 1219
     embd_dim: int = 64
     pref_attn_embd_dim: int = 64
     num_heads: int = 4
