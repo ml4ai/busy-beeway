@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from replayer_utils import collision, cos_plus, find_direction, sin_plus
+from transformers.replayer.replayer_utils import collision, cos_plus, find_direction, sin_plus
 
 
 def generate_stats(D, save_data=None):
