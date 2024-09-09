@@ -1,11 +1,12 @@
 import argparse
 import os
 import sys
+sys.path.insert(0, os.path.abspath("../.."))
 import h5py
 import numpy as np
 from argformat import StructuredFormatter
 
-from train_model import train_pt
+from transformers.training.train_model import train_pt
 
 
 def main(argv):

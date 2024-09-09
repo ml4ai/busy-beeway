@@ -1,12 +1,13 @@
 import argparse
 import os
 import sys
+sys.path.insert(0, os.path.abspath("../.."))
 from pathlib import Path
 
 from argformat import StructuredFormatter
 
-from bb_data_loading import load_list, load_participant_data_p
-from data_utils import max_seq_length
+from transformers.data_utils.bb_data_loading import load_list, load_participant_data_p
+from transformers.data_utils.data_utils import max_seq_length
 
 
 def main(argv):

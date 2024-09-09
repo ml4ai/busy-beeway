@@ -1,21 +1,24 @@
 import argparse
-import sys
+import os, sys
+
+sys.path.insert(0, os.path.abspath("../.."))
 from pathlib import Path
+from tqdm import tqdm
 
 from argformat import StructuredFormatter
 
-from bb_data_loading import (
+from transformers.data_utils.bb_data_loading import (
     load_participant_data,
     load_participant_data_p,
     load_list,
 )
-from data_utils import (
+from transformers.data_utils.data_utils import (
     compute_features,
     compute_features_p,
     create_preference_data,
     load_features_from_parquet,
 )
-from replayer import generate_stats, goal_only_replay, goal_only_replay_p, load_stats
+from transformers.replayer.replayer import generate_stats, goal_only_replay, goal_only_replay_p, load_stats
 
 
 def main(argv):
@@ -125,7 +128,7 @@ def main(argv):
     p_id = args.p_id
     if p_id.endswith(".txt"):
         S = load_list(p_id)
-        for p_id in S:
+        for p_id in tqdm(S):
             if args.cache_features:
                 Path(f"{o_path}/cache").mkdir(parents=True, exist_ok=True)
                 save_f = f"{o_path}/cache/{p_id}_f_save"
@@ -159,7 +162,7 @@ def main(argv):
                         del CD
                     D = load_participant_data_p(p_id=p_id, path=path, exclusion_list=L)
                     pd_not_loaded = False
-                    RD = goal_only_replay_p(D, stats, simulate_forward=False,seed=seed)
+                    RD = goal_only_replay_p(D, stats, simulate_forward=False, seed=seed)
                     RF = compute_features_p(RD, arc_sweep, save_dir=save_rf)
                     del RD
                 try:
@@ -201,7 +204,7 @@ def main(argv):
                         del CD
                     D = load_participant_data(p_id=p_id, path=path, exclusion_list=L)
                     pd_not_loaded = False
-                    RD = goal_only_replay(D, stats, simulate_forward=False,seed=seed)
+                    RD = goal_only_replay(D, stats, simulate_forward=False, seed=seed)
                     RF = compute_features(RD, arc_sweep, save_dir=save_rf)
                     del RD
                 try:
@@ -254,7 +257,7 @@ def main(argv):
                     del CD
                 D = load_participant_data_p(p_id=p_id, path=path, exclusion_list=L)
                 pd_not_loaded = False
-                RD = goal_only_replay_p(D, stats, simulate_forward=False,seed=seed)
+                RD = goal_only_replay_p(D, stats, simulate_forward=False, seed=seed)
                 RF = compute_features_p(RD, arc_sweep, save_dir=save_rf)
                 del RD
             try:
@@ -291,7 +294,7 @@ def main(argv):
                 del CD
             D = load_participant_data(p_id=p_id, path=path, exclusion_list=L)
             pd_not_loaded = False
-            RD = goal_only_replay(D, stats, simulate_forward=False,seed=seed)
+            RD = goal_only_replay(D, stats, simulate_forward=False, seed=seed)
             RF = compute_features(RD, arc_sweep, save_dir=save_rf)
             del RD
         try:
