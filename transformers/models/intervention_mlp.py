@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 from flax import linen as nn
 
-import transformers.models.ops
+import transformers.models.ops as ops
 
 
 class MLP(nn.Module):

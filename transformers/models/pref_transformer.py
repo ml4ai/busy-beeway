@@ -1,6 +1,6 @@
 from flax import linen as nn
 import jax.numpy as jnp
-import transformers.models.ops
+import transformers.models.ops as ops
 
 
 class GPT2MLP(nn.Module):
