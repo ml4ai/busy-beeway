@@ -15,17 +15,10 @@ def main(argv):
         formatter_class=StructuredFormatter,
     )
     parser.add_argument(
-        "p_id",
-        metavar="PID",
+        "data",
+        metavar="D",
         type=str,
-        help="Either a single Participant ID or \na .txt file containing a list of Participant IDs to process",
-    )
-    parser.add_argument(
-        "-d",
-        "--data_file",
-        type=str,
-        default="~/busy-beeway/transformer/preference_data.hdf5",
-        help="HDF5 file containing data.",
+        help="HDF5 file containing data. \The file must have the datasets \n'Observations',timesteps',etc.",
     )
     parser.add_argument(
         "-t",
@@ -67,8 +60,7 @@ def main(argv):
         help="Learning Rate parameters passed to optimizer. \nIt uses a Cosine Decay Schedule with warmup steps, \nso this option requires 3 arguments \n(initial learning rate, peak learning rate, end learning rate).",
     )
     args = parser.parse_args(argv)
-    data_file = os.path.expanduser(args.data_file)
-    p_id = args.p_id
+    data = os.path.expanduser(args.data)
     train_split = args.training_split
     batch_size = args.batch_size
     eval_period = args.eval_period
@@ -80,16 +72,15 @@ def main(argv):
     end_value = learning_rate[2]
 
     try:
-        with h5py.File(data_file, "r") as f:
-            g = f[p_id]
+        with h5py.File(data, "r") as f:
             rng = np.random.default_rng(seed)
-            p_size = g["observations"].shape[0]
+            p_size = f["observations"].shape[0]
             shuffled_idx = rng.permutation(p_size)
 
             t_int = int(p_size * train_split)
 
             train_pt(
-                g,
+                f,
                 shuffled_idx[:t_int],
                 shuffled_idx[t_int:],
                 batch_size=batch_size,
