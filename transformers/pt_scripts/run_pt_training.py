@@ -90,8 +90,8 @@ def main(argv):
 
             train_pt(
                 f,
-                shuffled_idx[:t_int],
-                shuffled_idx[t_int:],
+                np.sort(shuffled_idx[:t_int]),
+                np.sort(shuffled_idx[t_int:]),
                 batch_size=batch_size,
                 n_epochs=n_epochs,
                 eval_period=eval_period,
@@ -103,7 +103,7 @@ def main(argv):
             )
     except FileNotFoundError:
         raise FileNotFoundError(
-            f"{data_file} not found, try running compile_preference_data.py first!"
+            f"{data} not found, try running compile_preference_data.py first!"
         )
     sys.exit(0)
 

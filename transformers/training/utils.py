@@ -11,12 +11,21 @@ def set_random_seed(seed):
     random.seed(seed)
     init_rng(seed)
 
-# Memory Mapped Arrays get loaded into physical memory here
-def index_batch(batch, indices):
-    indexed = {}
-    for key in batch.keys():
-        indexed[key] = batch[key][indices, ...]
-    return indexed
+
+# Memory Mapped Arrays get loaded into physical memory here. The indices must be sorted
+# to load the batch into memory. The batch can then be shuffled using the rng.
+def index_batch(batch, indices, rng=None):
+    if rng is None:
+        indexed = {}
+        for key in batch.keys():
+            indexed[key] = batch[key][np.sort(indices), ...]
+        return indexed
+    else:
+        indexed = {}
+        for key in batch.keys():
+            shuffled_idx = rng.permutation(indices.shape[0])
+            indexed[key] = batch[key][np.sort(indices), ...][shuffled_idx, ...]
+        return indexed
 
 
 def prefix_metrics(metrics, prefix):

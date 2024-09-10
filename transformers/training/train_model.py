@@ -7,7 +7,10 @@ from transformers.training.jax_utils import batch_to_jax
 from transformers.training.logging_utils import logger, setup_logger
 from transformers.models.pref_transformer import PT
 from transformers.models.intervention_mlp import MLP
-from transformers.training.training import InterventionMLPTrainer, PrefTransformerTrainer
+from transformers.training.training import (
+    InterventionMLPTrainer,
+    PrefTransformerTrainer,
+)
 from transformers.training.utils import Timer, index_batch, save_pickle, set_random_seed
 
 
@@ -85,7 +88,9 @@ def train_pt(
                     # train
                     batch = batch_to_jax(
                         index_batch(
-                            data, training_data_idx[shuffled_idx[start_pt:end_pt]]
+                            data,
+                            training_data_idx[shuffled_idx[start_pt:end_pt]],
+                            rng,
                         )
                     )
                     for key, val in model.train(batch).items():
