@@ -26,20 +26,20 @@ def main(argv):
         "-d",
         "--data_dir",
         type=str,
-        default="~/busy-beeway/transformer/preference_data",
+        default="~/busy-beeway/transformers/preference_data",
         help="Data Directory for participant preference data.",
     )
     parser.add_argument(
         "-s",
         "--save_file",
         type=str,
-        default="~/busy-beeway/transformer/preference_data/bbway1.hdf5",
+        default="~/busy-beeway/transformers/preference_data/bbway1.hdf5",
         help="Name and location of outputted file",
     )
     args = parser.parse_args(argv)
     p_id = load_list(args.p_id)
-    data_dir = args.data_dir
-    save_file = args.save_file
+    data_dir = os.path.expanduser(args.data_dir)
+    save_file = os.path.expanduser(args.save_file)
     data_sizes = []
     segment_sizes = []
     feature_sizes = []
