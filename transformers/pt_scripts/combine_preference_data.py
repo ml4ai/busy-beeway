@@ -1,6 +1,7 @@
 import argparse
 import sys
 import os
+
 sys.path.insert(0, os.path.abspath("../.."))
 from pathlib import Path
 
@@ -101,15 +102,15 @@ def main(argv):
             f"{data_dir}/{p}.hdf5", "labels", shape=(data_sizes[i],)
         )
 
-        o_layout[prev_size : (prev_size + data_size[i]), :, :] = o_vsource
-        t_layout[prev_size : (prev_size + data_size[i]), :] = t_vsource
-        am_layout[prev_size : (prev_size + data_size[i]), :] = am_vsource
+        o_layout[prev_size : (prev_size + data_sizes[i]), :, :] = o_vsource
+        t_layout[prev_size : (prev_size + data_sizes[i]), :] = t_vsource
+        am_layout[prev_size : (prev_size + data_sizes[i]), :] = am_vsource
 
-        o_2_layout[prev_size : (prev_size + data_size[i]), :, :] = o_2_vsource
-        t_2_layout[prev_size : (prev_size + data_size[i]), :] = t_2_vsource
-        am_2_layout[prev_size : (prev_size + data_size[i]), :] = am_2_vsource
+        o_2_layout[prev_size : (prev_size + data_sizes[i]), :, :] = o_2_vsource
+        t_2_layout[prev_size : (prev_size + data_sizes[i]), :] = t_2_vsource
+        am_2_layout[prev_size : (prev_size + data_sizes[i]), :] = am_2_vsource
 
-        l_layout[prev_size : (prev_size + data_size[i])] = l_vsource
+        l_layout[prev_size : (prev_size + data_sizes[i])] = l_vsource
 
         prev_size = data_size[i]
 
