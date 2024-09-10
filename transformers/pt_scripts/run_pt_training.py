@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath("../.."))
 import h5py
 import numpy as np
@@ -18,7 +19,7 @@ def main(argv):
         "data",
         metavar="D",
         type=str,
-        help="HDF5 file containing data. \The file must have the datasets \n'Observations',timesteps',etc.",
+        help="HDF5 file containing data. \nThe file must have the datasets \n'Observations',timesteps',etc.",
     )
     parser.add_argument(
         "-t",
@@ -59,6 +60,13 @@ def main(argv):
         nargs=3,
         help="Learning Rate parameters passed to optimizer. \nIt uses a Cosine Decay Schedule with warmup steps, \nso this option requires 3 arguments \n(initial learning rate, peak learning rate, end learning rate).",
     )
+    parser.add_argument(
+        "-o",
+        "--output_dir",
+        type=str,
+        default="~/busy-beeway/transformers/logs",
+        help="Output directory for training logs and pickled models",
+    )
     args = parser.parse_args(argv)
     data = os.path.expanduser(args.data)
     train_split = args.training_split
@@ -67,6 +75,7 @@ def main(argv):
     n_epochs = args.n_epochs
     seed = args.seed
     learning_rate = args.learning_rate
+    output_dir = os.path.expanduser(args.output_dir)
     init_value = learning_rate[0]
     peak_value = learning_rate[1]
     end_value = learning_rate[2]
@@ -86,6 +95,7 @@ def main(argv):
                 batch_size=batch_size,
                 n_epochs=n_epochs,
                 eval_period=eval_period,
+                save_dir=output_dir,
                 seed=seed,
                 init_value=init_value,
                 peak_value=peak_value,
