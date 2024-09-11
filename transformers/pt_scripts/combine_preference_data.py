@@ -26,7 +26,7 @@ def main(argv):
         "-d",
         "--data_dir",
         type=str,
-        default="~/busy-beeway/transformers/preference_data",
+        default="~/busy-beeway/transformers/preference_data_1",
         help="Data Directory for participant preference data.",
     )
     parser.add_argument(

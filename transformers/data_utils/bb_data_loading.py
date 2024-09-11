@@ -13,16 +13,32 @@ def load_attempt_data(
     path,
     skip=0,
     control=1,
+    study=1,
 ):
 
     p_file = f"{path}/player.{lvl}.{attempt}.0.data.csv"
-    match lvl:
-        case 9:
-            obs_end = 58
-        case 10:
-            obs_end = 108
-        case 11:
-            obs_end = 158
+    if study == 1:
+        match lvl:
+            case 9:
+                obs_end = 59
+            case 10:
+                obs_end = 108
+            case 11:
+                obs_end = 158
+        obs_start = 9
+        final_goal = 1
+        goal_inc = 2
+    else:
+        match lvl:
+            case 9:
+                obs_end = 58
+            case 10:
+                obs_end = 84
+            case 11:
+                obs_end = 109
+        obs_start = 10
+        final_goal = 2
+        goal_inc = 3
     if control != 2 and control != 3:
         try:
             p_df = pd.read_csv(p_file, usecols=["posX", "posY", "angle", "userControl"])
@@ -36,7 +52,7 @@ def load_attempt_data(
         p_angles = np.where(p_angles < 0, p_angles + 360.0, p_angles)
         p_df["angle"] = p_angles
         o_dfs = []
-        for i in range(9, obs_end + 1):
+        for i in range(obs_start, obs_end + 1):
             o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
             try:
                 o = pd.read_csv(o_file, usecols=["posX", "posY", "angle"])
@@ -80,11 +96,11 @@ def load_attempt_data(
                 o_pos.reset_index
 
                 if i < 6:
-                    k = i + 2
+                    k = i + goal_inc
                     c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                 else:
-                    k = 1
-                    c_g_file = f"{path}/entity.{lvl}.{attempt}.1.data.csv"
+                    k = final_goal
+                    c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                 try:
                     c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
                 except:
@@ -128,10 +144,10 @@ def load_attempt_data(
                 o_pos.reset_index
 
                 if g_df.shape[0] == 6:
-                    k = 1
-                    c_g_file = f"{path}/entity.{lvl}.{attempt}.1.data.csv"
+                    k = final_goal
+                    c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                 else:
-                    k = g_df.shape[0] + 2
+                    k = g_df.shape[0] + goal_inc
                     c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                 try:
                     c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
@@ -168,12 +184,12 @@ def load_attempt_data(
             o_pos = pd.concat(O_list)
             o_pos.reset_index
 
-            c_g_file = f"{path}/entity.{lvl}.{attempt}.2.data.csv"
+            c_g_file = f"{path}/entity.{lvl}.{attempt}.{goal_inc}.data.csv"
             try:
                 c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
             except:
                 raise FileNotFoundError(
-                    f"Could not find data for entity (goal) 2 for level {lvl}, attempt {attempt}!"
+                    f"Could not find data for entity (goal) {goal_inc} for level {lvl}, attempt {attempt}!"
                 )
             c_g = (c_g_df["posX"].values[0], c_g_df["posY"].values[0])
             D.append(
@@ -197,7 +213,7 @@ def load_attempt_data(
             p_angles = np.where(p_angles < 0, p_angles + 360.0, p_angles)
             p_df["angle"] = p_angles
             o_dfs = []
-            for i in range(9, obs_end + 1):
+            for i in range(obs_start, obs_end + 1):
                 o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
                 try:
                     o = pd.read_csv(o_file, usecols=["posX", "posY", "angle"])
@@ -220,11 +236,11 @@ def load_attempt_data(
             if g_df.shape[0] > 0:
                 for i in range(g_df.shape[0]):
                     if i < 6:
-                        k = i + 2
+                        k = i + goal_inc
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     else:
-                        k = 1
-                        c_g_file = f"{path}/entity.{lvl}.{attempt}.1.data.csv"
+                        k = final_goal
+                        c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
                         c_g_df = pd.read_csv(
                             c_g_file, usecols=["posX", "posY"], nrows=1
@@ -284,10 +300,10 @@ def load_attempt_data(
 
                 if g_df.shape[0] < 7:
                     if g_df.shape[0] == 6:
-                        k = 1
-                        c_g_file = f"{path}/entity.{lvl}.{attempt}.1.data.csv"
+                        k = final_goal
+                        c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     else:
-                        k = g_df.shape[0] + 2
+                        k = g_df.shape[0] + goal_inc
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
                         c_g_df = pd.read_csv(
@@ -350,12 +366,12 @@ def load_attempt_data(
                             )
 
             else:
-                c_g_file = f"{path}/entity.{lvl}.{attempt}.2.data.csv"
+                c_g_file = f"{path}/entity.{lvl}.{attempt}.{goal_inc}.data.csv"
                 try:
                     c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
                 except:
                     raise FileNotFoundError(
-                        f"Could not find data for entity (goal) 2 for level {lvl}, attempt {attempt}!"
+                        f"Could not find data for entity (goal) {goal_inc} for level {lvl}, attempt {attempt}!"
                     )
 
                 c_g = (c_g_df["posX"].values[0], c_g_df["posY"].values[0])
@@ -416,7 +432,7 @@ def load_attempt_data(
             p_angles = np.where(p_angles < 0, p_angles + 360.0, p_angles)
             p_df["angle"] = p_angles
             o_dfs = []
-            for i in range(9, obs_end + 1):
+            for i in range(obs_start, obs_end + 1):
                 o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
                 try:
                     o = pd.read_csv(o_file, usecols=["posX", "posY", "angle"])
@@ -439,11 +455,11 @@ def load_attempt_data(
             if g_df.shape[0] > 0:
                 for i in range(g_df.shape[0]):
                     if i < 6:
-                        k = i + 2
+                        k = i + goal_inc
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     else:
-                        k = 1
-                        c_g_file = f"{path}/entity.{lvl}.{attempt}.1.data.csv"
+                        k = final_goal
+                        c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
                         c_g_df = pd.read_csv(
                             c_g_file, usecols=["posX", "posY"], nrows=1
@@ -503,10 +519,10 @@ def load_attempt_data(
 
                 if g_df.shape[0] < 7:
                     if g_df.shape[0] == 6:
-                        k = 1
-                        c_g_file = f"{path}/entity.{lvl}.{attempt}.1.data.csv"
+                        k = final_goal
+                        c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     else:
-                        k = g_df.shape[0] + 2
+                        k = g_df.shape[0] + goal_inc
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
                         c_g_df = pd.read_csv(
@@ -569,12 +585,12 @@ def load_attempt_data(
                             )
 
             else:
-                c_g_file = f"{path}/entity.{lvl}.{attempt}.2.data.csv"
+                c_g_file = f"{path}/entity.{lvl}.{attempt}.{goal_inc}.data.csv"
                 try:
                     c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
                 except:
                     raise FileNotFoundError(
-                        f"Could not find data for entity (goal) 2 for level {lvl}, attempt {attempt}!"
+                        f"Could not find data for entity (goal) {goal_inc} for level {lvl}, attempt {attempt}!"
                     )
 
                 c_g = (c_g_df["posX"].values[0], c_g_df["posY"].values[0])
@@ -628,11 +644,12 @@ def load_lvl_data(
     path,
     skip=0,
     control=1,
+    study=1,
 ):
     D = []
     a = 0
     while True:
-        d = load_attempt_data(lvl, a, path, skip, control)
+        d = load_attempt_data(lvl, a, path, skip, control, study)
         if d:
             D += d
         a += 1
@@ -646,10 +663,11 @@ def load_test_data(
     path,
     skip=0,
     control=1,
+    study=1,
 ):
     D = []
     for i in range(9, 12):
-        d = load_lvl_data(i, path, skip, control)
+        d = load_lvl_data(i, path, skip, control, study)
         if d:
             D += d
     return D
@@ -657,7 +675,7 @@ def load_test_data(
 
 # Path is a directory for a participant for a given experiment over several different days (e.g., Experiment_1T5)
 # Exclusion list is a list of strings where each is a path to a test session to exclude.
-def load_experiment_data(path, skip=0, control=1, exclusion_list=None):
+def load_experiment_data(path, skip=0, control=1, study=1, exclusion_list=None):
     if exclusion_list:
         D = []
         dir_path = os.path.expanduser(path)
@@ -665,7 +683,7 @@ def load_experiment_data(path, skip=0, control=1, exclusion_list=None):
         for i in dir_list:
             if i.is_dir():
                 if i.path not in exclusion_list:
-                    d = load_test_data(i.path, skip, control)
+                    d = load_test_data(i.path, skip, control, study)
                     if d:
                         D += d
         return D
@@ -674,7 +692,7 @@ def load_experiment_data(path, skip=0, control=1, exclusion_list=None):
     dir_list = os.scandir(dir_path)
     for i in dir_list:
         if i.is_dir():
-            d = load_test_data(i.path, skip, control)
+            d = load_test_data(i.path, skip, control, study)
             if d:
                 D += d
     return D
@@ -688,8 +706,8 @@ def load_participant_data(
     path="~/busy-beeway/data/game_data",
     skip=0,
     control=1,
-    exclusion_list=None,
     study=1,
+    exclusion_list=None,
 ):
     if study == 1:
         e_code = "T5"
@@ -702,22 +720,37 @@ def load_participant_data(
         if i.is_dir():
             if i.path.endswith(e_code):
                 e_path = f"{i.path}/{p_id}"
-                d = load_experiment_data(e_path, skip, control, exclusion_list)
+                d = load_experiment_data(e_path, skip, control, study, exclusion_list)
                 if d:
                     D += d
     return D
 
 
 def load_attempt_data_p(f):
-    lvl, attempt, path, skip, control = f
+    lvl, attempt, path, skip, control, study = f
     p_file = f"{path}/player.{lvl}.{attempt}.0.data.csv"
-    match lvl:
-        case 9:
-            obs_end = 58
-        case 10:
-            obs_end = 108
-        case 11:
-            obs_end = 158
+    if study == 1:
+        match lvl:
+            case 9:
+                obs_end = 59
+            case 10:
+                obs_end = 108
+            case 11:
+                obs_end = 158
+        obs_start = 9
+        final_goal = 1
+        goal_inc = 2
+    else:
+        match lvl:
+            case 9:
+                obs_end = 58
+            case 10:
+                obs_end = 84
+            case 11:
+                obs_end = 109
+        obs_start = 10
+        final_goal = 2
+        goal_inc = 3
     if control != 2 and control != 3:
         try:
             p_df = pd.read_csv(p_file, usecols=["posX", "posY", "angle", "userControl"])
@@ -731,7 +764,7 @@ def load_attempt_data_p(f):
         p_angles = np.where(p_angles < 0, p_angles + 360.0, p_angles)
         p_df["angle"] = p_angles
         o_dfs = []
-        for i in range(9, obs_end + 1):
+        for i in range(obs_start, obs_end + 1):
             o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
             try:
                 o = pd.read_csv(o_file, usecols=["posX", "posY", "angle"])
@@ -775,11 +808,11 @@ def load_attempt_data_p(f):
                 o_pos.reset_index
 
                 if i < 6:
-                    k = i + 2
+                    k = i + goal_inc
                     c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                 else:
-                    k = 1
-                    c_g_file = f"{path}/entity.{lvl}.{attempt}.1.data.csv"
+                    k = final_goal
+                    c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                 try:
                     c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
                 except:
@@ -823,10 +856,10 @@ def load_attempt_data_p(f):
                 o_pos.reset_index
 
                 if g_df.shape[0] == 6:
-                    k = 1
-                    c_g_file = f"{path}/entity.{lvl}.{attempt}.1.data.csv"
+                    k = final_goal
+                    c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                 else:
-                    k = g_df.shape[0] + 2
+                    k = g_df.shape[0] + goal_inc
                     c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                 try:
                     c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
@@ -863,12 +896,12 @@ def load_attempt_data_p(f):
             o_pos = pd.concat(O_list)
             o_pos.reset_index
 
-            c_g_file = f"{path}/entity.{lvl}.{attempt}.2.data.csv"
+            c_g_file = f"{path}/entity.{lvl}.{attempt}.{goal_inc}.data.csv"
             try:
                 c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
             except:
                 raise FileNotFoundError(
-                    f"Could not find data for entity (goal) 2 for level {lvl}, attempt {attempt}!"
+                    f"Could not find data for entity (goal) {goal_inc} for level {lvl}, attempt {attempt}!"
                 )
             c_g = (c_g_df["posX"].values[0], c_g_df["posY"].values[0])
             D.append(
@@ -892,7 +925,7 @@ def load_attempt_data_p(f):
             p_angles = np.where(p_angles < 0, p_angles + 360.0, p_angles)
             p_df["angle"] = p_angles
             o_dfs = []
-            for i in range(9, obs_end + 1):
+            for i in range(obs_start, obs_end + 1):
                 o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
                 try:
                     o = pd.read_csv(o_file, usecols=["posX", "posY", "angle"])
@@ -915,11 +948,11 @@ def load_attempt_data_p(f):
             if g_df.shape[0] > 0:
                 for i in range(g_df.shape[0]):
                     if i < 6:
-                        k = i + 2
+                        k = i + goal_inc
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     else:
-                        k = 1
-                        c_g_file = f"{path}/entity.{lvl}.{attempt}.1.data.csv"
+                        k = final_goal
+                        c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
                         c_g_df = pd.read_csv(
                             c_g_file, usecols=["posX", "posY"], nrows=1
@@ -979,10 +1012,10 @@ def load_attempt_data_p(f):
 
                 if g_df.shape[0] < 7:
                     if g_df.shape[0] == 6:
-                        k = 1
-                        c_g_file = f"{path}/entity.{lvl}.{attempt}.1.data.csv"
+                        k = final_goal
+                        c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     else:
-                        k = g_df.shape[0] + 2
+                        k = g_df.shape[0] + goal_inc
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
                         c_g_df = pd.read_csv(
@@ -1045,12 +1078,12 @@ def load_attempt_data_p(f):
                             )
 
             else:
-                c_g_file = f"{path}/entity.{lvl}.{attempt}.2.data.csv"
+                c_g_file = f"{path}/entity.{lvl}.{attempt}.{goal_inc}.data.csv"
                 try:
                     c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
                 except:
                     raise FileNotFoundError(
-                        f"Could not find data for entity (goal) 2 for level {lvl}, attempt {attempt}!"
+                        f"Could not find data for entity (goal) {goal_inc} for level {lvl}, attempt {attempt}!"
                     )
 
                 c_g = (c_g_df["posX"].values[0], c_g_df["posY"].values[0])
@@ -1111,7 +1144,7 @@ def load_attempt_data_p(f):
             p_angles = np.where(p_angles < 0, p_angles + 360.0, p_angles)
             p_df["angle"] = p_angles
             o_dfs = []
-            for i in range(9, obs_end + 1):
+            for i in range(obs_start, obs_end + 1):
                 o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
                 try:
                     o = pd.read_csv(o_file, usecols=["posX", "posY", "angle"])
@@ -1134,11 +1167,11 @@ def load_attempt_data_p(f):
             if g_df.shape[0] > 0:
                 for i in range(g_df.shape[0]):
                     if i < 6:
-                        k = i + 2
+                        k = i + goal_inc
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     else:
-                        k = 1
-                        c_g_file = f"{path}/entity.{lvl}.{attempt}.1.data.csv"
+                        k = final_goal
+                        c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
                         c_g_df = pd.read_csv(
                             c_g_file, usecols=["posX", "posY"], nrows=1
@@ -1198,10 +1231,10 @@ def load_attempt_data_p(f):
 
                 if g_df.shape[0] < 7:
                     if g_df.shape[0] == 6:
-                        k = 1
-                        c_g_file = f"{path}/entity.{lvl}.{attempt}.1.data.csv"
+                        k = final_goal
+                        c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     else:
-                        k = g_df.shape[0] + 2
+                        k = g_df.shape[0] + goal_inc
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
                         c_g_df = pd.read_csv(
@@ -1264,12 +1297,12 @@ def load_attempt_data_p(f):
                             )
 
             else:
-                c_g_file = f"{path}/entity.{lvl}.{attempt}.2.data.csv"
+                c_g_file = f"{path}/entity.{lvl}.{attempt}.{goal_inc}.data.csv"
                 try:
                     c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
                 except:
                     raise FileNotFoundError(
-                        f"Could not find data for entity (goal) 2 for level {lvl}, attempt {attempt}!"
+                        f"Could not find data for entity (goal) {goal_inc} for level {lvl}, attempt {attempt}!"
                     )
 
                 c_g = (c_g_df["posX"].values[0], c_g_df["posY"].values[0])
@@ -1318,11 +1351,11 @@ def load_attempt_data_p(f):
     return None
 
 
-def load_lvl_data_p(lvl, path, skip=0, control=1, outer_call=True, cores=None):
+def load_lvl_data_p(lvl, path, skip=0, control=1, study=1, outer_call=True, cores=None):
     S = []
     a = 0
     while True:
-        S.append((lvl, a, path, skip, control))
+        S.append((lvl, a, path, skip, control, study))
         a += 1
         p_file = f"{path}/player.{lvl}.{a}.0.data.csv"
         if not (os.path.isfile(os.path.expanduser(p_file))):
@@ -1337,10 +1370,10 @@ def load_lvl_data_p(lvl, path, skip=0, control=1, outer_call=True, cores=None):
     return S
 
 
-def load_test_data_p(path, skip=0, control=1, outer_call=True, cores=None):
+def load_test_data_p(path, skip=0, control=1, study=1, outer_call=True, cores=None):
     S = []
     for i in range(9, 12):
-        s = load_lvl_data_p(i, path, skip, control, False, None)
+        s = load_lvl_data_p(i, path, skip, control, study, False, None)
         S += s
     if outer_call:
         if cores is None:
@@ -1354,7 +1387,7 @@ def load_test_data_p(path, skip=0, control=1, outer_call=True, cores=None):
 
 # Path is a directory for a participant for a given experiment over several different days (e.g., Experiment_1T5)
 def load_experiment_data_p(
-    path, skip=0, control=1, outer_call=True, cores=None, exclusion_list=None
+    path, skip=0, control=1, study=1, outer_call=True, cores=None, exclusion_list=None
 ):
     if exclusion_list:
         S = []
@@ -1363,7 +1396,7 @@ def load_experiment_data_p(
         for i in dir_list:
             if i.is_dir():
                 if i.path not in exclusion_list:
-                    s = load_test_data_p(i.path, skip, control, False, None)
+                    s = load_test_data_p(i.path, skip, control, study, False, None)
                     S += s
         if outer_call:
             if cores is None:
@@ -1378,7 +1411,7 @@ def load_experiment_data_p(
     dir_list = os.scandir(dir_path)
     for i in dir_list:
         if i.is_dir():
-            s = load_test_data_p(i.path, skip, control, False, None)
+            s = load_test_data_p(i.path, skip, control, study, False, None)
             S += s
     if outer_call:
         if cores is None:
@@ -1398,10 +1431,10 @@ def load_participant_data_p(
     path="~/busy-beeway/data/game_data",
     skip=0,
     control=1,
+    study=1,
     outer_call=True,
     cores=None,
     exclusion_list=None,
-    study=1,
 ):
     if study == 1:
         e_code = "T5"
@@ -1415,7 +1448,7 @@ def load_participant_data_p(
             if i.path.endswith(e_code):
                 e_path = f"{i.path}/{p_id}"
                 s = load_experiment_data_p(
-                    e_path, skip, control, False, None, exclusion_list
+                    e_path, skip, control, study, False, None, exclusion_list
                 )
                 S += s
     if outer_call:

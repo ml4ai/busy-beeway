@@ -18,7 +18,12 @@ from transformers.data_utils.data_utils import (
     create_preference_data,
     load_features_from_parquet,
 )
-from transformers.replayer.replayer import generate_stats, goal_only_replay, goal_only_replay_p, load_stats
+from transformers.replayer.replayer import (
+    generate_stats,
+    goal_only_replay,
+    goal_only_replay_p,
+    load_stats,
+)
 
 
 def main(argv):
@@ -56,6 +61,7 @@ def main(argv):
         "-f",
         "--split_size",
         type=int,
+        default = 100,
         help="Trajectory segment size.",
     )
     parser.add_argument(
@@ -103,6 +109,13 @@ def main(argv):
         action="store_true",
         help="Tries to load movement statistics \nfrom 'p_stats.npy' \nwithin the cache directory of \nthe current working directory (recommended).",
     )
+    parser.add_argument(
+        "-b",
+        "--bbway",
+        type=int,
+        default=1,
+        help="Busy Beeway study (1 or 2).",
+    )
     args = parser.parse_args(argv)
     parallel = args.parallel
     path = args.data_dir
@@ -114,12 +127,13 @@ def main(argv):
     seed = args.seed
     load_features = args.load_features
     load_p_stats = args.load_stats
+    study = args.bbway
     if args.exclusion_list:
         L = load_list(args.exclusion_list)
     else:
         L = None
 
-    Path(f"{o_path}/preference_data").mkdir(parents=True, exist_ok=True)
+    Path(f"{o_path}/preference_data_{study}").mkdir(parents=True, exist_ok=True)
     if args.cache_stats:
         Path(f"{o_path}/cache").mkdir(parents=True, exist_ok=True)
         save_p_stats = f"{o_path}/cache/p_stats.npy"
@@ -137,7 +151,7 @@ def main(argv):
                 save_f = None
                 save_rf = None
 
-            save_pref = f"{o_path}/preference_data/{p_id}.hdf5"
+            save_pref = f"{o_path}/preference_data_{study}/{p_id}.hdf5"
 
             pd_not_loaded = True
             if parallel:
@@ -156,11 +170,17 @@ def main(argv):
                             raise FileNotFoundError
                     except FileNotFoundError:
                         CD = load_participant_data_p(
-                            p_id=p_id, path=path, control=3, exclusion_list=L
+                            p_id=p_id,
+                            path=path,
+                            control=3,
+                            exclusion_list=L,
+                            study=study,
                         )
                         stats = generate_stats(CD, save_data=save_p_stats)
                         del CD
-                    D = load_participant_data_p(p_id=p_id, path=path, exclusion_list=L)
+                    D = load_participant_data_p(
+                        p_id=p_id, path=path, exclusion_list=L, study=study
+                    )
                     pd_not_loaded = False
                     RD = goal_only_replay_p(D, stats, simulate_forward=False, seed=seed)
                     RF = compute_features_p(RD, arc_sweep, save_dir=save_rf)
@@ -173,7 +193,7 @@ def main(argv):
                 except FileNotFoundError:
                     if pd_not_loaded:
                         D = load_participant_data_p(
-                            p_id=p_id, path=path, exclusion_list=L
+                            p_id=p_id, path=path, exclusion_list=L, study=study
                         )
                     F = compute_features_p(D, arc_sweep, save_dir=save_f)
                     del D
@@ -198,11 +218,17 @@ def main(argv):
                             raise FileNotFoundError
                     except FileNotFoundError:
                         CD = load_participant_data(
-                            p_id=p_id, path=path, control=3, exclusion_list=L
+                            p_id=p_id,
+                            path=path,
+                            control=3,
+                            exclusion_list=L,
+                            study=study,
                         )
                         stats = generate_stats(CD, save_data=save_p_stats)
                         del CD
-                    D = load_participant_data(p_id=p_id, path=path, exclusion_list=L)
+                    D = load_participant_data(
+                        p_id=p_id, path=path, exclusion_list=L, study=study
+                    )
                     pd_not_loaded = False
                     RD = goal_only_replay(D, stats, simulate_forward=False, seed=seed)
                     RF = compute_features(RD, arc_sweep, save_dir=save_rf)
@@ -215,7 +241,7 @@ def main(argv):
                 except FileNotFoundError:
                     if pd_not_loaded:
                         D = load_participant_data(
-                            p_id=p_id, path=path, exclusion_list=L
+                            p_id=p_id, path=path, exclusion_list=L, study=study
                         )
                     F = compute_features(D, arc_sweep, save_dir=save_f)
                     del D
@@ -234,7 +260,7 @@ def main(argv):
             save_f = None
             save_rf = None
 
-        save_pref = f"{o_path}/preference_data/{p_id}.hdf5"
+        save_pref = f"{o_path}/preference_data_{study}/{p_id}.hdf5"
 
         pd_not_loaded = True
         if parallel:
@@ -251,11 +277,13 @@ def main(argv):
                         raise FileNotFoundError
                 except FileNotFoundError:
                     CD = load_participant_data_p(
-                        p_id=p_id, path=path, control=3, exclusion_list=L
+                        p_id=p_id, path=path, control=3, exclusion_list=L, study=study
                     )
                     stats = generate_stats(CD, save_data=save_p_stats)
                     del CD
-                D = load_participant_data_p(p_id=p_id, path=path, exclusion_list=L)
+                D = load_participant_data_p(
+                    p_id=p_id, path=path, exclusion_list=L, study=study
+                )
                 pd_not_loaded = False
                 RD = goal_only_replay_p(D, stats, simulate_forward=False, seed=seed)
                 RF = compute_features_p(RD, arc_sweep, save_dir=save_rf)
@@ -267,7 +295,9 @@ def main(argv):
                     raise FileNotFoundError
             except FileNotFoundError:
                 if pd_not_loaded:
-                    D = load_participant_data_p(p_id=p_id, path=path, exclusion_list=L)
+                    D = load_participant_data_p(
+                        p_id=p_id, path=path, exclusion_list=L, study=study
+                    )
                 F = compute_features_p(D, arc_sweep, save_dir=save_f)
                 del D
             create_preference_data(RF, F, split_size=split_size, save_data=save_pref)
@@ -288,11 +318,17 @@ def main(argv):
                     raise FileNotFoundError
             except FileNotFoundError:
                 CD = load_participant_data(
-                    p_id=p_id, path=path, control=3, exclusion_list=L
+                    p_id=p_id,
+                    path=path,
+                    control=3,
+                    exclusion_list=L,
+                    study=study,
                 )
                 stats = generate_stats(CD, save_data=save_p_stats)
                 del CD
-            D = load_participant_data(p_id=p_id, path=path, exclusion_list=L)
+            D = load_participant_data(
+                p_id=p_id, path=path, exclusion_list=L, study=study
+            )
             pd_not_loaded = False
             RD = goal_only_replay(D, stats, simulate_forward=False, seed=seed)
             RF = compute_features(RD, arc_sweep, save_dir=save_rf)
@@ -304,7 +340,9 @@ def main(argv):
                 raise FileNotFoundError
         except FileNotFoundError:
             if pd_not_loaded:
-                D = load_participant_data(p_id=p_id, path=path, exclusion_list=L)
+                D = load_participant_data(
+                    p_id=p_id, path=path, exclusion_list=L, study=study
+                )
             F = compute_features(D, arc_sweep, save_dir=save_f)
             del D
         create_preference_data(RF, F, split_size=split_size, save_data=save_pref)

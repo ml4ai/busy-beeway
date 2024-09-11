@@ -38,13 +38,21 @@ def main(argv):
         default=Path.cwd(),
         help="Path for saving output",
     )
+    parser.add_argument(
+        "-b",
+        "--bbway",
+        type=int,
+        default=1,
+        help="Busy Beeway study (1 or 2).",
+    )
     args = parser.parse_args(argv)
     study_list = args.study_list
     verified_csv = args.verified_csv
     save_dir = os.path.expanduser(args.save_dir)
     data_dir = os.path.expanduser(args.data_dir)
+    study = args.bbway
     sl = pd.read_csv(study_list, header=None)
-    sl = list(sl[sl[2] == "bbway1"][0])
+    sl = list(sl[sl[2] == f"bbway{study}"][0])
     with open(f"{save_dir}/participant_list.txt", "w") as f:
         for line in sl:
             f.write(f"{line}\n")
