@@ -2,14 +2,12 @@ import random
 import time
 import cloudpickle as pickle
 import os
-from transformers.training.jax_utils import init_rng
 import numpy as np
 
 
 def set_random_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
-    init_rng(seed)
 
 
 # Memory Mapped Arrays get loaded into physical memory here. The indices must be sorted

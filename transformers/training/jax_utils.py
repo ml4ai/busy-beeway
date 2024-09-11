@@ -99,8 +99,6 @@ def pref_loss_fn(state, train_params, batch, rng):
 
     B, T, _ = batch["observations"].shape
 
-    rng, _ = jax.random.split(rng)
-
     trans_pred_1, _ = state.apply_fn(
         train_params,
         obs_1,

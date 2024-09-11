@@ -1,7 +1,9 @@
 import os.path as osp
 
 import numpy as np
+import tdqm
 from flax.training.early_stopping import EarlyStopping
+import jax
 
 from transformers.training.jax_utils import batch_to_jax
 from transformers.training.logging_utils import logger, setup_logger
@@ -18,12 +20,12 @@ def train_pt(
     data,
     training_data_idx,
     test_data_idx,
+    rng_key,
     batch_size=64,
     n_epochs=50,
     eval_period=1,
     do_early_stop=False,
     criteria_key="eval_loss",
-    seed=2024,
     save_dir="~/busy-beeway/transformers/logs",
     save_model=True,
     **kwargs,
@@ -33,8 +35,9 @@ def train_pt(
     setup_logger(
         variant=None, seed=seed, base_log_dir=save_dir, include_exp_prefix_sub_dir=False
     )
-    set_random_seed(seed)
-    rng = np.random.default_rng(seed)
+    key, subkey1, subkey2, subkey3, subkey4 = jax.random.split(rng_key, 5)
+    set_random_seed(key)
+    rng = np.random.default_rng(subkey1)
     data_size = training_data_idx.shape[0]
     _, query_len, observation_dim = data["observations"].shape
     eval_data_size = test_data_idx.shape[0]
@@ -60,6 +63,7 @@ def train_pt(
     )
     model = PrefTransformerTrainer(
         trans,
+        subkey2,
         init_value=kwargs.get("init_value", 0),
         peak_value=kwargs.get("peak_value", 1e-4),
         warmup_steps=kwargs.get("warmup_steps", int(n_epochs * interval * 0.1)),
@@ -81,7 +85,7 @@ def train_pt(
         if epoch:
             # train phase
             shuffled_idx = rng.permutation(data_size)
-            for i in range(interval):
+            for i, rng_key in enumerate(jax.random.split(subkey3, interval)):
                 start_pt = i * batch_size
                 end_pt = min((i + 1) * batch_size, data_size)
                 with Timer() as train_timer:
@@ -102,7 +106,7 @@ def train_pt(
 
         # eval phase
         if epoch % eval_period == 0:
-            for j in range(eval_interval):
+            for j, rng_key in enumerate(jax.random.split(subkey4, eval_interval)):
                 eval_start_pt, eval_end_pt = j * batch_size, min(
                     (j + 1) * batch_size, eval_data_size
                 )

@@ -8,6 +8,7 @@ import numpy as np
 from argformat import StructuredFormatter
 
 from transformers.training.train_model import train_pt
+import jax
 
 
 def main(argv):
@@ -82,7 +83,9 @@ def main(argv):
 
     try:
         with h5py.File(data, "r") as f:
-            rng = np.random.default_rng(seed)
+            key = jax.random.PRNGKey(seed)
+            key, subkey = jax.random.split(key)
+            rng = np.random.default_rng(key)
             p_size = f["observations"].shape[0]
             shuffled_idx = rng.permutation(p_size)
 
@@ -92,6 +95,7 @@ def main(argv):
                 f,
                 np.sort(shuffled_idx[:t_int]),
                 np.sort(shuffled_idx[t_int:]),
+                subkey,
                 batch_size=batch_size,
                 n_epochs=n_epochs,
                 eval_period=eval_period,
