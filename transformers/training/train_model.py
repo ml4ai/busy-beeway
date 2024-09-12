@@ -39,7 +39,7 @@ def train_pt(
         base_log_dir=save_dir,
         include_exp_prefix_sub_dir=False,
     )
-    set_random_seed(np.array(subkey1, dtype=int))
+    set_random_seed(np.array(subkey1, dtype=int)[0])
     rng = np.random.default_rng(np.array(subkey2, dtype=int))
     data_size = training_data_idx.shape[0]
     _, query_len, observation_dim = data["observations"].shape
