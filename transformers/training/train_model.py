@@ -35,8 +35,8 @@ def train_pt(
     setup_logger(
         variant=None, seed=seed, base_log_dir=save_dir, include_exp_prefix_sub_dir=False
     )
-    key, subkey1, subkey2, subkey3, subkey4 = jax.random.split(rng_key, 5)
-    set_random_seed(key)
+    rng_key, subkey1, subkey2, subkey3, subkey4 = jax.random.split(rng_key, 5)
+    set_random_seed(rng_key)
     rng = np.random.default_rng(subkey1)
     data_size = training_data_idx.shape[0]
     _, query_len, observation_dim = data["observations"].shape
@@ -97,7 +97,7 @@ def train_pt(
                             rng,
                         )
                     )
-                    for key, val in model.train(batch).items():
+                    for key, val in model.train(batch, rng_key).items():
                         metrics[key].append(val)
             metrics["train_time"] = train_timer()
         else:
@@ -114,7 +114,7 @@ def train_pt(
                 batch_eval = batch_to_jax(
                     index_batch(data, test_data_idx[eval_start_pt:eval_end_pt])
                 )
-                for key, val in model.evaluation(batch_eval).items():
+                for key, val in model.evaluation(batch_eval, rng_key).items():
                     metrics[key].append(val)
             criteria = np.mean(metrics[criteria_key])
             early_stop = early_stop.update(criteria)
