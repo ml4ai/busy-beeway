@@ -41,9 +41,17 @@ def main(argv):
         default=f"{Path.cwd()}/max_seq_length.txt",
         help="File to save output",
     )
+    parser.add_argument(
+        "-b",
+        "--bbway",
+        type=int,
+        default=1,
+        help="Busy Beeway study (1 or 2).",
+    )
     args = parser.parse_args(argv)
     pid = args.p_id
     e = args.exclusion_list
+    study = args.bbway
     data_dir = os.path.expanduser(args.data_dir)
     save_file = os.path.expanduser(args.save_file)
 
@@ -53,7 +61,7 @@ def main(argv):
     for i in pid:
         max_l.append(
             max_seq_length(
-                load_participant_data_p(p_id=i, path=data_dir, exclusion_list=e)
+                load_participant_data_p(p_id=i, path=data_dir, exclusion_list=e,study=study)
             )
         )
     max_seq_l = max(max_l)
