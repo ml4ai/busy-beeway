@@ -39,7 +39,6 @@ def train_pt(
         base_log_dir=save_dir,
         include_exp_prefix_sub_dir=False,
     )
-    print(np.array(subkey1, dtype=int)[0])
     set_random_seed(int(subkey1[0]))
     rng = np.random.default_rng(np.array(subkey2, dtype=int))
     data_size = training_data_idx.shape[0]
@@ -114,7 +113,7 @@ def train_pt(
 
         # eval phase
         if epoch % eval_period == 0:
-            for j, rng_key in tdqm(
+            for j, rng_key in tqdm(
                 enumerate(jax.random.split(subkey5, eval_interval)),
                 total=interval,
                 desc=f"Evaluation Epoch {epoch}",
