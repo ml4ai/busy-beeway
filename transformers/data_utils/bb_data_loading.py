@@ -718,7 +718,7 @@ def load_participant_data(
     dir_list = os.scandir(dir_path)
     for i in dir_list:
         if i.is_dir():
-            if i.path.endswith(e_code):
+            if i.path.endswith(e_code) and not(i.path.endswith("_97D1")):
                 e_path = f"{i.path}/{p_id}"
                 d = load_experiment_data(e_path, skip, control, study, exclusion_list)
                 if d:
@@ -1445,7 +1445,7 @@ def load_participant_data_p(
     dir_list = os.scandir(dir_path)
     for i in dir_list:
         if i.is_dir():
-            if i.path.endswith(e_code):
+            if i.path.endswith(e_code) and not(i.path.endswith("_97D1")):
                 e_path = f"{i.path}/{p_id}"
                 s = load_experiment_data_p(
                     e_path, skip, control, study, False, None, exclusion_list
