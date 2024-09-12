@@ -1,7 +1,7 @@
 import os.path as osp
 
 import numpy as np
-import tdqm
+from tqdm import tqdm
 from flax.training.early_stopping import EarlyStopping
 import jax
 
@@ -85,7 +85,7 @@ def train_pt(
         if epoch:
             # train phase
             shuffled_idx = rng.permutation(data_size)
-            for i, rng_key in enumerate(jax.random.split(subkey3, interval)):
+            for i, rng_key in tqdm(enumerate(jax.random.split(subkey3, interval)),total=interval,desc=f"Training Epoch {epoch}"):
                 start_pt = i * batch_size
                 end_pt = min((i + 1) * batch_size, data_size)
                 with Timer() as train_timer:
@@ -106,7 +106,7 @@ def train_pt(
 
         # eval phase
         if epoch % eval_period == 0:
-            for j, rng_key in enumerate(jax.random.split(subkey4, eval_interval)):
+            for j, rng_key in tdqm(enumerate(jax.random.split(subkey4, eval_interval)),total=interval,desc=f"Evaluation Epoch {epoch}"):
                 eval_start_pt, eval_end_pt = j * batch_size, min(
                     (j + 1) * batch_size, eval_data_size
                 )
