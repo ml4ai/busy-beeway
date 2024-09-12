@@ -1457,8 +1457,8 @@ def load_participant_data_p(
                 and not (i.path.endswith("97D1"))
                 and not (i.path.endswith("aiD1"))
             ):
-                if e_path not in exlusion_list:
-                    e_path = f"{i.path}/{p_id}"
+                e_path = f"{i.path}/{p_id}"
+                if e_path not in exclusion_list:
                     s = load_experiment_data_p(
                         e_path, skip, control, study, False, None, exclusion_list
                     )
