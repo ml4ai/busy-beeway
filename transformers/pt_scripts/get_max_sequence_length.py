@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath("../.."))
 from pathlib import Path
 
@@ -56,12 +57,17 @@ def main(argv):
     save_file = os.path.expanduser(args.save_file)
 
     pid = load_list(pid)
-    e = load_list(e)
+    if e:
+        e = load_list(e)
+    else:
+        e =[]
     max_l = []
     for i in pid:
         max_l.append(
             max_seq_length(
-                load_participant_data_p(p_id=i, path=data_dir, exclusion_list=e,study=study)
+                load_participant_data_p(
+                    p_id=i, path=data_dir, exclusion_list=e, study=study
+                )
             )
         )
     max_seq_l = max(max_l)

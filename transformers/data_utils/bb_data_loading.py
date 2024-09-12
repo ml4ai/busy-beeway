@@ -675,7 +675,7 @@ def load_test_data(
 
 # Path is a directory for a participant for a given experiment over several different days (e.g., Experiment_1T5)
 # Exclusion list is a list of strings where each is a path to a test session to exclude.
-def load_experiment_data(path, skip=0, control=1, study=1, exclusion_list=None):
+def load_experiment_data(path, skip=0, control=1, study=1, exclusion_list=[]):
     if exclusion_list:
         D = []
         dir_path = os.path.expanduser(path)
@@ -707,7 +707,7 @@ def load_participant_data(
     skip=0,
     control=1,
     study=1,
-    exclusion_list=None,
+    exclusion_list=[],
 ):
     if study == 1:
         e_code = "T5"
@@ -718,11 +718,18 @@ def load_participant_data(
     dir_list = os.scandir(dir_path)
     for i in dir_list:
         if i.is_dir():
-            if i.path.endswith(e_code) and not (i.path.endswith("97D1")) and not(i.path.endswith("aiD1")):
+            if (
+                i.path.endswith(e_code)
+                and not (i.path.endswith("97D1"))
+                and not (i.path.endswith("aiD1"))
+            ):
                 e_path = f"{i.path}/{p_id}"
-                d = load_experiment_data(e_path, skip, control, study, exclusion_list)
-                if d:
-                    D += d
+                if e_path not in exclusion_list:
+                    d = load_experiment_data(
+                        e_path, skip, control, study, exclusion_list
+                    )
+                    if d:
+                        D += d
     return D
 
 
@@ -1387,7 +1394,7 @@ def load_test_data_p(path, skip=0, control=1, study=1, outer_call=True, cores=No
 
 # Path is a directory for a participant for a given experiment over several different days (e.g., Experiment_1T5)
 def load_experiment_data_p(
-    path, skip=0, control=1, study=1, outer_call=True, cores=None, exclusion_list=None
+    path, skip=0, control=1, study=1, outer_call=True, cores=None, exclusion_list=[]
 ):
     if exclusion_list:
         S = []
@@ -1434,7 +1441,7 @@ def load_participant_data_p(
     study=1,
     outer_call=True,
     cores=None,
-    exclusion_list=None,
+    exclusion_list=[],
 ):
     if study == 1:
         e_code = "T5"
@@ -1445,12 +1452,17 @@ def load_participant_data_p(
     dir_list = os.scandir(dir_path)
     for i in dir_list:
         if i.is_dir():
-            if i.path.endswith(e_code) and not (i.path.endswith("97D1")) and not (i.path.endswith("aiD1")):
-                e_path = f"{i.path}/{p_id}"
-                s = load_experiment_data_p(
-                    e_path, skip, control, study, False, None, exclusion_list
-                )
-                S += s
+            if (
+                i.path.endswith(e_code)
+                and not (i.path.endswith("97D1"))
+                and not (i.path.endswith("aiD1"))
+            ):
+                if e_path not in exlusion_list:
+                    e_path = f"{i.path}/{p_id}"
+                    s = load_experiment_data_p(
+                        e_path, skip, control, study, False, None, exclusion_list
+                    )
+                    S += s
     if outer_call:
         if cores is None:
             cores = os.cpu_count()

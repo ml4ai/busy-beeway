@@ -131,7 +131,7 @@ def main(argv):
     if args.exclusion_list:
         L = load_list(args.exclusion_list)
     else:
-        L = None
+        L = []
 
     Path(f"{o_path}/preference_data_{study}").mkdir(parents=True, exist_ok=True)
     if args.cache_stats:
