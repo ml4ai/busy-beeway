@@ -85,7 +85,7 @@ def main(argv):
         with h5py.File(data, "r") as f:
             key = jax.random.PRNGKey(seed)
             key, subkey = jax.random.split(key)
-            rng = np.random.default_rng(key)
+            rng = np.random.default_rng(np.array(key,dtype=int))
             p_size = f["observations"].shape[0]
             shuffled_idx = rng.permutation(p_size)
 

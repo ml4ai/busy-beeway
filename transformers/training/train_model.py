@@ -31,13 +31,16 @@ def train_pt(
     **kwargs,
 ):
 
+    rng_key, subkey1, subkey2, subkey3, subkey4,subkey5 = jax.random.split(rng_key, 6)
     save_dir = osp.expanduser(save_dir)
     setup_logger(
-        variant=None, seed=seed, base_log_dir=save_dir, include_exp_prefix_sub_dir=False
+        variant=None,
+        seed=np.array(rng_key,dtype=int),
+        base_log_dir=save_dir,
+        include_exp_prefix_sub_dir=False,
     )
-    rng_key, subkey1, subkey2, subkey3, subkey4 = jax.random.split(rng_key, 5)
-    set_random_seed(rng_key)
-    rng = np.random.default_rng(subkey1)
+    set_random_seed(np.array(subkey1,dtype=int))
+    rng = np.random.default_rng(np.array(subkey2,dtype=int))
     data_size = training_data_idx.shape[0]
     _, query_len, observation_dim = data["observations"].shape
     eval_data_size = test_data_idx.shape[0]
@@ -63,7 +66,7 @@ def train_pt(
     )
     model = PrefTransformerTrainer(
         trans,
-        subkey2,
+        subkey3,
         init_value=kwargs.get("init_value", 0),
         peak_value=kwargs.get("peak_value", 1e-4),
         warmup_steps=kwargs.get("warmup_steps", int(n_epochs * interval * 0.1)),
@@ -85,7 +88,11 @@ def train_pt(
         if epoch:
             # train phase
             shuffled_idx = rng.permutation(data_size)
-            for i, rng_key in tqdm(enumerate(jax.random.split(subkey3, interval)),total=interval,desc=f"Training Epoch {epoch}"):
+            for i, rng_key in tqdm(
+                enumerate(jax.random.split(subkey4, interval)),
+                total=interval,
+                desc=f"Training Epoch {epoch}",
+            ):
                 start_pt = i * batch_size
                 end_pt = min((i + 1) * batch_size, data_size)
                 with Timer() as train_timer:
@@ -106,7 +113,11 @@ def train_pt(
 
         # eval phase
         if epoch % eval_period == 0:
-            for j, rng_key in tdqm(enumerate(jax.random.split(subkey4, eval_interval)),total=interval,desc=f"Evaluation Epoch {epoch}"):
+            for j, rng_key in tdqm(
+                enumerate(jax.random.split(subkey5, eval_interval)),
+                total=interval,
+                desc=f"Evaluation Epoch {epoch}",
+            ):
                 eval_start_pt, eval_end_pt = j * batch_size, min(
                     (j + 1) * batch_size, eval_data_size
                 )
