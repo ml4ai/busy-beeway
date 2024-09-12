@@ -31,16 +31,16 @@ def train_pt(
     **kwargs,
 ):
 
-    rng_key, subkey1, subkey2, subkey3, subkey4,subkey5 = jax.random.split(rng_key, 6)
+    rng_key, subkey1, subkey2, subkey3, subkey4, subkey5 = jax.random.split(rng_key, 6)
     save_dir = osp.expanduser(save_dir)
     setup_logger(
         variant=None,
-        seed=np.array(rng_key,dtype=int),
+        seed=np.array(rng_key, dtype=int)[0],
         base_log_dir=save_dir,
         include_exp_prefix_sub_dir=False,
     )
-    set_random_seed(np.array(subkey1,dtype=int))
-    rng = np.random.default_rng(np.array(subkey2,dtype=int))
+    set_random_seed(np.array(subkey1, dtype=int))
+    rng = np.random.default_rng(np.array(subkey2, dtype=int))
     data_size = training_data_idx.shape[0]
     _, query_len, observation_dim = data["observations"].shape
     eval_data_size = test_data_idx.shape[0]
