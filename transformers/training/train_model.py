@@ -35,12 +35,12 @@ def train_pt(
     save_dir = osp.expanduser(save_dir)
     setup_logger(
         variant=None,
-        seed=np.array(rng_key, dtype=int)[0],
+        seed=int(rng_key[0]),
         base_log_dir=save_dir,
         include_exp_prefix_sub_dir=False,
     )
     print(np.array(subkey1, dtype=int)[0])
-    set_random_seed(np.array(subkey1, dtype=int)[0])
+    set_random_seed(int(subkey1[0]))
     rng = np.random.default_rng(np.array(subkey2, dtype=int))
     data_size = training_data_idx.shape[0]
     _, query_len, observation_dim = data["observations"].shape
