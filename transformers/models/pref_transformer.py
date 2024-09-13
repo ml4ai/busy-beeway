@@ -7,13 +7,12 @@ import transformers.models.ops as ops
 class GPT2MLP(nn.Module):
     embd_dim: int = 64
     intermediate_dim: int = 256
-    activation: str = "relu"
     resid_dropout: float = 0.1
 
     @nn.compact
     def __call__(self, x, training=False):
         x = nn.Dense(features=self.intermediate_dim, dtype=jnp.bfloat16)(x)
-        x = ops.apply_activation(x, activation=self.activation)
+        x = ops.apply_activation(x, activation="relu")
         x = nn.Dense(features=self.embd_dim, dtype=jnp.bfloat16)(x)
         x = nn.Dropout(rate=self.resid_dropout)(x, deterministic=not training)
         return x
@@ -79,7 +78,6 @@ class GPT2Block(nn.Module):
     resid_dropout: float = 0.1
     intermediate_dim: int = 256
     max_pos: int = 1024
-    activation: str = "relu"
     eps: float = 1e-05
 
     @nn.compact
@@ -107,8 +105,7 @@ class GPT2Block(nn.Module):
         x = GPT2MLP(
             embd_dim=self.embd_dim,
             intermediate_dim=self.intermediate_dim,
-            resid_dropout=self.resid_dropout,
-            activation=self.activation,
+            resid_dropout=self.resid_dropout
         )(x, training)
         x += residual
         return x, present, _attn_weights
@@ -120,7 +117,6 @@ class GPT2Model(nn.Module):
     attn_dropout: float = 0.1
     resid_dropout: float = 0.1
     intermediate_dim: int = 256
-    activation: str = "relu"
     num_layers: int = 1
     embd_dropout: float = 0.1
     max_pos: int = 1024
@@ -159,7 +155,6 @@ class GPT2Model(nn.Module):
                 num_heads,
                 attn_dropout,
                 intermediate_dim,
-                activation,
                 max_pos,
                 eps,
                 x,
@@ -176,7 +171,6 @@ class GPT2Model(nn.Module):
                 num_heads=num_heads,
                 attn_dropout=attn_dropout,
                 intermediate_dim=intermediate_dim,
-                activation=activation,
                 max_pos=max_pos,
                 eps=eps,
             )(x, **kwargs)
@@ -191,7 +185,6 @@ class GPT2Model(nn.Module):
                 num_heads,
                 attn_dropout,
                 intermediate_dim,
-                activation,
                 max_pos,
                 eps,
                 x,
@@ -207,7 +200,6 @@ class GPT2Model(nn.Module):
             self.num_heads,
             self.attn_dropout,
             self.intermediate_dim,
-            self.activation,
             self.max_pos,
             self.eps,
             x,
@@ -263,7 +255,6 @@ class PT(nn.Module):
     attn_dropout: float = 0.1
     resid_dropout: float = 0.1
     intermediate_dim: int = 256
-    activation: str = "relu"
     num_layers: int = 1
     embd_dropout: float = 0.1
     max_pos: int = 1024
@@ -292,7 +283,6 @@ class PT(nn.Module):
             attn_dropout=self.attn_dropout,
             resid_dropout=self.resid_dropout,
             intermediate_dim=self.intermediate_dim,
-            activation=self.activation,
             num_layers=self.num_layers,
             embd_dropout=self.embd_dropout,
             max_pos=self.max_pos,
