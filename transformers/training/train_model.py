@@ -57,7 +57,6 @@ def train_pt(
         attn_dropout=kwargs.get("attn_dropout", 0.1),
         resid_dropout=kwargs.get("resid_dropout", 0.1),
         intermediate_dim=kwargs.get("intermediate_dim", 4 * batch_size),
-        activation=kwargs.get("activation", "relu"),
         num_layers=kwargs.get("num_layers", 1),
         embd_dropout=kwargs.get("embd_dropout", 0.1),
         max_pos=kwargs.get("max_pos", max_pos),
