@@ -32,7 +32,7 @@ def split_heads(x, num_heads, head_dim):
     else:
         raise ValueError(f'Input tensor should have rank 4 or 5, but has rank {x.ndim}.')
 
-def attention(query, key, value, casual_mask, masked_bias, dropout, scale_attn_weights, training, attn_mask=None, head_mask=None, feedback=None):
+def attention(query, key, value, casual_mask, masked_bias, dropout, scale_attn_weights, training, attn_mask=None, feedback=None):
     """
     Computes Dot-Product Attention for the given query, key and value.
 
@@ -70,9 +70,6 @@ def attention(query, key, value, casual_mask, masked_bias, dropout, scale_attn_w
     _attn_weights = nn.softmax(attn_weights, axis=-1)
     attn_weights = _attn_weights.astype(value.dtype)
     attn_weights = dropout(attn_weights, deterministic=not training)
-
-    if head_mask is not None:
-        attn_weights = attn_weights * head_mask
 
     out = jnp.matmul(attn_weights, value)
     return out, _attn_weights
