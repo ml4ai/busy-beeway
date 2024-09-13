@@ -120,84 +120,17 @@ class GPT2Model(nn.Module):
 
         attn_weights_list = []
 
-        def blocks(i, y):
-            (
-                attn_mask,
-                training,
-                embd_dim,
-                num_heads,
-                attn_dropout,
-                intermediate_dim,
-                max_pos,
-                eps,
-                x,
-                attn_weights_list,
-            ) = y
+        for i in range(self.num_layers):
             x, attn_weights = GPT2Block(
-                embd_dim=embd_dim,
-                num_heads=num_heads,
-                attn_dropout=attn_dropout,
-                intermediate_dim=intermediate_dim,
-                max_pos=max_pos,
-                eps=eps,
-            )(x, attn_mask, training)
+                embd_dim=self.embd_dim,
+                num_heads=self.num_heads,
+                attn_dropout=self.attn_dropout,
+                intermediate_dim=self.intermediate_dim,
+                max_pos=self.max_pos,
+                eps=self.eps,
+            )(x, attn_mask,training)
 
             attn_weights_list.append(attn_weights)
-            return (
-                attn_mask,
-                training,
-                embd_dim,
-                num_heads,
-                attn_dropout,
-                intermediate_dim,
-                max_pos,
-                eps,
-                x,
-                attn_weights_list,
-            )
-
-        y = (
-            attn_mask,
-            training,
-            self.embd_dim,
-            self.num_heads,
-            self.attn_dropout,
-            self.intermediate_dim,
-            self.max_pos,
-            self.eps,
-            x,
-            attn_weights_list,
-        )
-        (
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            x,
-            attn_weights_list,
-        ) = lax.fori_loop(0, self.num_layers, blocks, y, unroll=True)
-        # for i in range(self.num_layers):
-        #     kwargs = {
-        #         "layer_past": past_key_values[i],
-        #         "attn_mask": attn_mask,
-        #         "head_mask": head_mask[i],
-        #         "training": training,
-        #     }
-        #     x, present, attn_weights = GPT2Block(
-        #         embd_dim=self.embd_dim,
-        #         num_heads=self.num_heads,
-        #         attn_dropout=self.attn_dropout,
-        #         intermediate_dim=self.intermediate_dim,
-        #         activation=self.activation,
-        #         max_pos=self.max_pos,
-        #         eps=self.eps,
-        #     )(x, **kwargs)
-
-        #     attn_weights_list.append(attn_weights)
         x = nn.LayerNorm(epsilon=self.eps, dtype=jnp.bfloat16)(x)
         return {
             "last_hidden_state": x,
