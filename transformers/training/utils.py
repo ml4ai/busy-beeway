@@ -3,6 +3,7 @@ import time
 import cloudpickle as pickle
 import os
 import jax.numpy as jnp
+import jax
 
 
 def set_random_seed(seed):
@@ -21,7 +22,7 @@ def index_batch(batch, indices, rng_key=None):
     else:
         indexed = {}
         for key in batch.keys():
-            shuffled_idx = jax.random.permutation(rng_key,indices.shape[0])
+            shuffled_idx = jax.random.permutation(rng_key, indices.shape[0])
             indexed[key] = batch[key][jnp.sort(indices), ...][shuffled_idx, ...]
         return indexed
 
