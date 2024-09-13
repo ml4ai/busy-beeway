@@ -2,7 +2,7 @@ import random
 import time
 import cloudpickle as pickle
 import os
-import numpy as np
+import jax.numpy as jnp
 
 
 def set_random_seed(seed):
@@ -12,17 +12,17 @@ def set_random_seed(seed):
 
 # Memory Mapped Arrays get loaded into physical memory here. The indices must be sorted
 # to load the batch into memory. The batch can then be shuffled using the rng.
-def index_batch(batch, indices, rng=None):
-    if rng is None:
+def index_batch(batch, indices, rng_key=None):
+    if rng_key is None:
         indexed = {}
         for key in batch.keys():
-            indexed[key] = batch[key][np.sort(indices), ...]
+            indexed[key] = batch[key][jnp.sort(indices), ...]
         return indexed
     else:
         indexed = {}
         for key in batch.keys():
-            shuffled_idx = rng.permutation(indices.shape[0])
-            indexed[key] = batch[key][np.sort(indices), ...][shuffled_idx, ...]
+            shuffled_idx = jnp.random.permutation(rng_key,indices.shape[0])
+            indexed[key] = batch[key][jnp.sort(indices), ...][shuffled_idx, ...]
         return indexed
 
 

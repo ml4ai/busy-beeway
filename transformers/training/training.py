@@ -1,6 +1,5 @@
 import jax
 import jax.numpy as jnp
-import numpy as np
 import optax
 from flax.training.train_state import TrainState
 from ml_collections import ConfigDict
@@ -10,7 +9,7 @@ from transformers.training.jax_utils import pref_loss_fn
 
 class PrefTransformerTrainer(object):
 
-    def __init__(self, trans, rng_key,**kwargs):
+    def __init__(self, trans, rng_key1,rng_key2, **kwargs):
         self.trans = trans
 
         optimizer_class = optax.adamw
@@ -22,13 +21,12 @@ class PrefTransformerTrainer(object):
             decay_steps=kwargs.get("decay_steps", 650),
             end_value=kwargs.get("end_value", 0),
         )
-        key,subkey = jax.random.split(rng_key)
         tx = optimizer_class(scheduler_class)
         # Reconfigure for our data
         trans_params = self.trans.init(
-            {"params": key, "dropout": subkey},
-            jnp.zeros((10, 25, trans.observation_dim)),
-            jnp.ones((10, 25), dtype=jnp.int32),
+            {"params": rng_key1, "dropout": rng_key2},
+            jnp.zeros((10, 25, trans.observation_dim), dtype=jnp.bfloat16),
+            jnp.ones((10, 25), dtype=jnp.bfloat16),
         )
         self._train_state = TrainState.create(
             params=trans_params, tx=tx, apply_fn=self.trans.apply

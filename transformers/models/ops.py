@@ -55,8 +55,8 @@ def attention(query, key, value, casual_mask, masked_bias, dropout, scale_attn_w
         (tensor): Attention weights, shape [B, num_heads, seq_len, seq_len].
         (tensor): KLD loss with external feedback, float.
     """
-    query = query.astype(jnp.float32)
-    key = key.astype(jnp.float32)
+    query = query.astype(jnp.bfloat16)
+    key = key.astype(jnp.bfloat16)
     attn_weights = jnp.matmul(query, jnp.swapaxes(key, -1, -2))
 
     if scale_attn_weights:

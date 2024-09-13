@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 from flax.training.early_stopping import EarlyStopping
 import jax
+import jax.numpy as jnp
 
 from transformers.training.jax_utils import batch_to_jax
 from transformers.training.logging_utils import logger, setup_logger
@@ -13,7 +14,7 @@ from transformers.training.training import (
     InterventionMLPTrainer,
     PrefTransformerTrainer,
 )
-from transformers.training.utils import Timer, index_batch, save_pickle, set_random_seed
+from transformers.training.utils import Timer, index_batch, save_pickle
 
 
 def train_pt(
@@ -21,6 +22,7 @@ def train_pt(
     training_data_idx,
     test_data_idx,
     rng_key,
+    seed,
     batch_size=64,
     n_epochs=50,
     eval_period=1,
@@ -31,16 +33,13 @@ def train_pt(
     **kwargs,
 ):
 
-    rng_key, subkey1, subkey2, subkey3, subkey4, subkey5 = jax.random.split(rng_key, 6)
     save_dir = osp.expanduser(save_dir)
     setup_logger(
         variant=None,
-        seed=int(rng_key[0]),
+        seed=seed,
         base_log_dir=save_dir,
         include_exp_prefix_sub_dir=False,
     )
-    set_random_seed(int(subkey1[0]))
-    rng = np.random.default_rng(np.array(subkey2, dtype=int))
     data_size = training_data_idx.shape[0]
     _, query_len, observation_dim = data["observations"].shape
     eval_data_size = test_data_idx.shape[0]
@@ -64,9 +63,12 @@ def train_pt(
         max_pos=kwargs.get("max_pos", max_pos),
         eps=kwargs.get("eps", 0.1),
     )
+
+    rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
     model = PrefTransformerTrainer(
         trans,
-        subkey3,
+        rng_subkey1,
+        rng_subkey2,
         init_value=kwargs.get("init_value", 0),
         peak_value=kwargs.get("peak_value", 1e-4),
         warmup_steps=kwargs.get("warmup_steps", int(n_epochs * interval * 0.1)),
@@ -76,7 +78,9 @@ def train_pt(
     early_stop = EarlyStopping(min_delta=1e-3, patience=10)
     c_best_epoch = np.nan
     c_criteria_key = np.nan
-    for epoch in range(n_epochs + 1):
+    for epoch, (s_key, t_key, e_key) in enumerate(
+        jax.random.split(rng_subkey3, (n_epochs + 1, 3))
+    ):
         metrics = {
             "epoch": epoch,
             "train_time": np.nan,
@@ -87,9 +91,9 @@ def train_pt(
         }
         if epoch:
             # train phase
-            shuffled_idx = rng.permutation(data_size)
-            for i, rng_key in tqdm(
-                enumerate(jax.random.split(subkey4, interval)),
+            shuffled_idx = jnp.random.permutation(s_key, data_size)
+            for i, (t_subkey1, t_subkey2) in tqdm(
+                enumerate(jax.random.split(t_key, (interval, 2))),
                 total=interval,
                 desc=f"Training Epoch {epoch}",
             ):
@@ -101,10 +105,10 @@ def train_pt(
                         index_batch(
                             data,
                             training_data_idx[shuffled_idx[start_pt:end_pt]],
-                            rng,
+                            t_subkey1,
                         )
                     )
-                    for key, val in model.train(batch, rng_key).items():
+                    for key, val in model.train(batch, t_subkey2).items():
                         metrics[key].append(val)
             metrics["train_time"] = train_timer()
         else:
@@ -113,9 +117,9 @@ def train_pt(
 
         # eval phase
         if epoch % eval_period == 0:
-            for j, rng_key in tqdm(
-                enumerate(jax.random.split(subkey5, eval_interval)),
-                total=interval,
+            for j, e_subkey in tqdm(
+                enumerate(jax.random.split(e_key, eval_interval)),
+                total=eval_interval,
                 desc=f"Evaluation Epoch {epoch}",
             ):
                 eval_start_pt, eval_end_pt = j * batch_size, min(
@@ -125,7 +129,7 @@ def train_pt(
                 batch_eval = batch_to_jax(
                     index_batch(data, test_data_idx[eval_start_pt:eval_end_pt])
                 )
-                for key, val in model.evaluation(batch_eval, rng_key).items():
+                for key, val in model.evaluation(batch_eval, e_subkey).items():
                     metrics[key].append(val)
             criteria = np.mean(metrics[criteria_key])
             early_stop = early_stop.update(criteria)
