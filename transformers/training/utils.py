@@ -21,7 +21,7 @@ def index_batch(batch, indices, rng_key=None):
     else:
         indexed = {}
         for key in batch.keys():
-            shuffled_idx = jnp.random.permutation(rng_key,indices.shape[0])
+            shuffled_idx = jax.random.permutation(rng_key,indices.shape[0])
             indexed[key] = batch[key][jnp.sort(indices), ...][shuffled_idx, ...]
         return indexed
 

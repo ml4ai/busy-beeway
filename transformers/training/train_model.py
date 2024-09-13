@@ -90,7 +90,7 @@ def train_pt(
         }
         if epoch:
             # train phase
-            shuffled_idx = jnp.random.permutation(s_key, data_size)
+            shuffled_idx = jax.random.permutation(s_key, data_size)
             for i, (t_subkey1, t_subkey2) in tqdm(
                 enumerate(jax.random.split(t_key, (interval, 2))),
                 total=interval,
