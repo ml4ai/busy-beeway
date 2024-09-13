@@ -12,9 +12,9 @@ class GPT2MLP(nn.Module):
 
     @nn.compact
     def __call__(self, x, training=False):
-        x = nn.Dense(features=self.intermediate_dim,dtype=jnp.bfloat16)(x)
+        x = nn.Dense(features=self.intermediate_dim, dtype=jnp.bfloat16)(x)
         x = ops.apply_activation(x, activation=self.activation)
-        x = nn.Dense(features=self.embd_dim,dtype=jnp.bfloat16)(x)
+        x = nn.Dense(features=self.embd_dim, dtype=jnp.bfloat16)(x)
         x = nn.Dropout(rate=self.resid_dropout)(x, deterministic=not training)
         return x
 
@@ -31,7 +31,7 @@ class GPT2SelfAttention(nn.Module):
         self, x, layer_past=None, attn_mask=None, head_mask=None, training=False
     ):
         head_dim = self.embd_dim // self.num_heads
-        x = nn.Dense(features=3 * self.embd_dim,dtype=jnp.bfloat16)(x)
+        x = nn.Dense(features=3 * self.embd_dim, dtype=jnp.bfloat16)(x)
 
         query, key, value = jnp.split(x, 3, axis=2)
 
@@ -66,7 +66,7 @@ class GPT2SelfAttention(nn.Module):
         )
         out = ops.merge_heads(out, self.num_heads, head_dim)
 
-        out = nn.Dense(features=self.embd_dim,dtype=jnp.bfloat16)(out)
+        out = nn.Dense(features=self.embd_dim, dtype=jnp.bfloat16)(out)
 
         out = nn.Dropout(rate=self.resid_dropout)(out, deterministic=not training)
         return out, present, _attn_weights
@@ -87,7 +87,7 @@ class GPT2Block(nn.Module):
         self, x, layer_past=None, attn_mask=None, head_mask=None, training=False
     ):
         residual = x
-        x = nn.LayerNorm(epsilon=self.eps,dtype=jnp.bfloat16)(x)
+        x = nn.LayerNorm(epsilon=self.eps, dtype=jnp.bfloat16)(x)
         kwargs = {
             "layer_past": layer_past,
             "attn_mask": attn_mask,
@@ -103,7 +103,7 @@ class GPT2Block(nn.Module):
         )(x, **kwargs)
         x += residual
         residual = x
-        x = nn.LayerNorm(epsilon=self.eps,dtype=jnp.bfloat16)(x)
+        x = nn.LayerNorm(epsilon=self.eps, dtype=jnp.bfloat16)(x)
         x = GPT2MLP(
             embd_dim=self.embd_dim,
             intermediate_dim=self.intermediate_dim,
@@ -203,13 +203,13 @@ class GPT2Model(nn.Module):
             attn_mask,
             head_mask,
             training,
-            embed_dim,
-            num_heads,
-            attn_dropout,
-            intermediate_dim,
-            activation,
-            max_pos,
-            eps,
+            self.embed_dim,
+            self.num_heads,
+            self.attn_dropout,
+            self.intermediate_dim,
+            self.activation,
+            self.max_pos,
+            self.eps,
             x,
             attn_weights_list,
         )
@@ -246,7 +246,7 @@ class GPT2Model(nn.Module):
         #     )(x, **kwargs)
 
         #     attn_weights_list.append(attn_weights)
-        x = nn.LayerNorm(epsilon=self.eps,dtype=jnp.bfloat16)(x)
+        x = nn.LayerNorm(epsilon=self.eps, dtype=jnp.bfloat16)(x)
         return {
             "last_hidden_state": x,
             "past_key_values": presents,
@@ -275,14 +275,16 @@ class PT(nn.Module):
         if attn_mask is None:
             attn_mask = jnp.ones((batch_size, seq_length), dtype=jnp.float32)
 
-        embd_states = nn.Dense(features=self.embd_dim,dtype=jnp.bfloat16)(states)
+        embd_states = nn.Dense(features=self.embd_dim, dtype=jnp.bfloat16)(states)
         embd_timesteps = nn.Embed(
-            num_embeddings=self.max_episode_steps + 1, features=self.embd_dim,dtype=jnp.bfloat16
+            num_embeddings=self.max_episode_steps + 1,
+            features=self.embd_dim,
+            dtype=jnp.bfloat16,
         )(timesteps)
 
         embd_states = embd_states + embd_timesteps
 
-        inputs = nn.LayerNorm(epsilon=self.eps,dtype=jnp.bfloat16)(embd_states)
+        inputs = nn.LayerNorm(epsilon=self.eps, dtype=jnp.bfloat16)(embd_states)
 
         transformer_outputs = GPT2Model(
             embd_dim=self.embd_dim,
@@ -300,7 +302,9 @@ class PT(nn.Module):
         hidden_output = transformer_outputs["last_hidden_state"]
         attn_weights_list = transformer_outputs["attn_weights_list"]
 
-        x = nn.Dense(features=2 * self.pref_attn_embd_dim + 1,dtype=jnp.bfloat16)(hidden_output)
+        x = nn.Dense(features=2 * self.pref_attn_embd_dim + 1, dtype=jnp.bfloat16)(
+            hidden_output
+        )
 
         num_heads = 1
 
