@@ -26,7 +26,7 @@ class PrefTransformerTrainer(object):
         trans_params = self.trans.init(
             {"params": rng_key1, "dropout": rng_key2},
             jnp.zeros((10, 25, trans.observation_dim), dtype=jnp.bfloat16),
-            jnp.ones((10, 25), dtype=jnp.bfloat16),
+            jnp.ones((10, 25), dtype=jnp.int32),
         )
         self._train_state = TrainState.create(
             params=trans_params, tx=tx, apply_fn=self.trans.apply
