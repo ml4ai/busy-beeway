@@ -100,7 +100,6 @@ def main(argv):
                 n_epochs=n_epochs,
                 eval_period=eval_period,
                 save_dir=output_dir,
-                seed=seed,
                 init_value=init_value,
                 peak_value=peak_value,
                 end_value=end_value,
