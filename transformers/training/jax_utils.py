@@ -94,7 +94,7 @@ def pref_loss_fn(state, train_params, batch, rng):
     def pref_loss_fn_helper(
         state, B, T, train_params, observations, timesteps, attn_mask, rng
     ):
-        trans_pred, _ = state.apply_fn(
+        trans_pred, _ = state(
             train_params,
             observations,
             timesteps,
@@ -107,12 +107,12 @@ def pref_loss_fn(state, train_params, batch, rng):
         return jnp.mean(trans_pred.reshape(B, T), axis=1).reshape(-1, 1)
 
     obs = jnp.stack([batch["observations"], batch["observations_2"]])
-    timestep = jnp.stack([batch["timesteps"],batch["timesteps_2"]])
-    am = jnp.stack([batch["attn_mask"],batch["attn_mask_2"]])
+    timestep = jnp.stack([batch["timesteps"], batch["timesteps_2"]])
+    am = jnp.stack([batch["attn_mask"], batch["attn_mask_2"]])
     labels = batch["labels"]
 
     B, T, _ = batch["observations"].shape
-    rng = jnp.stack([rng,rng])
+    rng = jnp.stack([rng, rng])
     # trans_pred_1, _ = state.apply_fn(
     #     train_params,
     #     obs_1,
@@ -136,7 +136,11 @@ def pref_loss_fn(state, train_params, batch, rng):
     # sum_pred_1 = jnp.mean(trans_pred_1.reshape(B, T), axis=1).reshape(-1, 1)
     # sum_pred_2 = jnp.mean(trans_pred_2.reshape(B, T), axis=1).reshape(-1, 1)
 
-    logits = pref_loss_fn_helper(state,B,T,train_params,obs,timestep,am,rng).transpose().reshape(B,2)
+    logits = (
+        pref_loss_fn_helper(state.apply_fn, B, T, train_params, obs, timestep, am, rng)
+        .transpose()
+        .reshape(B, 2)
+    )
 
     return cross_ent_loss(logits, labels)
 
