@@ -9,7 +9,7 @@ from transformers.training.jax_utils import pref_loss_fn
 
 class PrefTransformerTrainer(object):
 
-    def __init__(self, trans, rng_key1,rng_key2, **kwargs):
+    def __init__(self, trans, rng_key1, rng_key2, **kwargs):
         self.trans = trans
 
         optimizer_class = optax.adamw
@@ -40,13 +40,11 @@ class PrefTransformerTrainer(object):
         return metrics
 
 
-@jax.jit
 def _eval_pref_step(state, batch, rng_key):
     loss = pref_loss_fn(state, state.params, batch, rng_key)
     return dict(eval_loss=loss)
 
 
-@jax.jit
 def _train_pref_step(state, batch, rng_key):
     grad_fn = jax.value_and_grad(pref_loss_fn, argnums=1)
     loss, grads = grad_fn(state, state.params, batch, rng_key)
