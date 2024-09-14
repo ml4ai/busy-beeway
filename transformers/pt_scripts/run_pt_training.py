@@ -1,6 +1,11 @@
 import argparse
 import os
 import sys
+os.environ.update({
+  "NCCL_LL128_BUFFSIZE": "-2",
+  "NCCL_LL_BUFFSIZE": "-2",
+   "NCCL_PROTO": "SIMPLE,LL,LL128",
+ })
 
 sys.path.insert(0, os.path.abspath("../.."))
 import h5py
