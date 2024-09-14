@@ -90,7 +90,8 @@ def value_and_multi_grad(fun, n_outputs, argnums=0, has_aux=False):
 
 
 def pref_loss_fn(state, train_params, batch, rng):
-    @partial(jax.pmap, static_broadcasted_argnums=(0, 1, 2, 3))
+
+    @partial(jax.pmap, in_axes=(None, 0, 0, 0, 0), static_broadcasted_argnums=(0, 1, 2))
     def pref_loss_fn_helper(
         state, B, T, train_params, observations, timesteps, attn_mask, rng
     ):
