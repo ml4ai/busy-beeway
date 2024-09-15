@@ -63,6 +63,13 @@ def main(argv):
         help="Learning Rate parameters passed to optimizer. \nIt uses a Cosine Decay Schedule with warmup steps, \nso this option requires 3 arguments \n(initial learning rate, peak learning rate, end learning rate).",
     )
     parser.add_argument(
+        "-d",
+        "--dim",
+        type=int,
+        default=256,
+        help="Sets embedding dimensions (with some layer \ndimensions set as a function \nof this value.",
+    )
+    parser.add_argument(
         "-o",
         "--output_dir",
         type=str,
@@ -81,7 +88,7 @@ def main(argv):
     init_value = learning_rate[0]
     peak_value = learning_rate[1]
     end_value = learning_rate[2]
-
+    dim = args.dim
     try:
         with h5py.File(data, "r") as f:
             key = jax.random.PRNGKey(seed)
@@ -103,6 +110,7 @@ def main(argv):
                 init_value=init_value,
                 peak_value=peak_value,
                 end_value=end_value,
+                embd_dim = dim
             )
     except FileNotFoundError:
         raise FileNotFoundError(

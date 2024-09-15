@@ -48,15 +48,16 @@ def train_pt(
     max_pos = 512
     while query_len > max_pos:
         max_pos *= 2
+    embd_dim = kwargs.get("embd_dim", min(batch_size, 256))
     trans = PT(
         observation_dim=observation_dim,
         max_episode_steps=kwargs.get("max_episode_steps", 1219),
-        embd_dim=kwargs.get("embd_dim", min(batch_size,256)),
-        pref_attn_embd_dim=kwargs.get("pref_attn_embd_dim", min(batch_size,256)),
+        embd_dim=embd_dim,
+        pref_attn_embd_dim=kwargs.get("pref_attn_embd_dim", embd_dim),
         num_heads=kwargs.get("num_heads", 4),
         attn_dropout=kwargs.get("attn_dropout", 0.1),
         resid_dropout=kwargs.get("resid_dropout", 0.1),
-        intermediate_dim=kwargs.get("intermediate_dim", 4 * min(batch_size,256)),
+        intermediate_dim=kwargs.get("intermediate_dim", 4 * embd_dim),
         num_layers=kwargs.get("num_layers", 1),
         embd_dropout=kwargs.get("embd_dropout", 0.1),
         max_pos=kwargs.get("max_pos", max_pos),
