@@ -2,7 +2,7 @@ import argparse
 import os
 import sys
 
-os.environ["XLA_FLAGS"] = "--xla_gpu_enable_latency_hiding_scheduler=true"
+os.environ["XLA_FLAGS"] = "--xla_gpu_enable_triton_softmax_fusion=true"
 
 sys.path.insert(0, os.path.abspath("../.."))
 import h5py
