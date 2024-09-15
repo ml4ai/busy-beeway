@@ -89,59 +89,41 @@ def value_and_multi_grad(fun, n_outputs, argnums=0, has_aux=False):
     return multi_grad_fn
 
 
-def pref_loss_fn(state, train_params, batch, rng):
-
-    @partial(jax.pmap, in_axes=(None,None,None,None, 0, 0, 0, 0), static_broadcasted_argnums=(0, 1, 2))
-    def pref_loss_fn_helper(
-        state, B, T, train_params, observations, timesteps, attn_mask, rng
-    ):
-        trans_pred, _ = state(
-            train_params,
-            observations,
-            timesteps,
-            training=False,
-            attn_mask=attn_mask,
-            rngs={"dropout": rng},
-        )
-        trans_pred = trans_pred["weighted_sum"]
-
-        return jnp.mean(trans_pred.reshape(B, T), axis=1).reshape(-1, 1)
-
-    obs = jnp.stack([batch["observations"], batch["observations_2"]])
-    timestep = jnp.stack([batch["timesteps"], batch["timesteps_2"]])
-    am = jnp.stack([batch["attn_mask"], batch["attn_mask_2"]])
+def pref_loss_fn(state_fn, train_params, batch, rng):
+    obs_1 = batch["observations"]
+    obs_2 = batch["observations_2"]
+    timestep_1 = batch["timesteps"]
+    timestep_2 = batch["timesteps_2"]
+    am_1 = batch["attn_mask"]
+    am_2 = batch["attn_mask_2"]
     labels = batch["labels"]
 
     B, T, _ = batch["observations"].shape
-    rng = jnp.stack([rng, rng])
-    # trans_pred_1, _ = state.apply_fn(
-    #     train_params,
-    #     obs_1,
-    #     timestep_1,
-    #     training=False,
-    #     attn_mask=am_1,
-    #     rngs={"dropout": rng},
-    # )
-    # trans_pred_2, _ = state.apply_fn(
-    #     train_params,
-    #     obs_2,
-    #     timestep_2,
-    #     training=False,
-    #     attn_mask=am_2,
-    #     rngs={"dropout": rng},
-    # )
 
-    # trans_pred_1 = trans_pred_1["weighted_sum"]
-    # trans_pred_2 = trans_pred_2["weighted_sum"]
-
-    # sum_pred_1 = jnp.mean(trans_pred_1.reshape(B, T), axis=1).reshape(-1, 1)
-    # sum_pred_2 = jnp.mean(trans_pred_2.reshape(B, T), axis=1).reshape(-1, 1)
-
-    logits = (
-        pref_loss_fn_helper(state.apply_fn, B, T, train_params, obs, timestep, am, rng)
-        .transpose()
-        .reshape(B, 2)
+    trans_pred_1, _ = state_fn(
+        train_params,
+        obs_1,
+        timestep_1,
+        training=False,
+        attn_mask=am_1,
+        rngs={"dropout": rng},
     )
+    trans_pred_2, _ = state_fn(
+        train_params,
+        obs_2,
+        timestep_2,
+        training=False,
+        attn_mask=am_2,
+        rngs={"dropout": rng},
+    )
+
+    trans_pred_1 = trans_pred_1["weighted_sum"]
+    trans_pred_2 = trans_pred_2["weighted_sum"]
+
+    sum_pred_1 = jnp.mean(trans_pred_1.reshape(B, T), axis=1).reshape(-1, 1)
+    sum_pred_2 = jnp.mean(trans_pred_2.reshape(B, T), axis=1).reshape(-1, 1)
+
+    logits = jnp.concatenate([sum_pred_1, sum_pred_2], axis=1)
 
     return cross_ent_loss(logits, labels)
 
