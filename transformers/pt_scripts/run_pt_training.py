@@ -2,11 +2,7 @@ import argparse
 import os
 import sys
 
-os.environ["XLA_FLAGS"] = (
-    "--xla_gpu_enable_async_collectives=true "
-    "--xla_gpu_enable_latency_hiding_scheduler=true "
-    "--xla_gpu_enable_highest_priority_async_stream=true "
-)
+os.environ["XLA_FLAGS"] = "--xla_gpu_enable_latency_hiding_scheduler=true"
 
 sys.path.insert(0, os.path.abspath("../.."))
 import h5py
