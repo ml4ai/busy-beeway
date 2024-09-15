@@ -1,11 +1,13 @@
 import argparse
 import os
 import sys
-os.environ.update({
-  "NCCL_LL128_BUFFSIZE": "-2",
-  "NCCL_LL_BUFFSIZE": "-2",
-   "NCCL_PROTO": "SIMPLE,LL,LL128",
- })
+os.environ['XLA_FLAGS'] = (
+    '--xla_gpu_enable_triton_softmax_fusion=true '
+    '--xla_gpu_triton_gemm_any=True '
+    '--xla_gpu_enable_async_collectives=true '
+    '--xla_gpu_enable_latency_hiding_scheduler=true '
+    '--xla_gpu_enable_highest_priority_async_stream=true '
+)
 
 sys.path.insert(0, os.path.abspath("../.."))
 import h5py
