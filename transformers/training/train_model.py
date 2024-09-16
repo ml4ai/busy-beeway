@@ -154,7 +154,7 @@ def train_pt(
                 for k in batch.keys():
                     batch[k] = jnp.array(batch[k], dtype=jnp.bfloat16)
                 batch = batch_to_jax(batch)
-                for key, val in model.evaluation(batch_eval, e_subkey).items():
+                for key, val in model.evaluation(batch, e_subkey).items():
                     metrics[key].append(val)
             criteria = jnp.mean(metrics[criteria_key])
             early_stop = early_stop.update(criteria)
