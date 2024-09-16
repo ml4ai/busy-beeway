@@ -125,7 +125,7 @@ def train_pt(
                         batch["labels"],
                     ) = next(iter(training_data_loader))
                     for k in batch:
-                        if key == "timesteps" or key == "timesteps_2":
+                        if k == "timesteps" or k == "timesteps_2":
                             batch[k] = jnp.array(batch[k], dtype=jnp.int8)
                         else:
                             batch[k] = jnp.array(batch[k], dtype=jnp.bfloat16)
@@ -155,7 +155,7 @@ def train_pt(
                     batch["labels"],
                 ) = next(iter(test_data_loader))
                 for k in batch:
-                    if key == "timesteps" or key == "timesteps_2":
+                    if k == "timesteps" or k == "timesteps_2":
                         batch[k] = jnp.array(batch[k], dtype=jnp.int8)
                     else:
                         batch[k] = jnp.array(batch[k], dtype=jnp.bfloat16)
