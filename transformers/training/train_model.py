@@ -101,7 +101,6 @@ def train_pt(
     early_stop = EarlyStopping(min_delta=1e-3, patience=10)
     c_best_epoch = np.nan
     c_criteria_key = np.nan
-    iter_training_data_loader = iter(training_data_loader)
     for epoch, (s_key, t_key, e_key) in enumerate(
         jax.random.split(rng_subkey3, (n_epochs + 1, 3))
     ):
@@ -115,8 +114,9 @@ def train_pt(
         }
         if epoch:
             with Timer() as train_timer:
-                for i, subkey in tqdm(
-                    enumerate(jax.random.split(t_key, interval)),
+                t_keys = jax.random.split(t_key, interval)
+                for i, t_data in tqdm(
+                    enumerate(training_data_loader),
                     total=interval,
                     desc=f"Training Epoch {epoch}",
                 ):
@@ -129,14 +129,14 @@ def train_pt(
                         batch["timesteps_2"],
                         batch["attn_mask_2"],
                         batch["labels"],
-                    ) = next(iter_training_data_loader)
+                    ) = t_data
                     for k in batch:
                         if k == "timesteps" or k == "timesteps_2":
                             batch[k] = jnp.asarray(batch[k], dtype=jnp.int8)
                         else:
                             batch[k] = jnp.asarray(batch[k], dtype=jnp.bfloat16)
                     batch = batch_to_jax(batch)
-                    for key, val in model.train(batch, subkey).items():
+                    for key, val in model.train(batch, t_keys[i]).items():
                         metrics[key].append(val)
             metrics["train_time"] = train_timer()
         else:
@@ -145,9 +145,9 @@ def train_pt(
 
         # eval phase
         if epoch % eval_period == 0:
-            iter_test_data_loader = iter(test_data_loader)
-            for j, e_subkey in tqdm(
-                enumerate(jax.random.split(e_key, eval_interval)),
+            e_keys = jax.random.split(e_key, eval_interval)
+            for j, e_data in tqdm(
+                enumerate(test_data_loader),
                 total=eval_interval,
                 desc=f"Evaluation Epoch {epoch}",
             ):
@@ -160,14 +160,14 @@ def train_pt(
                     batch["timesteps_2"],
                     batch["attn_mask_2"],
                     batch["labels"],
-                ) = next(iter_test_data_loader)
+                ) = e_data
                 for k in batch:
                     if k == "timesteps" or k == "timesteps_2":
                         batch[k] = jnp.asarray(batch[k], dtype=jnp.int8)
                     else:
                         batch[k] = jnp.asarray(batch[k], dtype=jnp.bfloat16)
                 batch = batch_to_jax(batch)
-                for key, val in model.evaluation(batch, e_subkey).items():
+                for key, val in model.evaluation(batch, e_keys[j]).items():
                     metrics[key].append(val)
             criteria = np.mean(metrics[criteria_key])
             early_stop = early_stop.update(criteria)
