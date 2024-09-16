@@ -169,7 +169,7 @@ def train_pt(
                 batch = batch_to_jax(batch)
                 for key, val in model.evaluation(batch, e_subkey).items():
                     metrics[key].append(val)
-            criteria = jnp.mean(metrics[criteria_key])
+            criteria = np.mean(metrics[criteria_key])
             early_stop = early_stop.update(criteria)
             if early_stop.should_stop and do_early_stop:
                 for key, val in metrics.items():
