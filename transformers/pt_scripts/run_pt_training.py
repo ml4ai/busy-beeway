@@ -3,13 +3,14 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath("../.."))
-import h5py
-import numpy as np
-from argformat import StructuredFormatter
-
-from transformers.training.train_model import train_pt
 import jax
 import jax.numpy as jnp
+import numpy as np
+from argformat import StructuredFormatter
+from torch.utils.data import random_split
+
+from transformers.data_utils.data_loader import Pref_H5Dataset
+from transformers.training.train_model import train_pt
 
 
 def main(argv):
@@ -70,6 +71,13 @@ def main(argv):
         help="Sets embedding dimensions (with some layer \ndimensions set as a function \nof this value.",
     )
     parser.add_argument(
+        "-w",
+        "--workers",
+        type=int,
+        default=2,
+        help="Number of workers assigned to handle data loading.",
+    )
+    parser.add_argument(
         "-o",
         "--output_dir",
         type=str,
@@ -89,29 +97,23 @@ def main(argv):
     peak_value = learning_rate[1]
     end_value = learning_rate[2]
     dim = args.dim
+    workers = args.workers
     try:
-        with h5py.File(data, "r") as f:
-            key = jax.random.PRNGKey(seed)
-            p_size = f["observations"].shape[0]
-            shuffled_idx = jax.random.permutation(key, p_size)
-
-            t_int = int(p_size * train_split)
-
-            train_pt(
-                f,
-                jnp.sort(shuffled_idx[:t_int]),
-                jnp.sort(shuffled_idx[t_int:]),
-                key,
-                seed,
-                batch_size=batch_size,
-                n_epochs=n_epochs,
-                eval_period=eval_period,
-                save_dir=output_dir,
-                init_value=init_value,
-                peak_value=peak_value,
-                end_value=end_value,
-                embd_dim = dim
-            )
+        data = Pref_H5Dataset(data)
+        train_pt(
+            data,
+            seed,
+            train_split=train_split,
+            batch_size=batch_size,
+            num_workers=workers,
+            n_epochs=n_epochs,
+            eval_period=eval_period,
+            save_dir=output_dir,
+            init_value=init_value,
+            peak_value=peak_value,
+            end_value=end_value,
+            embd_dim=dim,
+        )
     except FileNotFoundError:
         raise FileNotFoundError(
             f"{data} not found, try running compile_preference_data.py first!"

@@ -1,29 +1,29 @@
 import os.path as osp
 
-import numpy as np
-from tqdm import tqdm
-from flax.training.early_stopping import EarlyStopping
 import jax
 import jax.numpy as jnp
+import numpy as np
+from flax.training.early_stopping import EarlyStopping
+from torch.utils.data import DataLoader, random_split
+from tqdm import tqdm
 
+from transformers.models.intervention_mlp import MLP
+from transformers.models.pref_transformer import PT
 from transformers.training.jax_utils import batch_to_jax
 from transformers.training.logging_utils import logger, setup_logger
-from transformers.models.pref_transformer import PT
-from transformers.models.intervention_mlp import MLP
 from transformers.training.training import (
     InterventionMLPTrainer,
     PrefTransformerTrainer,
 )
-from transformers.training.utils import Timer, index_batch, save_pickle
+from transformers.training.utils import Timer, save_pickle
 
 
 def train_pt(
     data,
-    training_data_idx,
-    test_data_idx,
-    rng_key,
     seed,
+    train_split=0.7,
     batch_size=64,
+    num_workers=2,
     n_epochs=50,
     eval_period=1,
     do_early_stop=False,
@@ -40,11 +40,28 @@ def train_pt(
         base_log_dir=save_dir,
         include_exp_prefix_sub_dir=False,
     )
-    data_size = training_data_idx.shape[0]
-    _, query_len, observation_dim = data["observations"].shape
-    eval_data_size = test_data_idx.shape[0]
-    interval = int(data_size / batch_size) + 1
-    eval_interval = int(eval_data_size / batch_size) + 1
+
+    _, query_len, observation_dim = data.obs_shape()
+    rng_key = jax.random.PRNGKey(seed)
+    rng_key, rng_subkey = jax.random.split(rng_key, 2)
+    gen1 = torch.Generator().manual_seed(int(rng_subkey[0]))
+    gen2 = torch.Generator().manual_seed(int(rng_subkey[1]))
+    training_data, test_data = random_split(
+        data, [train_split, 1 - train_split], generator=gen1
+    )
+    training_data_loader = DataLoader(
+        training_data,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=2,
+        generator=gen2,
+    )
+    test_data_loader = DataLoader(
+        test_data, batch_size=batch_size, num_workers=2, shuffle=False
+    )
+
+    interval = len(training_data_loader)
+    eval_interval = len(test_data_loader)
     max_pos = 512
     while query_len > max_pos:
         max_pos *= 2
@@ -90,30 +107,29 @@ def train_pt(
             f"{criteria_key}_best": c_criteria_key,
         }
         if epoch:
-            # train phase
-            shuffled_idx = jax.random.permutation(s_key, data_size)
-            for i, (t_subkey1, t_subkey2) in tqdm(
-                enumerate(jax.random.split(t_key, (interval, 2))),
-                total=interval,
-                desc=f"Training Epoch {epoch}",
-            ):
-                start_pt = i * batch_size
-                end_pt = min((i + 1) * batch_size, data_size)
-                with Timer() as train_timer:
-                    # train
-                    batch = batch_to_jax(
-                        index_batch(
-                            data,
-                            training_data_idx[shuffled_idx[start_pt:end_pt]],
-                            t_subkey1,
-                        )
-                    )
-                    for key, val in model.train(batch, t_subkey2).items():
+            with Timer() as train_timer:
+                for i, subkey in tqdm(
+                    enumerate(jax.random.split(t_key, interval)),
+                    total=interval,
+                    desc=f"Training Epoch {epoch}",
+                ):
+                    batch = {}
+                    (
+                        batch["observations"],
+                        batch["timesteps"],
+                        batch["attn_mask"],
+                        batch["observations_2"],
+                        batch["timesteps_2"],
+                        batch["attn_mask_2"],
+                        batch["labels"],
+                    ) = next(iter(training_data_loader))
+                    batch = batch_to_jax(batch)
+                    for key, val in model.train(batch, subkey).items():
                         metrics[key].append(val)
             metrics["train_time"] = train_timer()
         else:
             # for using early stopping with train loss.
-            metrics["training_loss"] = np.nan
+            metrics["training_loss"] = jnp.nan
 
         # eval phase
         if epoch % eval_period == 0:
@@ -122,24 +138,28 @@ def train_pt(
                 total=eval_interval,
                 desc=f"Evaluation Epoch {epoch}",
             ):
-                eval_start_pt, eval_end_pt = j * batch_size, min(
-                    (j + 1) * batch_size, eval_data_size
-                )
-                # batch_eval = batch_to_jax(index_batch(pref_eval_dataset, range(eval_start_pt, eval_end_pt)))
-                batch_eval = batch_to_jax(
-                    index_batch(data, test_data_idx[eval_start_pt:eval_end_pt])
-                )
+                batch = {}
+                (
+                    batch["observations"],
+                    batch["timesteps"],
+                    batch["attn_mask"],
+                    batch["observations_2"],
+                    batch["timesteps_2"],
+                    batch["attn_mask_2"],
+                    batch["labels"],
+                ) = next(iter(test_data_loader))
+                batch = batch_to_jax(batch)
                 for key, val in model.evaluation(batch_eval, e_subkey).items():
                     metrics[key].append(val)
-            criteria = np.mean(metrics[criteria_key])
+            criteria = jnp.mean(metrics[criteria_key])
             early_stop = early_stop.update(criteria)
             if early_stop.should_stop and do_early_stop:
                 for key, val in metrics.items():
                     if isinstance(val, list):
                         if len(val):
-                            metrics[key] = np.mean(val)
+                            metrics[key] = jnp.mean(val)
                         else:
-                            metrics[key] = np.nan
+                            metrics[key] = jnp.nan
                 logger.record_dict(metrics)
                 logger.dump_tabular(with_prefix=False, with_timestamp=False)
                 print("Met early stopping criteria, breaking...")
@@ -155,9 +175,9 @@ def train_pt(
         for key, val in metrics.items():
             if isinstance(val, list):
                 if len(val):
-                    metrics[key] = np.mean(val)
+                    metrics[key] = jnp.mean(val)
                 else:
-                    metrics[key] = np.nan
+                    metrics[key] = jnp.nan
         logger.record_dict(metrics)
         logger.dump_tabular(with_prefix=False, with_timestamp=False)
     if save_model:
