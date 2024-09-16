@@ -149,4 +149,6 @@ def imlp_loss_fn(state, train_params, batch, rng):
 
 @jax.jit
 def batch_to_jax(batch):
+    for k in batch.keys():
+        batch[k] = jnp.array(batch[k],dtype=jnp.bfloat16)
     return jax.tree_util.tree_map(jax.device_put, batch)

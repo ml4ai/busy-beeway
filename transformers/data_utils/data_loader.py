@@ -25,13 +25,13 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
         if not hasattr(self, "h5_file"):
             self.open_hdf5()
         return (
-            np.asarray(self.observations[index, ...], dtype=np.float32),
-            np.asarray(self.timesteps[index, ...], dtype=np.float32),
-            np.asarray(self.attn_mask[index, ...], dtype=np.float32),
-            np.asarray(self.observations_2[index, ...], dtype=np.float32),
-            np.asarray(self.timesteps_2[index, ...], dtype=np.float32),
-            np.asarray(self.attn_mask_2[index, ...], dtype=np.float32),
-            np.asarray(self.labels[index], dtype=np.float32),
+            self.observations[index, ...],
+            self.timesteps[index, ...],
+            self.attn_mask[index, ...],
+            self.observations_2[index, ...],
+            self.timesteps_2[index, ...],
+            self.attn_mask_2[index, ...],
+            self.labels[index],
         )
 
     def __len__(self):
