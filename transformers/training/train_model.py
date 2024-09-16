@@ -102,7 +102,6 @@ def train_pt(
     c_best_epoch = np.nan
     c_criteria_key = np.nan
     iter_training_data_loader = iter(training_data_loader)
-    iter_test_data_loader = iter(test_data_loader)
     for epoch, (s_key, t_key, e_key) in enumerate(
         jax.random.split(rng_subkey3, (n_epochs + 1, 3))
     ):
@@ -146,6 +145,7 @@ def train_pt(
 
         # eval phase
         if epoch % eval_period == 0:
+            iter_test_data_loader = iter(test_data_loader)
             for j, e_subkey in tqdm(
                 enumerate(jax.random.split(e_key, eval_interval)),
                 total=eval_interval,
