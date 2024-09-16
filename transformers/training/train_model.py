@@ -108,9 +108,9 @@ def train_pt(
     ):
         metrics = {
             "epoch": epoch,
-            "train_time": jnp.nan,
-            "training_loss": np.zeros(interval),
-            "eval_loss": np.zeros(eval_interval),
+            "train_time": np.nan,
+            "training_loss": [],
+            "eval_loss": [],
             "best_epoch": c_best_epoch,
             f"{criteria_key}_best": c_criteria_key,
         }
@@ -138,11 +138,11 @@ def train_pt(
                             batch[k] = jnp.asarray(batch[k], dtype=jnp.bfloat16)
                     batch = batch_to_jax(batch)
                     for key, val in model.train(batch, subkey).items():
-                        metrics[key][i] = val
+                        metrics[key].append(val)
             metrics["train_time"] = train_timer()
         else:
             # for using early stopping with train loss.
-            metrics["training_loss"] = jnp.nan
+            metrics["training_loss"] = np.nan
 
         # eval phase
         if epoch % eval_period == 0:
@@ -168,16 +168,16 @@ def train_pt(
                         batch[k] = jnp.asarray(batch[k], dtype=jnp.bfloat16)
                 batch = batch_to_jax(batch)
                 for key, val in model.evaluation(batch, e_subkey).items():
-                    metrics[key][j] = val
+                    metrics[key].append(val)
             criteria = jnp.mean(metrics[criteria_key])
             early_stop = early_stop.update(criteria)
             if early_stop.should_stop and do_early_stop:
                 for key, val in metrics.items():
                     if isinstance(val, list):
                         if len(val):
-                            metrics[key] = jnp.mean(val)
+                            metrics[key] = np.mean(val)
                         else:
-                            metrics[key] = jnp.nan
+                            metrics[key] = np.nan
                 logger.record_dict(metrics)
                 logger.dump_tabular(with_prefix=False, with_timestamp=False)
                 print("Met early stopping criteria, breaking...")
@@ -193,9 +193,9 @@ def train_pt(
         for key, val in metrics.items():
             if isinstance(val, list):
                 if len(val):
-                    metrics[key] = jnp.mean(val)
+                    metrics[key] = np.mean(val)
                 else:
-                    metrics[key] = jnp.nan
+                    metrics[key] = np.nan
         logger.record_dict(metrics)
         logger.dump_tabular(with_prefix=False, with_timestamp=False)
     if save_model:
