@@ -124,8 +124,11 @@ def train_pt(
                         batch["attn_mask_2"],
                         batch["labels"],
                     ) = next(iter(training_data_loader))
-                    for k in batch.keys():
-                        batch[k] = jnp.array(batch[k], dtype=jnp.bfloat16)
+                    for k in batch:
+                        if key == "timesteps" or key == "timesteps_2":
+                            batch[k] = jnp.array(batch[k], dtype=jnp.int8)
+                        else:
+                            batch[k] = jnp.array(batch[k], dtype=jnp.bfloat16)
                     batch = batch_to_jax(batch)
                     for key, val in model.train(batch, subkey).items():
                         metrics[key].append(val)
@@ -151,8 +154,11 @@ def train_pt(
                     batch["attn_mask_2"],
                     batch["labels"],
                 ) = next(iter(test_data_loader))
-                for k in batch.keys():
-                    batch[k] = jnp.array(batch[k], dtype=jnp.bfloat16)
+                for k in batch:
+                    if key == "timesteps" or key == "timesteps_2":
+                        batch[k] = jnp.array(batch[k], dtype=jnp.int8)
+                    else:
+                        batch[k] = jnp.array(batch[k], dtype=jnp.bfloat16)
                 batch = batch_to_jax(batch)
                 for key, val in model.evaluation(batch, e_subkey).items():
                     metrics[key].append(val)
