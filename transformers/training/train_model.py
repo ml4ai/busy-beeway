@@ -54,11 +54,12 @@ def train_pt(
         training_data,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=2,
+        num_workers=num_workers,
         generator=gen2,
+        pin_memory=True,
     )
     test_data_loader = DataLoader(
-        test_data, batch_size=batch_size, num_workers=2, shuffle=False
+        test_data, batch_size=batch_size, num_workers=num_workers, shuffle=False, pin_memory=True
     )
 
     interval = len(training_data_loader)
@@ -96,6 +97,8 @@ def train_pt(
     early_stop = EarlyStopping(min_delta=1e-3, patience=10)
     c_best_epoch = np.nan
     c_criteria_key = np.nan
+    iter_training_data_loader = iter(training_data_loader)
+    iter_test_data_loader = iter(test_data_loader)
     for epoch, (s_key, t_key, e_key) in enumerate(
         jax.random.split(rng_subkey3, (n_epochs + 1, 3))
     ):
@@ -123,7 +126,7 @@ def train_pt(
                         batch["timesteps_2"],
                         batch["attn_mask_2"],
                         batch["labels"],
-                    ) = next(iter(training_data_loader))
+                    ) = next(iter_training_data_loader)
                     for k in batch:
                         if k == "timesteps" or k == "timesteps_2":
                             batch[k] = jnp.array(batch[k], dtype=jnp.int8)
@@ -153,7 +156,7 @@ def train_pt(
                     batch["timesteps_2"],
                     batch["attn_mask_2"],
                     batch["labels"],
-                ) = next(iter(test_data_loader))
+                ) = next(iter_test_data_loader)
                 for k in batch:
                     if k == "timesteps" or k == "timesteps_2":
                         batch[k] = jnp.array(batch[k], dtype=jnp.int8)
