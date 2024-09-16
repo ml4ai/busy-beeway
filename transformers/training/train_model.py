@@ -4,6 +4,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from flax.training.early_stopping import EarlyStopping
+import torch
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 

@@ -7,7 +7,6 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from argformat import StructuredFormatter
-from torch.utils.data import random_split
 
 from transformers.data_utils.data_loader import Pref_H5Dataset
 from transformers.training.train_model import train_pt
