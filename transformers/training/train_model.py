@@ -124,6 +124,8 @@ def train_pt(
                         batch["attn_mask_2"],
                         batch["labels"],
                     ) = next(iter(training_data_loader))
+                    for k in batch.keys():
+                        batch[k] = jnp.array(batch[k], dtype=jnp.bfloat16)
                     batch = batch_to_jax(batch)
                     for key, val in model.train(batch, subkey).items():
                         metrics[key].append(val)
@@ -149,6 +151,8 @@ def train_pt(
                     batch["attn_mask_2"],
                     batch["labels"],
                 ) = next(iter(test_data_loader))
+                for k in batch.keys():
+                    batch[k] = jnp.array(batch[k], dtype=jnp.bfloat16)
                 batch = batch_to_jax(batch)
                 for key, val in model.evaluation(batch_eval, e_subkey).items():
                     metrics[key].append(val)
