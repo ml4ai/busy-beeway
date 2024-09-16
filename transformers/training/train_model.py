@@ -131,10 +131,7 @@ def train_pt(
                         batch["labels"],
                     ) = t_data
                     for k in batch:
-                        if k == "timesteps" or k == "timesteps_2":
-                            batch[k] = jnp.asarray(batch[k], dtype=jnp.int8)
-                        else:
-                            batch[k] = jnp.asarray(batch[k], dtype=jnp.bfloat16)
+                        batch[k] = jnp.asarray(batch[k])
                     batch = batch_to_jax(batch)
                     for key, val in model.train(batch, t_keys[i]).items():
                         metrics[key].append(val)
@@ -162,10 +159,7 @@ def train_pt(
                     batch["labels"],
                 ) = e_data
                 for k in batch:
-                    if k == "timesteps" or k == "timesteps_2":
-                        batch[k] = jnp.asarray(batch[k], dtype=jnp.int8)
-                    else:
-                        batch[k] = jnp.asarray(batch[k], dtype=jnp.bfloat16)
+                    batch[k] = jnp.asarray(batch[k])
                 batch = batch_to_jax(batch)
                 for key, val in model.evaluation(batch, e_keys[j]).items():
                     print(val)
