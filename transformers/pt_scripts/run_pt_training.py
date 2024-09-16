@@ -10,7 +10,7 @@ from argformat import StructuredFormatter
 
 from transformers.data_utils.data_loader import Pref_H5Dataset
 from transformers.training.train_model import train_pt
-
+import torch.multiprocessing as multiprocessing
 
 def main(argv):
     parser = argparse.ArgumentParser(
@@ -83,6 +83,7 @@ def main(argv):
         default="~/busy-beeway/transformers/logs",
         help="Output directory for training logs and pickled models",
     )
+    multiprocessing.set_start_method('spawn')
     args = parser.parse_args(argv)
     data = os.path.expanduser(args.data)
     train_split = args.training_split
