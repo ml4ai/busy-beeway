@@ -59,7 +59,11 @@ def train_pt(
         pin_memory=True,
     )
     test_data_loader = DataLoader(
-        test_data, batch_size=batch_size, num_workers=num_workers, shuffle=False, pin_memory=True
+        test_data,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        shuffle=False,
+        pin_memory=True,
     )
 
     interval = len(training_data_loader)
@@ -104,9 +108,9 @@ def train_pt(
     ):
         metrics = {
             "epoch": epoch,
-            "train_time": np.nan,
-            "training_loss": [],
-            "eval_loss": [],
+            "train_time": jnp.nan,
+            "training_loss": np.zeros(interval),
+            "eval_loss": np.zeros(eval_interval),
             "best_epoch": c_best_epoch,
             f"{criteria_key}_best": c_criteria_key,
         }
@@ -129,12 +133,12 @@ def train_pt(
                     ) = next(iter_training_data_loader)
                     for k in batch:
                         if k == "timesteps" or k == "timesteps_2":
-                            batch[k] = jnp.array(batch[k], dtype=jnp.int8)
+                            batch[k] = jnp.asarray(batch[k], dtype=jnp.int8)
                         else:
-                            batch[k] = jnp.array(batch[k], dtype=jnp.bfloat16)
+                            batch[k] = jnp.asarray(batch[k], dtype=jnp.bfloat16)
                     batch = batch_to_jax(batch)
                     for key, val in model.train(batch, subkey).items():
-                        metrics[key].append(val)
+                        metrics[key][i] = val
             metrics["train_time"] = train_timer()
         else:
             # for using early stopping with train loss.
@@ -159,12 +163,12 @@ def train_pt(
                 ) = next(iter_test_data_loader)
                 for k in batch:
                     if k == "timesteps" or k == "timesteps_2":
-                        batch[k] = jnp.array(batch[k], dtype=jnp.int8)
+                        batch[k] = jnp.asarray(batch[k], dtype=jnp.int8)
                     else:
-                        batch[k] = jnp.array(batch[k], dtype=jnp.bfloat16)
+                        batch[k] = jnp.asarray(batch[k], dtype=jnp.bfloat16)
                 batch = batch_to_jax(batch)
                 for key, val in model.evaluation(batch, e_subkey).items():
-                    metrics[key].append(val)
+                    metrics[key][i] = val
             criteria = jnp.mean(metrics[criteria_key])
             early_stop = early_stop.update(criteria)
             if early_stop.should_stop and do_early_stop:
