@@ -1,6 +1,6 @@
 import h5py
-import torch
 import numpy as np
+import torch
 
 
 class Pref_H5Dataset(torch.utils.data.Dataset):
@@ -19,13 +19,13 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
 
         return (
-            torch.from_numpy(self.observations[index, ...]).float(),
-            torch.from_numpy(self.timesteps[index, ...]).float(),
-            torch.from_numpy(self.attn_mask[index, ...]).float(),
-            torch.from_numpy(self.observations_2[index, ...]).float(),
-            torch.from_numpy(self.timesteps_2[index, ...]).float(),
-            torch.from_numpy(self.attn_mask_2[index, ...]).float(),
-            torch.from_numpy(np.array(self.labels[index])).int(),
+            np.asarray(self.observations[index, ...], dtype=np.float32),
+            np.asarray(self.timesteps[index, ...],dtype=np.float32),
+            np.asarray(self.attn_mask[index, ...],dtype=np.float32),
+            np.asarray(self.observations_2[index, ...],dtype=np.float32),
+            np.asarray(self.timesteps_2[index, ...],dtype=np.float32),
+            np.asarray(self.attn_mask_2[index, ...],dtype=np.float32),
+            np.asarray(self.labels[index], dtype=np.float32),
         )
 
     def __len__(self):
