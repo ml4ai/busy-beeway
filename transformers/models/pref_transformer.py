@@ -11,9 +11,9 @@ class GPT2MLP(nn.Module):
 
     @nn.compact
     def __call__(self, x, training=False):
-        x = nn.Dense(features=self.intermediate_dim, dtype=jnp.bfloat16)(x)
+        x = nn.Dense(features=self.intermediate_dim)(x)
         x = ops.apply_activation(x, activation="relu")
-        x = nn.Dense(features=self.embd_dim, dtype=jnp.bfloat16)(x)
+        x = nn.Dense(features=self.embd_dim)(x)
         x = nn.Dropout(rate=self.resid_dropout)(x, deterministic=not training)
         return x
 
@@ -28,7 +28,7 @@ class GPT2SelfAttention(nn.Module):
     @nn.compact
     def __call__(self, x, attn_mask=None, training=False):
         head_dim = self.embd_dim // self.num_heads
-        x = nn.Dense(features=3 * self.embd_dim, dtype=jnp.bfloat16)(x)
+        x = nn.Dense(features=3 * self.embd_dim)(x)
 
         query, key, value = jnp.split(x, 3, axis=2)
 
@@ -56,7 +56,7 @@ class GPT2SelfAttention(nn.Module):
         )
         out = ops.merge_heads(out, self.num_heads, head_dim)
 
-        out = nn.Dense(features=self.embd_dim, dtype=jnp.bfloat16)(out)
+        out = nn.Dense(features=self.embd_dim)(out)
 
         out = nn.Dropout(rate=self.resid_dropout)(out, deterministic=not training)
         return out, _attn_weights
@@ -74,7 +74,7 @@ class GPT2Block(nn.Module):
     @nn.compact
     def __call__(self, x, attn_mask=None, training=False):
         residual = x
-        x = nn.LayerNorm(epsilon=self.eps, dtype=jnp.bfloat16)(x)
+        x = nn.LayerNorm(epsilon=self.eps)(x)
         x, _attn_weights = GPT2SelfAttention(
             embd_dim=self.embd_dim,
             num_heads=self.num_heads,
@@ -84,7 +84,7 @@ class GPT2Block(nn.Module):
         )(x, attn_mask, training)
         x += residual
         residual = x
-        x = nn.LayerNorm(epsilon=self.eps, dtype=jnp.bfloat16)(x)
+        x = nn.LayerNorm(epsilon=self.eps)(x)
         x = GPT2MLP(
             embd_dim=self.embd_dim,
             intermediate_dim=self.intermediate_dim,
@@ -128,10 +128,10 @@ class GPT2Model(nn.Module):
                 intermediate_dim=self.intermediate_dim,
                 max_pos=self.max_pos,
                 eps=self.eps,
-            )(x, attn_mask,training)
+            )(x, attn_mask, training)
 
             attn_weights_list.append(attn_weights)
-        x = nn.LayerNorm(epsilon=self.eps, dtype=jnp.bfloat16)(x)
+        x = nn.LayerNorm(epsilon=self.eps)(x)
         return {
             "last_hidden_state": x,
             "attn_weights_list": attn_weights_list,
@@ -158,16 +158,15 @@ class PT(nn.Module):
         if attn_mask is None:
             attn_mask = jnp.ones((batch_size, seq_length), dtype=jnp.float32)
 
-        embd_states = nn.Dense(features=self.embd_dim, dtype=jnp.bfloat16)(states)
+        embd_states = nn.Dense(features=self.embd_dim)(states)
         embd_timesteps = nn.Embed(
             num_embeddings=self.max_episode_steps + 1,
             features=self.embd_dim,
-            dtype=jnp.bfloat16,
         )(timesteps)
 
         embd_states = embd_states + embd_timesteps
 
-        inputs = nn.LayerNorm(epsilon=self.eps, dtype=jnp.bfloat16)(embd_states)
+        inputs = nn.LayerNorm(epsilon=self.eps)(embd_states)
 
         transformer_outputs = GPT2Model(
             embd_dim=self.embd_dim,
@@ -184,9 +183,7 @@ class PT(nn.Module):
         hidden_output = transformer_outputs["last_hidden_state"]
         attn_weights_list = transformer_outputs["attn_weights_list"]
 
-        x = nn.Dense(features=2 * self.pref_attn_embd_dim + 1, dtype=jnp.bfloat16)(
-            hidden_output
-        )
+        x = nn.Dense(features=2 * self.pref_attn_embd_dim + 1)(hidden_output)
 
         num_heads = 1
 
