@@ -9,6 +9,7 @@ import pandas as pd
 
 def load_attempt_data(
     lvl,
+    ai,
     attempt,
     path,
     skip=0,
@@ -20,7 +21,7 @@ def load_attempt_data(
     if study == 1:
         match lvl:
             case 9:
-                obs_end = 59
+                obs_end = 58
             case 10:
                 obs_end = 108
             case 11:
@@ -28,10 +29,24 @@ def load_attempt_data(
         obs_start = 9
         final_goal = 1
         goal_inc = 2
+
+        match ai:
+            case 1:
+                sig = 55
+                repel = 72
+            case 2:
+                sig = 62
+                repel = 98
+            case 3:
+                sig = 140
+                repel = 98
+            case 4:
+                sig = 100
+                repel = 75
     else:
         match lvl:
             case 9:
-                obs_end = 58
+                obs_end = 59
             case 10:
                 obs_end = 84
             case 11:
@@ -39,6 +54,14 @@ def load_attempt_data(
         obs_start = 10
         final_goal = 2
         goal_inc = 3
+        # sig = std here
+        match ai:
+            case 1:
+                sig = 140
+                repel = 98
+            case 2:
+                sig = 100
+                repel = 75
     if control != 2 and control != 3:
         try:
             p_df = pd.read_csv(p_file, usecols=["posX", "posY", "angle", "userControl"])
@@ -51,6 +74,10 @@ def load_attempt_data(
         p_angles = p_df["angle"].to_numpy()
         p_angles = np.where(p_angles < 0, p_angles + 360.0, p_angles)
         p_df["angle"] = p_angles
+        p_df["obstacle_count"] = (obs_end + 1) - obs_start
+        p_df["sigma"] = sig
+        p_df["repel_factor"] = repel
+        p_df["attempt"] = attempt
         o_dfs = []
         for i in range(obs_start, obs_end + 1):
             o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
@@ -212,6 +239,10 @@ def load_attempt_data(
             p_angles = p_df["angle"].to_numpy()
             p_angles = np.where(p_angles < 0, p_angles + 360.0, p_angles)
             p_df["angle"] = p_angles
+            p_df["obstacle_count"] = (obs_end + 1) - obs_start
+            p_df["sigma"] = sig
+            p_df["repel_factor"] = repel
+            p_df["attempt"] = attempt
             o_dfs = []
             for i in range(obs_start, obs_end + 1):
                 o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
@@ -431,6 +462,10 @@ def load_attempt_data(
             p_angles = p_df["angle"].to_numpy()
             p_angles = np.where(p_angles < 0, p_angles + 360.0, p_angles)
             p_df["angle"] = p_angles
+            p_df["obstacle_count"] = (obs_end + 1) - obs_start
+            p_df["sigma"] = sig
+            p_df["repel_factor"] = repel
+            p_df["attempt"] = attempt
             o_dfs = []
             for i in range(obs_start, obs_end + 1):
                 o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
@@ -641,6 +676,7 @@ def load_attempt_data(
 
 def load_lvl_data(
     lvl,
+    ai,
     path,
     skip=0,
     control=1,
@@ -649,7 +685,7 @@ def load_lvl_data(
     D = []
     a = 0
     while True:
-        d = load_attempt_data(lvl, a, path, skip, control, study)
+        d = load_attempt_data(lvl, ai, a, path, skip, control, study)
         if d:
             D += d
         a += 1
@@ -660,6 +696,7 @@ def load_lvl_data(
 
 
 def load_test_data(
+    ai,
     path,
     skip=0,
     control=1,
@@ -667,7 +704,7 @@ def load_test_data(
 ):
     D = []
     for i in range(9, 12):
-        d = load_lvl_data(i, path, skip, control, study)
+        d = load_lvl_data(i, ai, path, skip, control, study)
         if d:
             D += d
     return D
@@ -675,7 +712,8 @@ def load_test_data(
 
 # Path is a directory for a participant for a given experiment over several different days (e.g., Experiment_1T5)
 # Exclusion list is a list of strings where each is a path to a test session to exclude.
-def load_experiment_data(path, skip=0, control=1, study=1, exclusion_list=[]):
+def load_experiment_data(ai, path, skip=0, control=1, study=1, exclusion_list=[]):
+
     if exclusion_list:
         D = []
         dir_path = os.path.expanduser(path)
@@ -683,7 +721,7 @@ def load_experiment_data(path, skip=0, control=1, study=1, exclusion_list=[]):
         for i in dir_list:
             if i.is_dir():
                 if i.path not in exclusion_list:
-                    d = load_test_data(i.path, skip, control, study)
+                    d = load_test_data(ai, i.path, skip, control, study)
                     if d:
                         D += d
         return D
@@ -692,7 +730,7 @@ def load_experiment_data(path, skip=0, control=1, study=1, exclusion_list=[]):
     dir_list = os.scandir(dir_path)
     for i in dir_list:
         if i.is_dir():
-            d = load_test_data(i.path, skip, control, study)
+            d = load_test_data(ai, i.path, skip, control, study)
             if d:
                 D += d
     return D
@@ -723,10 +761,29 @@ def load_participant_data(
                 and not (i.path.endswith("97D1"))
                 and not (i.path.endswith("aiD1"))
             ):
+                if (
+                    i.path.endswith("1T5")
+                    or i.path.endswith("5T5")
+                    or i.path.endswith("1D1")
+                    or i.path.endswith("3D1")
+                    or i.path.endswith("4D1")
+                ):
+                    ai = 1
+                elif (
+                    i.path.endswith("2T5")
+                    or i.path.endswith("6T5")
+                    or i.path.endswith("2D1")
+                    or i.path.endswith("5D1")
+                ):
+                    ai = 2
+                elif i.path.endswith("3T5") or i.path.endswith("7T5"):
+                    ai = 3
+                else:
+                    ai = 4
                 e_path = f"{i.path}/{p_id}"
                 if e_path not in exclusion_list:
                     d = load_experiment_data(
-                        e_path, skip, control, study, exclusion_list
+                        ai, e_path, skip, control, study, exclusion_list
                     )
                     if d:
                         D += d
@@ -734,12 +791,12 @@ def load_participant_data(
 
 
 def load_attempt_data_p(f):
-    lvl, attempt, path, skip, control, study = f
+    lvl, ai, attempt, path, skip, control, study = f
     p_file = f"{path}/player.{lvl}.{attempt}.0.data.csv"
     if study == 1:
         match lvl:
             case 9:
-                obs_end = 59
+                obs_end = 58
             case 10:
                 obs_end = 108
             case 11:
@@ -747,10 +804,23 @@ def load_attempt_data_p(f):
         obs_start = 9
         final_goal = 1
         goal_inc = 2
+        match ai:
+            case 1:
+                sig = 55
+                repel = 72
+            case 2:
+                sig = 62
+                repel = 98
+            case 3:
+                sig = 140
+                repel = 98
+            case 4:
+                sig = 100
+                repel = 75
     else:
         match lvl:
             case 9:
-                obs_end = 58
+                obs_end = 59
             case 10:
                 obs_end = 84
             case 11:
@@ -758,6 +828,14 @@ def load_attempt_data_p(f):
         obs_start = 10
         final_goal = 2
         goal_inc = 3
+        # sig = std here
+        match ai:
+            case 1:
+                sig = 140
+                repel = 98
+            case 2:
+                sig = 100
+                repel = 75
     if control != 2 and control != 3:
         try:
             p_df = pd.read_csv(p_file, usecols=["posX", "posY", "angle", "userControl"])
@@ -770,6 +848,10 @@ def load_attempt_data_p(f):
         p_angles = p_df["angle"].to_numpy()
         p_angles = np.where(p_angles < 0, p_angles + 360.0, p_angles)
         p_df["angle"] = p_angles
+        p_df["obstacle_count"] = (obs_end + 1) - obs_start
+        p_df["sigma"] = sig
+        p_df["repel_factor"] = repel
+        p_df["attempt"] = attempt
         o_dfs = []
         for i in range(obs_start, obs_end + 1):
             o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
@@ -931,6 +1013,10 @@ def load_attempt_data_p(f):
             p_angles = p_df["angle"].to_numpy()
             p_angles = np.where(p_angles < 0, p_angles + 360.0, p_angles)
             p_df["angle"] = p_angles
+            p_df["obstacle_count"] = (obs_end + 1) - obs_start
+            p_df["sigma"] = sig
+            p_df["repel_factor"] = repel
+            p_df["attempt"] = attempt
             o_dfs = []
             for i in range(obs_start, obs_end + 1):
                 o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
@@ -1150,6 +1236,10 @@ def load_attempt_data_p(f):
             p_angles = p_df["angle"].to_numpy()
             p_angles = np.where(p_angles < 0, p_angles + 360.0, p_angles)
             p_df["angle"] = p_angles
+            p_df["obstacle_count"] = (obs_end + 1) - obs_start
+            p_df["sigma"] = sig
+            p_df["repel_factor"] = repel
+            p_df["attempt"] = attempt
             o_dfs = []
             for i in range(obs_start, obs_end + 1):
                 o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
@@ -1358,11 +1448,11 @@ def load_attempt_data_p(f):
     return None
 
 
-def load_lvl_data_p(lvl, path, skip=0, control=1, study=1, outer_call=True, cores=None):
+def load_lvl_data_p(lvl, ai,path, skip=0, control=1, study=1, outer_call=True, cores=None):
     S = []
     a = 0
     while True:
-        S.append((lvl, a, path, skip, control, study))
+        S.append((lvl, ai,a, path, skip, control, study))
         a += 1
         p_file = f"{path}/player.{lvl}.{a}.0.data.csv"
         if not (os.path.isfile(os.path.expanduser(p_file))):
@@ -1377,10 +1467,10 @@ def load_lvl_data_p(lvl, path, skip=0, control=1, study=1, outer_call=True, core
     return S
 
 
-def load_test_data_p(path, skip=0, control=1, study=1, outer_call=True, cores=None):
+def load_test_data_p(ai,path, skip=0, control=1, study=1, outer_call=True, cores=None):
     S = []
     for i in range(9, 12):
-        s = load_lvl_data_p(i, path, skip, control, study, False, None)
+        s = load_lvl_data_p(i, ai,path, skip, control, study, False, None)
         S += s
     if outer_call:
         if cores is None:
@@ -1394,7 +1484,7 @@ def load_test_data_p(path, skip=0, control=1, study=1, outer_call=True, cores=No
 
 # Path is a directory for a participant for a given experiment over several different days (e.g., Experiment_1T5)
 def load_experiment_data_p(
-    path, skip=0, control=1, study=1, outer_call=True, cores=None, exclusion_list=[]
+    ai,path, skip=0, control=1, study=1, outer_call=True, cores=None, exclusion_list=[]
 ):
     if exclusion_list:
         S = []
@@ -1403,7 +1493,7 @@ def load_experiment_data_p(
         for i in dir_list:
             if i.is_dir():
                 if i.path not in exclusion_list:
-                    s = load_test_data_p(i.path, skip, control, study, False, None)
+                    s = load_test_data_p(ai,i.path, skip, control, study, False, None)
                     S += s
         if outer_call:
             if cores is None:
@@ -1418,7 +1508,7 @@ def load_experiment_data_p(
     dir_list = os.scandir(dir_path)
     for i in dir_list:
         if i.is_dir():
-            s = load_test_data_p(i.path, skip, control, study, False, None)
+            s = load_test_data_p(ai,i.path, skip, control, study, False, None)
             S += s
     if outer_call:
         if cores is None:
@@ -1457,10 +1547,29 @@ def load_participant_data_p(
                 and not (i.path.endswith("97D1"))
                 and not (i.path.endswith("aiD1"))
             ):
+                if (
+                    i.path.endswith("1T5")
+                    or i.path.endswith("5T5")
+                    or i.path.endswith("1D1")
+                    or i.path.endswith("3D1")
+                    or i.path.endswith("4D1")
+                ):
+                    ai = 1
+                elif (
+                    i.path.endswith("2T5")
+                    or i.path.endswith("6T5")
+                    or i.path.endswith("2D1")
+                    or i.path.endswith("5D1")
+                ):
+                    ai = 2
+                elif i.path.endswith("3T5") or i.path.endswith("7T5"):
+                    ai = 3
+                else:
+                    ai = 4
                 e_path = f"{i.path}/{p_id}"
                 if e_path not in exclusion_list:
                     s = load_experiment_data_p(
-                        e_path, skip, control, study, False, None, exclusion_list
+                        ai,e_path, skip, control, study, False, None, exclusion_list
                     )
                     S += s
     if outer_call:

@@ -268,6 +268,10 @@ def compute_run_features(p_df, g, O, arc_sweep=(10, 360, 10)):
                     features[f"max_heading_op_obstacle_headings_{a}"][index] = (
                         obs_headings[0]
                     )
+    features["obstacle_count"] = p_df["obstacle_count"].to_numpy()
+    features["sigma"] = p_df["sigma"].to_numpy()
+    features["repel_factor"] = p_df["repel_factor"].to_numpy()
+    features["attempt"] = p_df["attempt"].to_numpy()
     features["userControl"] = p_df["userControl"].to_numpy().astype(int)
     features["t"] = p_df["t"].to_numpy()
     return pd.DataFrame(features)
@@ -469,6 +473,10 @@ def compute_run_features_p(d):
                     features[f"max_heading_op_obstacle_headings_{a}"][index] = (
                         obs_headings[0]
                     )
+    features["obstacle_count"] = p_df["obstacle_count"].to_numpy()
+    features["sigma"] = p_df["sigma"].to_numpy()
+    features["repel_factor"] = p_df["repel_factor"].to_numpy()
+    features["attempt"] = p_df["attempt"].to_numpy()
     features["userControl"] = p_df["userControl"].to_numpy().astype(int)
     features["t"] = p_df["t"].to_numpy()
     df = pd.DataFrame(features)
