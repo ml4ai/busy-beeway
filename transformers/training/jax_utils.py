@@ -55,9 +55,9 @@ def custom_softmax(array, axis=-1, temperature=1.0):
 
 
 def pref_accuracy(logits, target):
-    predicted_class = jnp.argmax(logits, axis=1)
-    target_class = jnp.argmax(target, axis=1)
-    return jnp.mean(predicted_class == target_class)
+    predicted_class = jnp.argmax(logits, axis=1)*1.0
+    predicted_class = predicted_class.at[jnp.where(jnp.isclose(logits[:,0],logits[:,1]))].set(0.5)
+    return jnp.mean(predicted_class == target)
 
 
 def value_and_multi_grad(fun, n_outputs, argnums=0, has_aux=False):
@@ -124,8 +124,9 @@ def pref_loss_fn(state_fn, train_params, batch, rng):
     sum_pred_2 = jnp.mean(trans_pred_2.reshape(B, T), axis=1).reshape(-1, 1)
 
     logits = jnp.concatenate([sum_pred_1, sum_pred_2], axis=1)
+    
 
-    return cross_ent_loss(logits, labels)
+    return cross_ent_loss(logits, labels),pref_accuracy(logits,labels)
 
 
 def imlp_loss_fn(state, train_params, batch, rng):

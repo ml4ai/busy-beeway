@@ -108,7 +108,9 @@ def train_pt(
             "epoch": epoch,
             "train_time": np.nan,
             "training_loss": [],
+            "training_acc": [],
             "eval_loss": [],
+            "eval_acc": [],
             "best_epoch": c_best_epoch,
             f"{criteria_key}_best": c_criteria_key,
         }

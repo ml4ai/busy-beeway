@@ -41,16 +41,16 @@ class PrefTransformerTrainer(object):
 
 @jax.jit
 def _eval_pref_step(state, batch, rng_key):
-    loss = pref_loss_fn(state.apply_fn, state.params, batch, rng_key)
-    return dict(eval_loss=loss)
+    loss,acc = pref_loss_fn(state.apply_fn, state.params, batch, rng_key)
+    return dict(eval_loss=loss,eval_acc=acc)
 
 @jax.jit
 def _train_pref_step(state, batch, rng_key):
-    grad_fn = jax.value_and_grad(pref_loss_fn, argnums=1)
-    loss, grads = grad_fn(state.apply_fn, state.params, batch, rng_key)
+    grad_fn = jax.value_and_grad(pref_loss_fn, argnums=1,has_aux=True)
+    (loss,acc), grads = grad_fn(state.apply_fn, state.params, batch, rng_key)
 
     new_train_state = state.apply_gradients(grads=grads)
-    metrics = dict(training_loss=loss)
+    metrics = dict(training_loss=loss,training_acc=acc)
     return new_train_state, metrics
 
 
