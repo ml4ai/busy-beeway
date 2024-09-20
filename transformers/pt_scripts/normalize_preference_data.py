@@ -61,19 +61,19 @@ def main(argv):
         with h5py.File(f"{data_dir}/{p}.hdf5", "r+") as f:
             ob = f["observations"][:]
             ob_t = ob != 0
-            f["observations"][:, :, :-1] = np.add(
+            f["observations"][:, :, :-2] = np.add(
                 1,
                 np.divide(np.subtract(ob, min_1, where=ob_t), maxmin_1, where=ob_t),
                 where=ob_t,
-            )[:, :, :-1]
+            )[:, :, :-2]
 
             ob = f["observations_2"][:]
             ob_t = ob != 0
-            f["observations_2"][:, :, :-1] = np.add(
+            f["observations_2"][:, :, :-2] = np.add(
                 1,
                 np.divide(np.subtract(ob, min_2, where=ob_t), maxmin_2, where=ob_t),
                 where=ob_t,
-            )[:, :, :-1]
+            )[:, :, :-2]
 
     sys.exit(0)
 
