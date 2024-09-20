@@ -7,7 +7,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from transformers.replayer.replayer_utils import collision, cos_plus, find_direction, sin_plus
+from transformers.replayer.replayer_utils import (
+    collision,
+    cos_plus,
+    find_direction,
+    sin_plus,
+)
 
 
 def generate_stats(D, save_data=None):
@@ -149,6 +154,10 @@ def goal_only_run_replay(
             "posX": p_X_list,
             "posY": p_Y_list,
             "angle": p_A_list,
+            "obstacle_count": p_df["obstacle_count"].to_numpy(),
+            "sigma": 0,
+            "repel_factor": 0,
+            "attempt": p_df["attempt"].to_numpy(),
             "userControl": 0,
             "t": range(len(p_X_list)),
         }
@@ -269,6 +278,10 @@ def goal_only_run_replay_p(f):
             "posX": p_X_list,
             "posY": p_Y_list,
             "angle": p_A_list,
+            "obstacle_count": p_df["obstacle_count"].to_numpy(),
+            "sigma": 0,
+            "repel_factor": 0,
+            "attempt": p_df["attempt"].to_numpy(),
             "userControl": 0,
             "t": range(len(p_X_list)),
         }
