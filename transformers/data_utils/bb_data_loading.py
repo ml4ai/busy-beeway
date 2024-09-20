@@ -292,7 +292,7 @@ def load_attempt_data(
                             for k, g in groupby(enumerate(h_id), lambda x: x[0] - x[1])
                         ]
                         for k in h_control:
-                            p_pos = p_g_pos.iloc[k[0] : (k[-1] + 1), 0:3]
+                            p_pos = p_g_pos.iloc[k[0] : (k[-1] + 1),]
                             p_pos = p_pos.reset_index(drop=True)
                             p_pos = p_pos[
                                 (p_pos.index % (skip + 1) == 0)
@@ -357,7 +357,7 @@ def load_attempt_data(
                             for k, g in groupby(enumerate(h_id), lambda x: x[0] - x[1])
                         ]
                         for k in h_control:
-                            p_pos = p_g_pos.iloc[k[0] : (k[-1] + 1), 0:3]
+                            p_pos = p_g_pos.iloc[k[0] : (k[-1] + 1),]
                             p_pos = p_pos.reset_index(drop=True)
                             p_pos = p_pos[
                                 (p_pos.index % (skip + 1) == 0)
@@ -414,7 +414,7 @@ def load_attempt_data(
                         for k, g in groupby(enumerate(h_id), lambda x: x[0] - x[1])
                     ]
                     for k in h_control:
-                        p_pos = p_df.iloc[k[0] : (k[-1] + 1), 0:3]
+                        p_pos = p_df.iloc[k[0] : (k[-1] + 1),]
                         p_pos = p_pos.reset_index(drop=True)
                         p_pos = p_pos[
                             (p_pos.index % (skip + 1) == 0)
@@ -515,7 +515,7 @@ def load_attempt_data(
                             for k, g in groupby(enumerate(h_id), lambda x: x[0] - x[1])
                         ]
                         for k in h_control:
-                            p_pos = p_g_pos.iloc[k[0] : (k[-1] + 1), 0:3]
+                            p_pos = p_g_pos.iloc[k[0] : (k[-1] + 1),]
                             p_pos = p_pos.reset_index(drop=True)
                             p_pos = p_pos[
                                 (p_pos.index % (skip + 1) == 0)
@@ -580,7 +580,7 @@ def load_attempt_data(
                             for k, g in groupby(enumerate(h_id), lambda x: x[0] - x[1])
                         ]
                         for k in h_control:
-                            p_pos = p_g_pos.iloc[k[0] : (k[-1] + 1), 0:3]
+                            p_pos = p_g_pos.iloc[k[0] : (k[-1] + 1),]
                             p_pos = p_pos.reset_index(drop=True)
                             p_pos = p_pos[
                                 (p_pos.index % (skip + 1) == 0)
@@ -637,7 +637,7 @@ def load_attempt_data(
                         for k, g in groupby(enumerate(h_id), lambda x: x[0] - x[1])
                     ]
                     for k in h_control:
-                        p_pos = p_df.iloc[k[0] : (k[-1] + 1), 0:3]
+                        p_pos = p_df.iloc[k[0] : (k[-1] + 1),]
                         p_pos = p_pos.reset_index(drop=True)
                         p_pos = p_pos[
                             (p_pos.index % (skip + 1) == 0)
@@ -1066,7 +1066,7 @@ def load_attempt_data_p(f):
                             for k, g in groupby(enumerate(h_id), lambda x: x[0] - x[1])
                         ]
                         for k in h_control:
-                            p_pos = p_g_pos.iloc[k[0] : (k[-1] + 1), 0:3]
+                            p_pos = p_g_pos.iloc[k[0] : (k[-1] + 1),]
                             p_pos = p_pos.reset_index(drop=True)
                             p_pos = p_pos[
                                 (p_pos.index % (skip + 1) == 0)
@@ -1131,7 +1131,7 @@ def load_attempt_data_p(f):
                             for k, g in groupby(enumerate(h_id), lambda x: x[0] - x[1])
                         ]
                         for k in h_control:
-                            p_pos = p_g_pos.iloc[k[0] : (k[-1] + 1), 0:3]
+                            p_pos = p_g_pos.iloc[k[0] : (k[-1] + 1),]
                             p_pos = p_pos.reset_index(drop=True)
                             p_pos = p_pos[
                                 (p_pos.index % (skip + 1) == 0)
@@ -1188,7 +1188,7 @@ def load_attempt_data_p(f):
                         for k, g in groupby(enumerate(h_id), lambda x: x[0] - x[1])
                     ]
                     for k in h_control:
-                        p_pos = p_df.iloc[k[0] : (k[-1] + 1), 0:3]
+                        p_pos = p_df.iloc[k[0] : (k[-1] + 1),]
                         p_pos = p_pos.reset_index(drop=True)
                         p_pos = p_pos[
                             (p_pos.index % (skip + 1) == 0)
@@ -1289,7 +1289,7 @@ def load_attempt_data_p(f):
                             for k, g in groupby(enumerate(h_id), lambda x: x[0] - x[1])
                         ]
                         for k in h_control:
-                            p_pos = p_g_pos.iloc[k[0] : (k[-1] + 1), 0:3]
+                            p_pos = p_g_pos.iloc[k[0] : (k[-1] + 1),]
                             p_pos = p_pos.reset_index(drop=True)
                             p_pos = p_pos[
                                 (p_pos.index % (skip + 1) == 0)
@@ -1354,7 +1354,7 @@ def load_attempt_data_p(f):
                             for k, g in groupby(enumerate(h_id), lambda x: x[0] - x[1])
                         ]
                         for k in h_control:
-                            p_pos = p_g_pos.iloc[k[0] : (k[-1] + 1), 0:3]
+                            p_pos = p_g_pos.iloc[k[0] : (k[-1] + 1),]
                             p_pos = p_pos.reset_index(drop=True)
                             p_pos = p_pos[
                                 (p_pos.index % (skip + 1) == 0)
@@ -1411,7 +1411,7 @@ def load_attempt_data_p(f):
                         for k, g in groupby(enumerate(h_id), lambda x: x[0] - x[1])
                     ]
                     for k in h_control:
-                        p_pos = p_df.iloc[k[0] : (k[-1] + 1), 0:3]
+                        p_pos = p_df.iloc[k[0] : (k[-1] + 1),]
                         p_pos = p_pos.reset_index(drop=True)
                         p_pos = p_pos[
                             (p_pos.index % (skip + 1) == 0)
@@ -1448,11 +1448,13 @@ def load_attempt_data_p(f):
     return None
 
 
-def load_lvl_data_p(lvl, ai,path, skip=0, control=1, study=1, outer_call=True, cores=None):
+def load_lvl_data_p(
+    lvl, ai, path, skip=0, control=1, study=1, outer_call=True, cores=None
+):
     S = []
     a = 0
     while True:
-        S.append((lvl, ai,a, path, skip, control, study))
+        S.append((lvl, ai, a, path, skip, control, study))
         a += 1
         p_file = f"{path}/player.{lvl}.{a}.0.data.csv"
         if not (os.path.isfile(os.path.expanduser(p_file))):
@@ -1467,10 +1469,10 @@ def load_lvl_data_p(lvl, ai,path, skip=0, control=1, study=1, outer_call=True, c
     return S
 
 
-def load_test_data_p(ai,path, skip=0, control=1, study=1, outer_call=True, cores=None):
+def load_test_data_p(ai, path, skip=0, control=1, study=1, outer_call=True, cores=None):
     S = []
     for i in range(9, 12):
-        s = load_lvl_data_p(i, ai,path, skip, control, study, False, None)
+        s = load_lvl_data_p(i, ai, path, skip, control, study, False, None)
         S += s
     if outer_call:
         if cores is None:
@@ -1484,7 +1486,7 @@ def load_test_data_p(ai,path, skip=0, control=1, study=1, outer_call=True, cores
 
 # Path is a directory for a participant for a given experiment over several different days (e.g., Experiment_1T5)
 def load_experiment_data_p(
-    ai,path, skip=0, control=1, study=1, outer_call=True, cores=None, exclusion_list=[]
+    ai, path, skip=0, control=1, study=1, outer_call=True, cores=None, exclusion_list=[]
 ):
     if exclusion_list:
         S = []
@@ -1493,7 +1495,7 @@ def load_experiment_data_p(
         for i in dir_list:
             if i.is_dir():
                 if i.path not in exclusion_list:
-                    s = load_test_data_p(ai,i.path, skip, control, study, False, None)
+                    s = load_test_data_p(ai, i.path, skip, control, study, False, None)
                     S += s
         if outer_call:
             if cores is None:
@@ -1508,7 +1510,7 @@ def load_experiment_data_p(
     dir_list = os.scandir(dir_path)
     for i in dir_list:
         if i.is_dir():
-            s = load_test_data_p(ai,i.path, skip, control, study, False, None)
+            s = load_test_data_p(ai, i.path, skip, control, study, False, None)
             S += s
     if outer_call:
         if cores is None:
@@ -1569,7 +1571,7 @@ def load_participant_data_p(
                 e_path = f"{i.path}/{p_id}"
                 if e_path not in exclusion_list:
                     s = load_experiment_data_p(
-                        ai,e_path, skip, control, study, False, None, exclusion_list
+                        ai, e_path, skip, control, study, False, None, exclusion_list
                     )
                     S += s
     if outer_call:
