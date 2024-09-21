@@ -112,7 +112,7 @@ def main(argv):
 
         l_layout[prev_size : (prev_size + data_sizes[i])] = l_vsource
 
-        prev_size = data_sizes[i]
+        prev_size += data_sizes[i]
 
     with h5py.File(save_file, "w") as f:
         f.create_virtual_dataset("observations", o_layout)
@@ -122,7 +122,7 @@ def main(argv):
         f.create_virtual_dataset("observations_2", o_2_layout)
         f.create_virtual_dataset("timesteps_2", t_2_layout)
         f.create_virtual_dataset("attn_mask_2", am_2_layout)
-
+        
         f.create_virtual_dataset("labels", l_layout)
     sys.exit(0)
 
