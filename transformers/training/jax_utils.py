@@ -56,7 +56,9 @@ def custom_softmax(array, axis=-1, temperature=1.0):
 
 def pref_accuracy(logits, target):
     predicted_class = jnp.argmax(logits, axis=1) * 1.0
-    predicted_class = jnp.where(jnp.isclose(logits[:, 0], logits[:, 1]),0.5,predicted_class)
+    predicted_class = jnp.where(
+        jnp.isclose(logits[:, 0], logits[:, 1]), 0.5, predicted_class
+    )
     return jnp.mean(predicted_class == target)
 
 
@@ -89,7 +91,7 @@ def value_and_multi_grad(fun, n_outputs, argnums=0, has_aux=False):
     return multi_grad_fn
 
 
-def pref_loss_fn(state_fn, train_params, batch, rng):
+def pref_loss_fn(state_fn, train_params, batch, training, rng):
     obs_1 = batch["observations"]
     obs_2 = batch["observations_2"]
     timestep_1 = batch["timesteps"]
@@ -104,7 +106,7 @@ def pref_loss_fn(state_fn, train_params, batch, rng):
         train_params,
         obs_1,
         timestep_1,
-        training=False,
+        training=training,
         attn_mask=am_1,
         rngs={"dropout": rng},
     )
@@ -112,7 +114,7 @@ def pref_loss_fn(state_fn, train_params, batch, rng):
         train_params,
         obs_2,
         timestep_2,
-        training=False,
+        training=training,
         attn_mask=am_2,
         rngs={"dropout": rng},
     )
@@ -128,16 +130,14 @@ def pref_loss_fn(state_fn, train_params, batch, rng):
     return cross_ent_loss(logits, labels), pref_accuracy(logits, labels)
 
 
-def imlp_loss_fn(state, train_params, batch, rng):
+def imlp_loss_fn(state_fn, train_params, batch, training, rng):
     obs = batch["observations"]
     labels = batch["labels"]
 
-    rng, _ = jax.random.split(rng)
-
-    imlp_pred = state.apply_fn(
+    imlp_pred = state_fn(
         train_params,
         obs,
-        training=False,
+        training=training,
         rngs={"dropout": rng},
     ).squeeze(axis=-1)
 

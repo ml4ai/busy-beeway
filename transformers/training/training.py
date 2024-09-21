@@ -39,24 +39,26 @@ class PrefTransformerTrainer(object):
         self._train_state, metrics = _train_pref_step(self._train_state, batch, rng_key)
         return metrics
 
+
 @jax.jit
 def _eval_pref_step(state, batch, rng_key):
-    loss,acc = pref_loss_fn(state.apply_fn, state.params, batch, rng_key)
-    return dict(eval_loss=loss,eval_acc=acc)
+    loss, acc = pref_loss_fn(state.apply_fn, state.params, batch, False, rng_key)
+    return dict(eval_loss=loss, eval_acc=acc)
+
 
 @jax.jit
 def _train_pref_step(state, batch, rng_key):
-    grad_fn = jax.value_and_grad(pref_loss_fn, argnums=1,has_aux=True)
-    (loss,acc), grads = grad_fn(state.apply_fn, state.params, batch, rng_key)
+    grad_fn = jax.value_and_grad(pref_loss_fn, argnums=1, has_aux=True)
+    (loss, acc), grads = grad_fn(state.apply_fn, state.params, batch, True, rng_key)
 
     new_train_state = state.apply_gradients(grads=grads)
-    metrics = dict(training_loss=loss,training_acc=acc)
+    metrics = dict(training_loss=loss, training_acc=acc)
     return new_train_state, metrics
 
 
 class InterventionMLPTrainer(object):
 
-    def __init__(self, imlp, **kwargs):
+    def __init__(self, imlp, rng_key1, rng_key2, **kwargs):
         self.imlp = imlp
 
         optimizer_class = optax.adamw
@@ -73,31 +75,31 @@ class InterventionMLPTrainer(object):
 
         # Reconfigure for our data
         imlp_params = self.imlp.init(
-            {"params": next_rng(), "dropout": next_rng()},
+            {"params": rng_key1, "dropout": rng_key2},
             jnp.zeros((10, imlp.observation_dim)),
         )
-        self._train_states = TrainState.create(params=imlp_params, tx=tx, apply_fn=None)
-
-    def evaluation(self, batch):
-        return _eval_imlp_step(self._train_state, batch, next_rng())
-
-    def train(self, batch):
-        self._train_state, metrics = _train_imlp_step(
-            self._train_state, batch, next_rng()
+        self._train_states = TrainState.create(
+            params=imlp_params, tx=tx, apply_fn=self.imlp.apply
         )
+
+    def evaluation(self, batch, rng_key):
+        return _eval_imlp_step(self._train_state, batch, rng_key)
+
+    def train(self, batch, rng_key):
+        self._train_state, metrics = _train_imlp_step(self._train_state, batch, rng_key)
         return metrics
 
 
 @jax.jit
-def _eval_imlp_step(state, batch, rng):
-    loss, acc = imlp_loss_fn(state, state.params, batch, rng)
+def _eval_imlp_step(state, batch, rng_key):
+    loss, acc = imlp_loss_fn(state.apply_fn, state.params, batch, False,rng_key)
     return dict(eval_loss=loss, eval_acc=acc)
 
 
 @jax.jit
-def _train_imlp_step(state, batch, rng):
+def _train_imlp_step(state, batch, rng_key):
     grad_fn = jax.value_and_grad(imlp_loss_fn, argnums=1, has_aux=True)
-    (loss, acc), grads = grad_fn(state, state.params, batch, rng)
+    (loss, acc), grads = grad_fn(state.apply_fn, state.params, batch, True,rng_key)
 
     new_train_state = state.apply_gradients(grads=grads)
     metrics = dict(training_loss=loss, training_acc=acc)
