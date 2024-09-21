@@ -697,60 +697,56 @@ def create_preference_data(
                     else:
                         f.create_dataset(k, data=data[k], compression="lzf")
             return data
-        obs = []
-        ts = []
-        obs_2 = []
-        ts_2 = []
-        lbs = []
-        for i, f in enumerate(F_1):
-            fill_size_1 = f.shape[0] + (split_size - (f.shape[0] % split_size))
-            o, t = run_to_np(f, fill_size_1, with_attn_mask)
-            n_splits_1 = int(fill_size_1 / split_size)
-            o = o.reshape((n_splits_1, split_size, o.shape[1]))
-            t = t.reshape((n_splits_1, split_size))
+    obs = []
+    ts = []
+    obs_2 = []
+    ts_2 = []
+    lbs = []
+    for i, f in enumerate(F_1):
+        fill_size = F_2[i].shape[0] + (split_size - (F_2[i].shape[0] % split_size))
+        n_splits = int(fill_size / split_size)
+        o, t, am = run_to_np(f, fill_size, with_attn_mask)
+        o = o.reshape((n_splits, split_size, o.shape[1]))
+        t = t.reshape((n_splits, split_size))
 
-            fill_size_2 = F_2[i].shape[0] + (
-                split_size - (F_2[i].shape[0] % split_size)
-            )
-            o_2, t_2 = run_to_np(F_2[i], fill_size_2, with_attn_mask)
-            n_splits_2 = int(fill_size_2 / split_size)
-            o_2 = o_2.reshape((n_splits_2, split_size, o_2.shape[1]))
-            t_2 = t_2.reshape((n_splits_2, split_size))
+        o_2, t_2, am_2 = run_to_np(F_2[i], fill_size, with_attn_mask)
+        o_2 = o_2.reshape((n_splits, split_size, o_2.shape[1]))
+        t_2 = t_2.reshape((n_splits, split_size))
 
-            obs.append(o)
-            ts.append(t)
+        obs.append(o)
+        ts.append(t)
 
-            obs_2.append(o_2)
-            ts_2.append(t_2)
+        obs_2.append(o_2)
+        ts_2.append(t_2)
 
-            lbs.append(get_pref_labels(o_2, gh_idx))
+        lbs.append(get_pref_labels(o_2, gh_idx))
 
-        if save_data is None:
-            return {
-                labels[0]: np.concatenate(obs),
-                labels[1]: np.concatenate(ts),
-                f"{labels[0]}_2": np.concatenate(obs_2),
-                f"{labels[1]}_2": np.concatenate(ts_2),
-                "labels": np.concatenate(lbs),
-            }
-        else:
-            data = {
-                labels[0]: np.concatenate(obs),
-                labels[1]: np.concatenate(ts),
-                f"{labels[0]}_2": np.concatenate(obs_2),
-                f"{labels[1]}_2": np.concatenate(ts_2),
-                "labels": np.concatenate(lbs),
-            }
-            with h5py.File(save_data, "a") as f:
-                # WARNING if this group already exists, datasets of the same name of "observations","timesteps","attn_mask", etc.
-                # will be overwritten with this new datasets.
-                for k in data:
-                    if k in f:
-                        del f[k]
-                        f.create_dataset(k, data=data[k], compression="lzf")
-                    else:
-                        f.create_dataset(k, data=data[k], compression="lzf")
-            return data
+    if save_data is None:
+        return {
+            labels[0]: np.concatenate(obs),
+            labels[1]: np.concatenate(ts),
+            f"{labels[0]}_2": np.concatenate(obs_2),
+            f"{labels[1]}_2": np.concatenate(ts_2),
+            "labels": np.concatenate(lbs),
+        }
+    else:
+        data = {
+            labels[0]: np.concatenate(obs),
+            labels[1]: np.concatenate(ts),
+            f"{labels[0]}_2": np.concatenate(obs_2),
+            f"{labels[1]}_2": np.concatenate(ts_2),
+            "labels": np.concatenate(lbs),
+        }
+        with h5py.File(save_data, "a") as f:
+            # WARNING if this group already exists, datasets of the same name of "observations","timesteps","attn_mask", etc.
+            # will be overwritten with this new datasets.
+            for k in data:
+                if k in f:
+                    del f[k]
+                    f.create_dataset(k, data=data[k], compression="lzf")
+                else:
+                    f.create_dataset(k, data=data[k], compression="lzf")
+        return data
 
 
 def plot_training_validation_loss(load_log, eval_period=5, save_file=None, **kwargs):
