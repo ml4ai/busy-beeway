@@ -256,8 +256,8 @@ def train_imlp(
     )
 
     rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
-    model = PrefTransformerTrainer(
-        trans,
+    model = InterventionMLPTrainer(
+        imlp,
         rng_subkey1,
         rng_subkey2,
         init_value=kwargs.get("init_value", 0),
@@ -276,7 +276,9 @@ def train_imlp(
             "epoch": epoch,
             "train_time": np.nan,
             "training_loss": [],
+            "training_acc": [],
             "eval_loss": [],
+            "eval_acc": [],
             "best_epoch": c_best_epoch,
             f"{criteria_key}_best": c_criteria_key,
         }
@@ -291,11 +293,6 @@ def train_imlp(
                     batch = {}
                     (
                         batch["observations"],
-                        batch["timesteps"],
-                        batch["attn_mask"],
-                        batch["observations_2"],
-                        batch["timesteps_2"],
-                        batch["attn_mask_2"],
                         batch["labels"],
                     ) = t_data
                     for k in batch:
@@ -319,11 +316,6 @@ def train_imlp(
                 batch = {}
                 (
                     batch["observations"],
-                    batch["timesteps"],
-                    batch["attn_mask"],
-                    batch["observations_2"],
-                    batch["timesteps_2"],
-                    batch["attn_mask_2"],
                     batch["labels"],
                 ) = e_data
                 for k in batch:
