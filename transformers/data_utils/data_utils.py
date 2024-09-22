@@ -111,163 +111,252 @@ def compute_run_features(p_df, g, O, arc_sweep=(10, 360, 10)):
 
     features["goal_distances"] = goal_distances
     features["goal_headings"] = goal_headings
-    for a in range(arc_sweep[0], arc_sweep[1] + 1, arc_sweep[2]):
+    if arc_sweep is not None:
+        for a in range(arc_sweep[0], arc_sweep[1] + 1, arc_sweep[2]):
+            # ===MINIMUM DISTANCE OBSTACLE FEATURES===
+
+            # 3. Minimum obstacle distance form player
+            features[f"min_obstacle_distances_{a}"] = np.repeat(0.0, p_df.shape[0])
+
+            # 4. Cosine Similarity between players direction and minimum distance obstacle
+            features[f"min_distance_obstacle_headings_{a}"] = np.repeat(
+                0.0, p_df.shape[0]
+            )
+
+            # 5. cosine similarity between minimum distance obstacle direction and player
+            features[f"min_distance_op_headings_{a}"] = np.repeat(0.0, p_df.shape[0])
+
+            # ===MAX COSINE SIMILARITY BETWEEN PLAYER AND OBSTACLES FEATURES===
+
+            # 6. max cosine similarity between player direction and obstacles
+            features[f"max_obstacle_headings_{a}"] = np.repeat(0.0, p_df.shape[0])
+
+            # 7. distance of obstacle with max cosine similarity between player direction and obstacles
+            features[f"max_heading_obstacle_distances_{a}"] = np.repeat(
+                0.0, p_df.shape[0]
+            )
+
+            # 8. Cosine Similarity of obstacle direction to player for the obstacle that has the max cosine similarity between the player and that obstacle.
+            features[f"max_heading_obstacle_op_headings_{a}"] = np.repeat(
+                0.0, p_df.shape[0]
+            )
+
+            # ===MAX COSINE SIMILARITY BETWEEN OBSTACLES AND PLAYER FEATURES===
+
+            # 9. max cosine similarity between obstacle direction and player
+            features[f"max_op_headings_{a}"] = np.repeat(0.0, p_df.shape[0])
+
+            # 10. Distance of obstacle with max cosine similarity of its direction and player
+            features[f"max_heading_op_distances_{a}"] = np.repeat(0.0, p_df.shape[0])
+
+            # 11. Cosine Similarity of player direction to obstacle for the obstacle that has the max cosine similarity between the obstacle direction and player.
+            features[f"max_heading_op_obstacle_headings_{a}"] = np.repeat(
+                0.0, p_df.shape[0]
+            )
+
+            for index, row in p_df.iterrows():
+                o_t = O[O["t"] == row["t"]]
+
+                sa = row["angle"] - (a / 2.0)
+                ea = row["angle"] + (a / 2.0)
+                in_arc = points_in_arc(
+                    row["posX"],
+                    row["posY"],
+                    o_t["posX"].to_numpy(),
+                    o_t["posY"].to_numpy(),
+                    sa,
+                    ea,
+                )
+                if np.any(in_arc):
+                    o_t = o_t[in_arc]
+                    if o_t.shape[0] > 1:
+                        o_t_X = o_t["posX"].to_numpy()
+                        o_t_Y = o_t["posY"].to_numpy()
+                        o_t_A = o_t["angle"].to_numpy()
+                        obs_distances = point_dist(
+                            o_t_X,
+                            o_t_Y,
+                            row["posX"],
+                            row["posY"],
+                        )
+                        min_dist_obs = np.argmin(obs_distances)
+                        features[f"min_obstacle_distances_{a}"][index] = obs_distances[
+                            min_dist_obs
+                        ]
+
+                        obs_directions = find_direction(
+                            row["posX"], row["posY"], o_t_X, o_t_Y
+                        )
+                        obs_headings = cos_plus(obs_directions - row["angle"]) + 2
+
+                        features[f"min_distance_obstacle_headings_{a}"][index] = (
+                            obs_headings[min_dist_obs]
+                        )
+
+                        max_heading_obs = np.argmax(obs_headings)
+                        features[f"max_obstacle_headings_{a}"][index] = obs_headings[
+                            max_heading_obs
+                        ]
+
+                        features[f"max_heading_obstacle_distances_{a}"][index] = (
+                            obs_distances[max_heading_obs]
+                        )
+
+                        op_directions = find_direction(
+                            o_t_X, o_t_Y, row["posX"], row["posY"]
+                        )
+
+                        op_headings = cos_plus(op_directions - o_t_A) + 2
+                        max_heading_op = np.argmax(op_headings)
+                        features[f"max_op_headings_{a}"][index] = op_headings[
+                            max_heading_op
+                        ]
+
+                        features[f"min_distance_op_headings_{a}"][index] = op_headings[
+                            min_dist_obs
+                        ]
+
+                        features[f"max_heading_obstacle_op_headings_{a}"][index] = (
+                            op_headings[max_heading_obs]
+                        )
+
+                        features[f"max_heading_op_distances_{a}"][index] = (
+                            obs_distances[max_heading_op]
+                        )
+
+                        features[f"max_heading_op_obstacle_headings_{a}"][index] = (
+                            obs_headings[max_heading_op]
+                        )
+                    else:
+                        o_t_X = o_t["posX"].to_numpy()
+                        o_t_Y = o_t["posY"].to_numpy()
+                        o_t_A = o_t["angle"].to_numpy()
+                        obs_distances = point_dist(
+                            o_t_X,
+                            o_t_Y,
+                            row["posX"],
+                            row["posY"],
+                        )
+
+                        features[f"min_obstacle_distances_{a}"][index] = obs_distances[
+                            0
+                        ]
+
+                        obs_directions = find_direction(
+                            row["posX"], row["posY"], o_t_X, o_t_Y
+                        )
+                        obs_headings = cos_plus(obs_directions - row["angle"]) + 2
+                        features[f"min_distance_obstacle_headings_{a}"][index] = (
+                            obs_headings[0]
+                        )
+
+                        features[f"max_obstacle_headings_{a}"][index] = obs_headings[0]
+
+                        features[f"max_heading_obstacle_distances_{a}"][index] = (
+                            obs_distances[0]
+                        )
+
+                        op_directions = find_direction(
+                            o_t_X, o_t_Y, row["posX"], row["posY"]
+                        )
+
+                        op_headings = cos_plus(op_directions - o_t_A) + 2
+
+                        features[f"max_op_headings_{a}"][index] = op_headings[0]
+
+                        features[f"min_distance_op_headings_{a}"][index] = op_headings[
+                            0
+                        ]
+
+                        features[f"max_heading_obstacle_op_headings_{a}"][index] = (
+                            op_headings[0]
+                        )
+
+                        features[f"max_heading_op_distances_{a}"][index] = (
+                            obs_distances[0]
+                        )
+
+                        features[f"max_heading_op_obstacle_headings_{a}"][index] = (
+                            obs_headings[0]
+                        )
+    else:
         # ===MINIMUM DISTANCE OBSTACLE FEATURES===
 
         # 3. Minimum obstacle distance form player
-        features[f"min_obstacle_distances_{a}"] = np.repeat(0.0, p_df.shape[0])
+        features[f"min_obstacle_distances"] = np.repeat(0.0, p_df.shape[0])
 
         # 4. Cosine Similarity between players direction and minimum distance obstacle
-        features[f"min_distance_obstacle_headings_{a}"] = np.repeat(0.0, p_df.shape[0])
+        features[f"min_distance_obstacle_headings"] = np.repeat(0.0, p_df.shape[0])
 
         # 5. cosine similarity between minimum distance obstacle direction and player
-        features[f"min_distance_op_headings_{a}"] = np.repeat(0.0, p_df.shape[0])
+        features[f"min_distance_op_headings"] = np.repeat(0.0, p_df.shape[0])
 
         # ===MAX COSINE SIMILARITY BETWEEN PLAYER AND OBSTACLES FEATURES===
 
         # 6. max cosine similarity between player direction and obstacles
-        features[f"max_obstacle_headings_{a}"] = np.repeat(0.0, p_df.shape[0])
+        features[f"max_obstacle_headings"] = np.repeat(0.0, p_df.shape[0])
 
         # 7. distance of obstacle with max cosine similarity between player direction and obstacles
-        features[f"max_heading_obstacle_distances_{a}"] = np.repeat(0.0, p_df.shape[0])
+        features[f"max_heading_obstacle_distances"] = np.repeat(0.0, p_df.shape[0])
 
         # 8. Cosine Similarity of obstacle direction to player for the obstacle that has the max cosine similarity between the player and that obstacle.
-        features[f"max_heading_obstacle_op_headings_{a}"] = np.repeat(
-            0.0, p_df.shape[0]
-        )
+        features[f"max_heading_obstacle_op_headings"] = np.repeat(0.0, p_df.shape[0])
 
         # ===MAX COSINE SIMILARITY BETWEEN OBSTACLES AND PLAYER FEATURES===
 
         # 9. max cosine similarity between obstacle direction and player
-        features[f"max_op_headings_{a}"] = np.repeat(0.0, p_df.shape[0])
+        features[f"max_op_headings"] = np.repeat(0.0, p_df.shape[0])
 
         # 10. Distance of obstacle with max cosine similarity of its direction and player
-        features[f"max_heading_op_distances_{a}"] = np.repeat(0.0, p_df.shape[0])
+        features[f"max_heading_op_distances"] = np.repeat(0.0, p_df.shape[0])
 
         # 11. Cosine Similarity of player direction to obstacle for the obstacle that has the max cosine similarity between the obstacle direction and player.
-        features[f"max_heading_op_obstacle_headings_{a}"] = np.repeat(
-            0.0, p_df.shape[0]
-        )
-
+        features[f"max_heading_op_obstacle_headings"] = np.repeat(0.0, p_df.shape[0])
         for index, row in p_df.iterrows():
             o_t = O[O["t"] == row["t"]]
-
-            sa = row["angle"] - (a / 2.0)
-            ea = row["angle"] + (a / 2.0)
-            in_arc = points_in_arc(
+            o_t_X = o_t["posX"].to_numpy()
+            o_t_Y = o_t["posY"].to_numpy()
+            o_t_A = o_t["angle"].to_numpy()
+            obs_distances = point_dist(
+                o_t_X,
+                o_t_Y,
                 row["posX"],
                 row["posY"],
-                o_t["posX"].to_numpy(),
-                o_t["posY"].to_numpy(),
-                sa,
-                ea,
             )
-            if np.any(in_arc):
-                o_t = o_t[in_arc]
-                if o_t.shape[0] > 1:
-                    o_t_X = o_t["posX"].to_numpy()
-                    o_t_Y = o_t["posY"].to_numpy()
-                    o_t_A = o_t["angle"].to_numpy()
-                    obs_distances = point_dist(
-                        o_t_X,
-                        o_t_Y,
-                        row["posX"],
-                        row["posY"],
-                    )
-                    min_dist_obs = np.argmin(obs_distances)
-                    features[f"min_obstacle_distances_{a}"][index] = obs_distances[
-                        min_dist_obs
-                    ]
+            min_dist_obs = np.argmin(obs_distances)
+            features[f"min_obstacle_distances"][index] = obs_distances[min_dist_obs]
 
-                    obs_directions = find_direction(
-                        row["posX"], row["posY"], o_t_X, o_t_Y
-                    )
-                    obs_headings = cos_plus(obs_directions - row["angle"]) + 2
+            obs_directions = find_direction(row["posX"], row["posY"], o_t_X, o_t_Y)
+            obs_headings = cos_plus(obs_directions - row["angle"]) + 2
 
-                    features[f"min_distance_obstacle_headings_{a}"][index] = (
-                        obs_headings[min_dist_obs]
-                    )
+            features[f"min_distance_obstacle_headings"][index] = obs_headings[
+                min_dist_obs
+            ]
 
-                    max_heading_obs = np.argmax(obs_headings)
-                    features[f"max_obstacle_headings_{a}"][index] = obs_headings[
-                        max_heading_obs
-                    ]
+            max_heading_obs = np.argmax(obs_headings)
+            features[f"max_obstacle_headings"][index] = obs_headings[max_heading_obs]
 
-                    features[f"max_heading_obstacle_distances_{a}"][index] = (
-                        obs_distances[max_heading_obs]
-                    )
+            features[f"max_heading_obstacle_distances"][index] = obs_distances[
+                max_heading_obs
+            ]
 
-                    op_directions = find_direction(
-                        o_t_X, o_t_Y, row["posX"], row["posY"]
-                    )
+            op_directions = find_direction(o_t_X, o_t_Y, row["posX"], row["posY"])
 
-                    op_headings = cos_plus(op_directions - o_t_A) + 2
-                    max_heading_op = np.argmax(op_headings)
-                    features[f"max_op_headings_{a}"][index] = op_headings[
-                        max_heading_op
-                    ]
+            op_headings = cos_plus(op_directions - o_t_A) + 2
+            max_heading_op = np.argmax(op_headings)
+            features[f"max_op_headings"][index] = op_headings[max_heading_op]
 
-                    features[f"min_distance_op_headings_{a}"][index] = op_headings[
-                        min_dist_obs
-                    ]
+            features[f"min_distance_op_headings"][index] = op_headings[min_dist_obs]
 
-                    features[f"max_heading_obstacle_op_headings_{a}"][index] = (
-                        op_headings[max_heading_obs]
-                    )
+            features[f"max_heading_obstacle_op_headings"][index] = op_headings[
+                max_heading_obs
+            ]
 
-                    features[f"max_heading_op_distances_{a}"][index] = obs_distances[
-                        max_heading_op
-                    ]
+            features[f"max_heading_op_distances"][index] = obs_distances[max_heading_op]
 
-                    features[f"max_heading_op_obstacle_headings_{a}"][index] = (
-                        obs_headings[max_heading_op]
-                    )
-                else:
-                    o_t_X = o_t["posX"].to_numpy()
-                    o_t_Y = o_t["posY"].to_numpy()
-                    o_t_A = o_t["angle"].to_numpy()
-                    obs_distances = point_dist(
-                        o_t_X,
-                        o_t_Y,
-                        row["posX"],
-                        row["posY"],
-                    )
-
-                    features[f"min_obstacle_distances_{a}"][index] = obs_distances[0]
-
-                    obs_directions = find_direction(
-                        row["posX"], row["posY"], o_t_X, o_t_Y
-                    )
-                    obs_headings = cos_plus(obs_directions - row["angle"]) + 2
-                    features[f"min_distance_obstacle_headings_{a}"][index] = (
-                        obs_headings[0]
-                    )
-
-                    features[f"max_obstacle_headings_{a}"][index] = obs_headings[0]
-
-                    features[f"max_heading_obstacle_distances_{a}"][index] = (
-                        obs_distances[0]
-                    )
-
-                    op_directions = find_direction(
-                        o_t_X, o_t_Y, row["posX"], row["posY"]
-                    )
-
-                    op_headings = cos_plus(op_directions - o_t_A) + 2
-
-                    features[f"max_op_headings_{a}"][index] = op_headings[0]
-
-                    features[f"min_distance_op_headings_{a}"][index] = op_headings[0]
-
-                    features[f"max_heading_obstacle_op_headings_{a}"][index] = (
-                        op_headings[0]
-                    )
-
-                    features[f"max_heading_op_distances_{a}"][index] = obs_distances[0]
-
-                    features[f"max_heading_op_obstacle_headings_{a}"][index] = (
-                        obs_headings[0]
-                    )
+            features[f"max_heading_op_obstacle_headings"][index] = obs_headings[
+                max_heading_op
+            ]
     features["obstacle_count"] = p_df["obstacle_count"].to_numpy()
     features["sigma"] = p_df["sigma"].to_numpy()
     features["repel_factor"] = p_df["repel_factor"].to_numpy()
@@ -316,163 +405,252 @@ def compute_run_features_p(d):
 
     features["goal_distances"] = goal_distances
     features["goal_headings"] = goal_headings
-    for a in range(arc_sweep[0], arc_sweep[1] + 1, arc_sweep[2]):
+    if arc_sweep is not None:
+        for a in range(arc_sweep[0], arc_sweep[1] + 1, arc_sweep[2]):
+            # ===MINIMUM DISTANCE OBSTACLE FEATURES===
+
+            # 3. Minimum obstacle distance form player
+            features[f"min_obstacle_distances_{a}"] = np.repeat(0.0, p_df.shape[0])
+
+            # 4. Cosine Similarity between players direction and minimum distance obstacle
+            features[f"min_distance_obstacle_headings_{a}"] = np.repeat(
+                0.0, p_df.shape[0]
+            )
+
+            # 5. cosine similarity between minimum distance obstacle direction and player
+            features[f"min_distance_op_headings_{a}"] = np.repeat(0.0, p_df.shape[0])
+
+            # ===MAX COSINE SIMILARITY BETWEEN PLAYER AND OBSTACLES FEATURES===
+
+            # 6. max cosine similarity between player direction and obstacles
+            features[f"max_obstacle_headings_{a}"] = np.repeat(0.0, p_df.shape[0])
+
+            # 7. distance of obstacle with max cosine similarity between player direction and obstacles
+            features[f"max_heading_obstacle_distances_{a}"] = np.repeat(
+                0.0, p_df.shape[0]
+            )
+
+            # 8. Cosine Similarity of obstacle direction to player for the obstacle that has the max cosine similarity between the player and that obstacle.
+            features[f"max_heading_obstacle_op_headings_{a}"] = np.repeat(
+                0.0, p_df.shape[0]
+            )
+
+            # ===MAX COSINE SIMILARITY BETWEEN OBSTACLES AND PLAYER FEATURES===
+
+            # 9. max cosine similarity between obstacle direction and player
+            features[f"max_op_headings_{a}"] = np.repeat(0.0, p_df.shape[0])
+
+            # 10. Distance of obstacle with max cosine similarity of its direction and player
+            features[f"max_heading_op_distances_{a}"] = np.repeat(0.0, p_df.shape[0])
+
+            # 11. Cosine Similarity of player direction to obstacle for the obstacle that has the max cosine similarity between the obstacle direction and player.
+            features[f"max_heading_op_obstacle_headings_{a}"] = np.repeat(
+                0.0, p_df.shape[0]
+            )
+
+            for index, row in p_df.iterrows():
+                o_t = O[O["t"] == row["t"]]
+
+                sa = row["angle"] - (a / 2.0)
+                ea = row["angle"] + (a / 2.0)
+                in_arc = points_in_arc(
+                    row["posX"],
+                    row["posY"],
+                    o_t["posX"].to_numpy(),
+                    o_t["posY"].to_numpy(),
+                    sa,
+                    ea,
+                )
+                if np.any(in_arc):
+                    o_t = o_t[in_arc]
+                    if o_t.shape[0] > 1:
+                        o_t_X = o_t["posX"].to_numpy()
+                        o_t_Y = o_t["posY"].to_numpy()
+                        o_t_A = o_t["angle"].to_numpy()
+                        obs_distances = point_dist(
+                            o_t_X,
+                            o_t_Y,
+                            row["posX"],
+                            row["posY"],
+                        )
+                        min_dist_obs = np.argmin(obs_distances)
+                        features[f"min_obstacle_distances_{a}"][index] = obs_distances[
+                            min_dist_obs
+                        ]
+
+                        obs_directions = find_direction(
+                            row["posX"], row["posY"], o_t_X, o_t_Y
+                        )
+                        obs_headings = cos_plus(obs_directions - row["angle"]) + 2
+
+                        features[f"min_distance_obstacle_headings_{a}"][index] = (
+                            obs_headings[min_dist_obs]
+                        )
+
+                        max_heading_obs = np.argmax(obs_headings)
+                        features[f"max_obstacle_headings_{a}"][index] = obs_headings[
+                            max_heading_obs
+                        ]
+
+                        features[f"max_heading_obstacle_distances_{a}"][index] = (
+                            obs_distances[max_heading_obs]
+                        )
+
+                        op_directions = find_direction(
+                            o_t_X, o_t_Y, row["posX"], row["posY"]
+                        )
+
+                        op_headings = cos_plus(op_directions - o_t_A) + 2
+                        max_heading_op = np.argmax(op_headings)
+                        features[f"max_op_headings_{a}"][index] = op_headings[
+                            max_heading_op
+                        ]
+
+                        features[f"min_distance_op_headings_{a}"][index] = op_headings[
+                            min_dist_obs
+                        ]
+
+                        features[f"max_heading_obstacle_op_headings_{a}"][index] = (
+                            op_headings[max_heading_obs]
+                        )
+
+                        features[f"max_heading_op_distances_{a}"][index] = (
+                            obs_distances[max_heading_op]
+                        )
+
+                        features[f"max_heading_op_obstacle_headings_{a}"][index] = (
+                            obs_headings[max_heading_op]
+                        )
+                    else:
+                        o_t_X = o_t["posX"].to_numpy()
+                        o_t_Y = o_t["posY"].to_numpy()
+                        o_t_A = o_t["angle"].to_numpy()
+                        obs_distances = point_dist(
+                            o_t_X,
+                            o_t_Y,
+                            row["posX"],
+                            row["posY"],
+                        )
+
+                        features[f"min_obstacle_distances_{a}"][index] = obs_distances[
+                            0
+                        ]
+
+                        obs_directions = find_direction(
+                            row["posX"], row["posY"], o_t_X, o_t_Y
+                        )
+                        obs_headings = cos_plus(obs_directions - row["angle"]) + 2
+                        features[f"min_distance_obstacle_headings_{a}"][index] = (
+                            obs_headings[0]
+                        )
+
+                        features[f"max_obstacle_headings_{a}"][index] = obs_headings[0]
+
+                        features[f"max_heading_obstacle_distances_{a}"][index] = (
+                            obs_distances[0]
+                        )
+
+                        op_directions = find_direction(
+                            o_t_X, o_t_Y, row["posX"], row["posY"]
+                        )
+
+                        op_headings = cos_plus(op_directions - o_t_A) + 2
+
+                        features[f"max_op_headings_{a}"][index] = op_headings[0]
+
+                        features[f"min_distance_op_headings_{a}"][index] = op_headings[
+                            0
+                        ]
+
+                        features[f"max_heading_obstacle_op_headings_{a}"][index] = (
+                            op_headings[0]
+                        )
+
+                        features[f"max_heading_op_distances_{a}"][index] = (
+                            obs_distances[0]
+                        )
+
+                        features[f"max_heading_op_obstacle_headings_{a}"][index] = (
+                            obs_headings[0]
+                        )
+    else:
         # ===MINIMUM DISTANCE OBSTACLE FEATURES===
 
         # 3. Minimum obstacle distance form player
-        features[f"min_obstacle_distances_{a}"] = np.repeat(0.0, p_df.shape[0])
+        features[f"min_obstacle_distances"] = np.repeat(0.0, p_df.shape[0])
 
         # 4. Cosine Similarity between players direction and minimum distance obstacle
-        features[f"min_distance_obstacle_headings_{a}"] = np.repeat(0.0, p_df.shape[0])
+        features[f"min_distance_obstacle_headings"] = np.repeat(0.0, p_df.shape[0])
 
         # 5. cosine similarity between minimum distance obstacle direction and player
-        features[f"min_distance_op_headings_{a}"] = np.repeat(0.0, p_df.shape[0])
+        features[f"min_distance_op_headings"] = np.repeat(0.0, p_df.shape[0])
 
         # ===MAX COSINE SIMILARITY BETWEEN PLAYER AND OBSTACLES FEATURES===
 
         # 6. max cosine similarity between player direction and obstacles
-        features[f"max_obstacle_headings_{a}"] = np.repeat(0.0, p_df.shape[0])
+        features[f"max_obstacle_headings"] = np.repeat(0.0, p_df.shape[0])
 
         # 7. distance of obstacle with max cosine similarity between player direction and obstacles
-        features[f"max_heading_obstacle_distances_{a}"] = np.repeat(0.0, p_df.shape[0])
+        features[f"max_heading_obstacle_distances"] = np.repeat(0.0, p_df.shape[0])
 
         # 8. Cosine Similarity of obstacle direction to player for the obstacle that has the max cosine similarity between the player and that obstacle.
-        features[f"max_heading_obstacle_op_headings_{a}"] = np.repeat(
-            0.0, p_df.shape[0]
-        )
+        features[f"max_heading_obstacle_op_headings"] = np.repeat(0.0, p_df.shape[0])
 
         # ===MAX COSINE SIMILARITY BETWEEN OBSTACLES AND PLAYER FEATURES===
 
         # 9. max cosine similarity between obstacle direction and player
-        features[f"max_op_headings_{a}"] = np.repeat(0.0, p_df.shape[0])
+        features[f"max_op_headings"] = np.repeat(0.0, p_df.shape[0])
 
         # 10. Distance of obstacle with max cosine similarity of its direction and player
-        features[f"max_heading_op_distances_{a}"] = np.repeat(0.0, p_df.shape[0])
+        features[f"max_heading_op_distances"] = np.repeat(0.0, p_df.shape[0])
 
         # 11. Cosine Similarity of player direction to obstacle for the obstacle that has the max cosine similarity between the obstacle direction and player.
-        features[f"max_heading_op_obstacle_headings_{a}"] = np.repeat(
-            0.0, p_df.shape[0]
-        )
-
+        features[f"max_heading_op_obstacle_headings"] = np.repeat(0.0, p_df.shape[0])
         for index, row in p_df.iterrows():
             o_t = O[O["t"] == row["t"]]
-
-            sa = row["angle"] - (a / 2.0)
-            ea = row["angle"] + (a / 2.0)
-            in_arc = points_in_arc(
+            o_t_X = o_t["posX"].to_numpy()
+            o_t_Y = o_t["posY"].to_numpy()
+            o_t_A = o_t["angle"].to_numpy()
+            obs_distances = point_dist(
+                o_t_X,
+                o_t_Y,
                 row["posX"],
                 row["posY"],
-                o_t["posX"].to_numpy(),
-                o_t["posY"].to_numpy(),
-                sa,
-                ea,
             )
-            if np.any(in_arc):
-                o_t = o_t[in_arc]
-                if o_t.shape[0] > 1:
-                    o_t_X = o_t["posX"].to_numpy()
-                    o_t_Y = o_t["posY"].to_numpy()
-                    o_t_A = o_t["angle"].to_numpy()
-                    obs_distances = point_dist(
-                        o_t_X,
-                        o_t_Y,
-                        row["posX"],
-                        row["posY"],
-                    )
-                    min_dist_obs = np.argmin(obs_distances)
-                    features[f"min_obstacle_distances_{a}"][index] = obs_distances[
-                        min_dist_obs
-                    ]
+            min_dist_obs = np.argmin(obs_distances)
+            features[f"min_obstacle_distances"][index] = obs_distances[min_dist_obs]
 
-                    obs_directions = find_direction(
-                        row["posX"], row["posY"], o_t_X, o_t_Y
-                    )
-                    obs_headings = cos_plus(obs_directions - row["angle"]) + 2
+            obs_directions = find_direction(row["posX"], row["posY"], o_t_X, o_t_Y)
+            obs_headings = cos_plus(obs_directions - row["angle"]) + 2
 
-                    features[f"min_distance_obstacle_headings_{a}"][index] = (
-                        obs_headings[min_dist_obs]
-                    )
+            features[f"min_distance_obstacle_headings"][index] = obs_headings[
+                min_dist_obs
+            ]
 
-                    max_heading_obs = np.argmax(obs_headings)
-                    features[f"max_obstacle_headings_{a}"][index] = obs_headings[
-                        max_heading_obs
-                    ]
+            max_heading_obs = np.argmax(obs_headings)
+            features[f"max_obstacle_headings"][index] = obs_headings[max_heading_obs]
 
-                    features[f"max_heading_obstacle_distances_{a}"][index] = (
-                        obs_distances[max_heading_obs]
-                    )
+            features[f"max_heading_obstacle_distances"][index] = obs_distances[
+                max_heading_obs
+            ]
 
-                    op_directions = find_direction(
-                        o_t_X, o_t_Y, row["posX"], row["posY"]
-                    )
+            op_directions = find_direction(o_t_X, o_t_Y, row["posX"], row["posY"])
 
-                    op_headings = cos_plus(op_directions - o_t_A) + 2
-                    max_heading_op = np.argmax(op_headings)
-                    features[f"max_op_headings_{a}"][index] = op_headings[
-                        max_heading_op
-                    ]
+            op_headings = cos_plus(op_directions - o_t_A) + 2
+            max_heading_op = np.argmax(op_headings)
+            features[f"max_op_headings"][index] = op_headings[max_heading_op]
 
-                    features[f"min_distance_op_headings_{a}"][index] = op_headings[
-                        min_dist_obs
-                    ]
+            features[f"min_distance_op_headings"][index] = op_headings[min_dist_obs]
 
-                    features[f"max_heading_obstacle_op_headings_{a}"][index] = (
-                        op_headings[max_heading_obs]
-                    )
+            features[f"max_heading_obstacle_op_headings"][index] = op_headings[
+                max_heading_obs
+            ]
 
-                    features[f"max_heading_op_distances_{a}"][index] = obs_distances[
-                        max_heading_op
-                    ]
+            features[f"max_heading_op_distances"][index] = obs_distances[max_heading_op]
 
-                    features[f"max_heading_op_obstacle_headings_{a}"][index] = (
-                        obs_headings[max_heading_op]
-                    )
-                else:
-                    o_t_X = o_t["posX"].to_numpy()
-                    o_t_Y = o_t["posY"].to_numpy()
-                    o_t_A = o_t["angle"].to_numpy()
-                    obs_distances = point_dist(
-                        o_t_X,
-                        o_t_Y,
-                        row["posX"],
-                        row["posY"],
-                    )
-
-                    features[f"min_obstacle_distances_{a}"][index] = obs_distances[0]
-
-                    obs_directions = find_direction(
-                        row["posX"], row["posY"], o_t_X, o_t_Y
-                    )
-                    obs_headings = cos_plus(obs_directions - row["angle"]) + 2
-                    features[f"min_distance_obstacle_headings_{a}"][index] = (
-                        obs_headings[0]
-                    )
-
-                    features[f"max_obstacle_headings_{a}"][index] = obs_headings[0]
-
-                    features[f"max_heading_obstacle_distances_{a}"][index] = (
-                        obs_distances[0]
-                    )
-
-                    op_directions = find_direction(
-                        o_t_X, o_t_Y, row["posX"], row["posY"]
-                    )
-
-                    op_headings = cos_plus(op_directions - o_t_A) + 2
-
-                    features[f"max_op_headings_{a}"][index] = op_headings[0]
-
-                    features[f"min_distance_op_headings_{a}"][index] = op_headings[0]
-
-                    features[f"max_heading_obstacle_op_headings_{a}"][index] = (
-                        op_headings[0]
-                    )
-
-                    features[f"max_heading_op_distances_{a}"][index] = obs_distances[0]
-
-                    features[f"max_heading_op_obstacle_headings_{a}"][index] = (
-                        obs_headings[0]
-                    )
+            features[f"max_heading_op_obstacle_headings"][index] = obs_headings[
+                max_heading_op
+            ]
     features["obstacle_count"] = p_df["obstacle_count"].to_numpy()
     features["sigma"] = p_df["sigma"].to_numpy()
     features["repel_factor"] = p_df["repel_factor"].to_numpy()

@@ -61,14 +61,14 @@ def main(argv):
         "-f",
         "--split_size",
         type=int,
-        default = 100,
+        default=100,
         help="Trajectory segment size.",
     )
     parser.add_argument(
         "-a",
         "--arc_sweep",
         type=int,
-        default=[10, 360, 10],
+        default=None,
         nargs=3,
         help="Settings for arc sizes for feature computation. \n(Starting Size, Ending Size, Increment Size).",
     )
@@ -123,7 +123,10 @@ def main(argv):
     if not Path(o_path).is_dir():
         raise FileNotFoundError(f"Cannot find output directory {o_path}!")
     split_size = args.split_size
-    arc_sweep = tuple(args.arc_sweep)
+    if args.arc_sweep is not None:
+        arc_sweep = tuple(args.arc_sweep)
+    else:
+        arc_sweep = args.arc_sweep
     seed = args.seed
     load_features = args.load_features
     load_p_stats = args.load_stats
