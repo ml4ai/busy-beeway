@@ -121,7 +121,8 @@ def pref_loss_fn(state_fn, train_params, batch, training, rng):
 
     trans_pred_1 = trans_pred_1["weighted_sum"]
     trans_pred_2 = trans_pred_2["weighted_sum"]
-
+    jax.debug.print("obs_1: {x}", x=trans_pred_1)
+    jax.debug.print("obs_2: {x}", x=trans_pred_2)
     sum_pred_1 = jnp.mean(trans_pred_1.reshape(B, T), axis=1).reshape(-1, 1)
     sum_pred_2 = jnp.mean(trans_pred_2.reshape(B, T), axis=1).reshape(-1, 1)
 
