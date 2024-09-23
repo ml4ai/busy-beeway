@@ -40,7 +40,7 @@ def cross_ent_loss(logits, target):
         label = target
     jax.debug.print("logits: {x}", x=logits)
     loss = jnp.mean(optax.softmax_cross_entropy(logits=logits, labels=label))
-    jax.debug.print("loss: {x}", x=loss)
+    jax.debug.print("labels: {x}", x=label)
     return loss
 
 
