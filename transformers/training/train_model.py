@@ -43,6 +43,7 @@ def train_pt(
     )
 
     _, query_len, observation_dim = data.obs_shape()
+    max_episode_length = data.max_episode_length()
     rng_key = jax.random.PRNGKey(seed)
     rng_key, rng_subkey = jax.random.split(rng_key, 2)
     gen1 = torch.Generator().manual_seed(int(rng_subkey[0]))
@@ -74,7 +75,7 @@ def train_pt(
     embd_dim = kwargs.get("embd_dim", min(batch_size, 256))
     trans = PT(
         observation_dim=observation_dim,
-        max_episode_steps=kwargs.get("max_episode_steps", 1219),
+        max_episode_steps=kwargs.get("max_episode_steps", max_episode_length),
         embd_dim=embd_dim,
         pref_attn_embd_dim=kwargs.get("pref_attn_embd_dim", embd_dim),
         num_heads=kwargs.get("num_heads", 4),

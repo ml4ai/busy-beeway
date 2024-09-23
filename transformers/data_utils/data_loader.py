@@ -9,7 +9,8 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
         super(Pref_H5Dataset, self).__init__()
         self.file_path = file_path
         with h5py.File(self.file_path, "r") as f:
-            self.shape = f["observations"].shape
+            self._shape = f["observations"].shape
+            self._max_episode_length = np.max(f["timesteps"][:])
 
     def open_hdf5(self):
         self.h5_file = h5py.File(self.file_path, "r")
@@ -35,7 +36,10 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
         )
 
     def __len__(self):
-        return self.shape[0]
+        return self._shape[0]
 
     def obs_shape(self):
-        return self.shape
+        return self._shape
+
+    def max_episode_length(self):
+        return self._max_episode_length

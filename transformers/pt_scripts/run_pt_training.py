@@ -4,7 +4,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath("../.."))
 import jax
-jax.config.update("jax_debug_nans", True)
+
 import jax.numpy as jnp
 import numpy as np
 from argformat import StructuredFormatter
@@ -12,6 +12,7 @@ from argformat import StructuredFormatter
 from transformers.data_utils.data_loader import Pref_H5Dataset
 from transformers.training.train_model import train_pt
 import torch.multiprocessing as multiprocessing
+
 
 def main(argv):
     parser = argparse.ArgumentParser(
@@ -84,7 +85,7 @@ def main(argv):
         default="~/busy-beeway/transformers/logs",
         help="Output directory for training logs and pickled models",
     )
-    multiprocessing.set_start_method('forkserver')
+    multiprocessing.set_start_method("forkserver")
     args = parser.parse_args(argv)
     data = os.path.expanduser(args.data)
     train_split = args.training_split
