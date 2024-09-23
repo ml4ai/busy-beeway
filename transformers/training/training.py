@@ -48,7 +48,7 @@ def _eval_pref_step(state, batch, rng_key):
 
 @jax.jit
 def _train_pref_step(state, batch, rng_key):
-    jax.debug.print("obs_1: {x}", x=batch["observations_1"])
+    jax.debug.print("obs_1: {x}", x=batch["observations"])
     jax.debug.print("obs_2: {x}", x=batch["observations_2"])
     grad_fn = jax.value_and_grad(pref_loss_fn, argnums=1, has_aux=True)
     (loss, acc), grads = grad_fn(state.apply_fn, state.params, batch, True, rng_key)
