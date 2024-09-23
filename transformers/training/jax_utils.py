@@ -38,9 +38,7 @@ def cross_ent_loss(logits, target):
         label = jax.nn.one_hot(target, num_classes=2)
     else:
         label = target
-    jax.debug.print("logits: {x}", x=logits)
     loss = jnp.mean(optax.softmax_cross_entropy(logits=logits, labels=label))
-    jax.debug.print("labels: {x}", x=label)
     return loss
 
 
@@ -122,7 +120,10 @@ def pref_loss_fn(state_fn, train_params, batch, training, rng):
 
     trans_pred_1 = trans_pred_1["weighted_sum"]
     trans_pred_2 = trans_pred_2["weighted_sum"]
-
+    if (jnp.any(jnp.isnan(trans_pred_1))):
+        jax.debug.print("obs_1:{x}",x=trans_pred_1)
+    if (jnp.any(jnp.isnan(trans_pred_2))):
+        jax.debug.print("obs_2:{x}",x=trans_pred_2)
     sum_pred_1 = jnp.mean(trans_pred_1.reshape(B, T), axis=1).reshape(-1, 1)
     sum_pred_2 = jnp.mean(trans_pred_2.reshape(B, T), axis=1).reshape(-1, 1)
 
