@@ -26,7 +26,7 @@ class PrefTransformerTrainer(object):
         trans_params = self.trans.init(
             {"params": rng_key1, "dropout": rng_key2},
             jnp.zeros((10, 25, trans.observation_dim)),
-            jnp.ones((10, 25)),
+            jnp.ones((10, 25),dtype=jnp.int32),
         )
         self._train_state = TrainState.create(
             params=trans_params, tx=tx, apply_fn=self.trans.apply
@@ -50,7 +50,7 @@ def _eval_pref_step(state, batch, rng_key):
 def _train_pref_step(state, batch, rng_key):
     grad_fn = jax.value_and_grad(pref_loss_fn, argnums=1, has_aux=True)
     (loss, acc), grads = grad_fn(state.apply_fn, state.params, batch, True, rng_key)
-    jax.debug.print("gradients: {x}",x=grads)
+    jax.debug.print("gradients: {x}", x=grads)
     new_train_state = state.apply_gradients(grads=grads)
     metrics = dict(training_loss=loss, training_acc=acc)
     return new_train_state, metrics
