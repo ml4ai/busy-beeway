@@ -926,42 +926,64 @@ def create_preference_data(
                     f.create_dataset(k, data=data[k], compression="lzf")
         return data
 
-
-def plot_training_validation_loss(load_log, eval_period=5, save_file=None, **kwargs):
+# 0 for loss, otherwise accuracy
+def plot_training_validation_stats(load_log, ptype=0,eval_period=1, save_file=None, **kwargs):
     L = pd.read_csv(load_log)
     L = L[(L.index % eval_period == 0) & (L.index >= eval_period)]
 
     x = L.index.to_numpy()
-    y = L["training_loss"].to_numpy()
-
-    y2 = L["eval_loss"].to_numpy()
-
-    xb = L["best_epoch"].to_numpy()[-1]
-    yb = L["eval_loss_best"].to_numpy()[-1]
-
-    fig, ax = plt.subplots()
-    ax.plot(x, y, label="Training Loss")
-    ax.plot(x, y2, label="Validation Loss")
-    ax.plot(
-        xb,
-        yb,
-        "*",
-        markersize=kwargs.get("markersize", 10),
-        label="Best Validation Loss",
-    )
-    if "ylim" in kwargs:
-        ax.set(
-            ylim=kwargs["ylim"],
-            xlabel="Epoch",
-            ylabel="Preference Predictor Cross-Entropy Loss",
-            title="Preference Transformer: Training vs. Validation Loss",
-        )
+    if ptype:
+        y = L["training_acc"].to_numpy()
+        
+        y2 = L["eval_acc"].to_numpy()
+        
+        fig, ax = plt.subplots()
+        ax.plot(x, y, label="Training Accuracy")
+        ax.plot(x, y2, label="Validation Accuracy")
+        if "ylim" in kwargs:
+            ax.set(
+                ylim=kwargs["ylim"],
+                xlabel="Epoch",
+                ylabel="Preference Predictor Accuracy",
+                title="Preference Transformer: Training vs. Validation Accuracy",
+            )
+        else:
+            ax.set(
+                xlabel="Epoch",
+                ylabel="Preference Predictor Accuracy",
+                title="Preference Transformer: Training vs. Validation Accuracy",
+            )
     else:
-        ax.set(
-            xlabel="Epoch",
-            ylabel="Preference Predictor Cross-Entropy Loss",
-            title="Preference Transformer: Training vs. Validation Loss",
+        y = L["training_loss"].to_numpy()
+        
+        y2 = L["eval_loss"].to_numpy()
+        
+        xb = L["best_epoch"].to_numpy()[-1]
+        yb = L["eval_loss_best"].to_numpy()[-1]
+        
+        fig, ax = plt.subplots()
+        ax.plot(x, y, label="Training Loss")
+        ax.plot(x, y2, label="Validation Loss")
+        ax.plot(
+            xb,
+            yb,
+            "*",
+            markersize=kwargs.get("markersize", 10),
+            label="Best Validation Loss",
         )
+        if "ylim" in kwargs:
+            ax.set(
+                ylim=kwargs["ylim"],
+                xlabel="Epoch",
+                ylabel="Preference Predictor Cross-Entropy Loss",
+                title="Preference Transformer: Training vs. Validation Loss",
+            )
+        else:
+            ax.set(
+                xlabel="Epoch",
+                ylabel="Preference Predictor Cross-Entropy Loss",
+                title="Preference Transformer: Training vs. Validation Loss",
+            )
     ax.legend()
     if save_file is None:
         plt.show()
