@@ -188,6 +188,108 @@ def goal_only_replay(
     return dat
 
 
+# Replay Run where controller moves randomly
+def random_run_replay(
+    d,
+    move_stats,
+    rng=np.random.default_rng(),
+):
+    p_df = d["player"]
+    O = d["obstacles"]
+    g = d["goal"]
+
+    old_p_X = p_df["posX"].to_numpy()[0]
+    old_p_Y = p_df["posY"].to_numpy()[0]
+    old_O = O[O["t"] == p_df["t"].to_numpy()[0]]
+    p_X_list = [old_p_X]
+    p_Y_list = [old_p_Y]
+    p_A_list = [p_df["angle"].to_numpy()[0]]
+    O_list = [old_O]
+    success = True
+    for t in itertools.count(start=1):
+        new_O = O[O["t"] == t]
+        if new_O.shape[0] == 0:
+            success = False
+            break
+        p_dist = rng.normal(move_stats[0], move_stats[1])
+        r_dir = rng.uniform(0, 360)
+        new_p_X = old_p_X + (p_dist * cos_plus(r_dir))
+        new_p_Y = old_p_Y + (p_dist * sin_plus(r_dir))
+        p_X_list.append(new_p_X)
+        p_Y_list.append(new_p_Y)
+        p_A_list.append(r_dir)
+        O_list.append(new_O)
+
+        coll, _, _ = collision(
+            old_O["posX"].to_numpy(),
+            old_O["posY"].to_numpy(),
+            new_O["posX"].to_numpy(),
+            new_O["posY"].to_numpy(),
+            old_p_X,
+            old_p_Y,
+        )
+
+        if coll:
+            success = False
+            break
+
+        coll, _, _ = collision(
+            old_p_X,
+            old_p_Y,
+            new_p_X,
+            new_p_Y,
+            new_O["posX"].to_numpy(),
+            new_O["posY"].to_numpy(),
+        )
+
+        if coll:
+            success = False
+            break
+        coll, _, _ = collision(
+            old_p_X, old_p_Y, new_p_X, new_p_Y, g[0], g[1], radius_2=1.0
+        )
+
+        if coll:
+            break
+        old_p_X = new_p_X
+        old_p_Y = new_p_Y
+        old_O = new_O
+
+    new_p_df = pd.DataFrame(
+        {
+            "posX": p_X_list,
+            "posY": p_Y_list,
+            "angle": p_A_list,
+            "obstacle_count": p_df["obstacle_count"].to_numpy()[0],
+            "sigma": p_df["sigma"].to_numpy()[0],
+            "repel_factor": p_df["repel_factor"].to_numpy()[0],
+            "attempt": p_df["attempt"].to_numpy()[0],
+            "userControl": 0,
+            "t": range(len(p_X_list)),
+        }
+    )
+    o_pos = pd.concat(O_list)
+    o_pos.reset_index
+    return {
+        "player": new_p_df,
+        "obstacles": o_pos,
+        "reached_goal": success,
+        "goal": g,
+    }, rng
+
+
+def random_replay(D, move_stats, seed=None):
+    if seed is None:
+        rng = np.random.default_rng()
+    else:
+        rng = np.random.default_rng(seed)
+    dat = []
+    for d in D:
+        rd, rng = random_run_replay(d, move_stats, rng)
+        dat.append(rd)
+    return dat
+
+
 # Replay Run where controller only moves to points closest to goal
 def goal_only_run_replay_p(f):
     d, move_stats, simulate_forward, ignore_collisions, rng = f
@@ -335,6 +437,134 @@ def goal_only_replay_p(
                             move_stats,
                             simulate_forward,
                             ignore_collisions,
+                            np.random.default_rng(seed + i * 1000),
+                        )
+                        for i, d in enumerate(D)
+                    ],
+                )
+            )
+            return dat
+
+
+# Replay Run where controller moves randomly
+def random_run_replay_p(f):
+    d, move_stats, rng = f
+    p_df = d["player"]
+    O = d["obstacles"]
+    g = d["goal"]
+
+    old_p_X = p_df["posX"].to_numpy()[0]
+    old_p_Y = p_df["posY"].to_numpy()[0]
+    old_O = O[O["t"] == p_df["t"].to_numpy()[0]]
+    p_X_list = [old_p_X]
+    p_Y_list = [old_p_Y]
+    p_A_list = [p_df["angle"].to_numpy()[0]]
+    O_list = [old_O]
+    success = True
+    for t in itertools.count(start=1):
+        new_O = O[O["t"] == t]
+        if new_O.shape[0] == 0:
+            success = False
+            break
+        p_dist = rng.normal(move_stats[0], move_stats[1])
+        r_dir = rng.uniform(0,360)
+        new_p_X = old_p_X + (p_dist * cos_plus(r_dir))
+        new_p_Y = old_p_Y + (p_dist * sin_plus(r_dir))
+        p_X_list.append(new_p_X)
+        p_Y_list.append(new_p_Y)
+        p_A_list.append(r_dir)
+        O_list.append(new_O)
+        coll, _, _ = collision(
+            old_O["posX"].to_numpy(),
+            old_O["posY"].to_numpy(),
+            new_O["posX"].to_numpy(),
+            new_O["posY"].to_numpy(),
+            old_p_X,
+            old_p_Y,
+        )
+
+        if coll:
+            success = False
+            break
+
+        coll, _, _ = collision(
+            old_p_X,
+            old_p_Y,
+            new_p_X,
+            new_p_Y,
+            new_O["posX"].to_numpy(),
+            new_O["posY"].to_numpy(),
+        )
+
+        if coll:
+            success = False
+            break
+        coll, _, _ = collision(
+            old_p_X, old_p_Y, new_p_X, new_p_Y, g[0], g[1], radius_2=1.0
+        )
+
+        if coll:
+            break
+        old_p_X = new_p_X
+        old_p_Y = new_p_Y
+        old_O = new_O
+
+    new_p_df = pd.DataFrame(
+        {
+            "posX": p_X_list,
+            "posY": p_Y_list,
+            "angle": p_A_list,
+            "obstacle_count": p_df["obstacle_count"].to_numpy()[0],
+            "sigma": p_df["sigma"].to_numpy()[0],
+            "repel_factor": p_df["repel_factor"].to_numpy()[0],
+            "attempt": p_df["attempt"].to_numpy()[0],
+            "userControl": 0,
+            "t": range(len(p_X_list)),
+        }
+    )
+    o_pos = pd.concat(O_list)
+    o_pos.reset_index
+    return {
+        "player": new_p_df,
+        "obstacles": o_pos,
+        "reached_goal": success,
+        "goal": g,
+    }
+
+
+def random_replay_p(
+    D,
+    move_stats,
+    seed=None,
+    cores=None,
+):
+    if cores is None:
+        cores = os.cpu_count()
+    if seed is None:
+        with Pool(cores) as p:
+            dat = list(
+                p.map(
+                    random_replay_p,
+                    [
+                        (
+                            d,
+                            move_stats,
+                            np.random.default_rng(),
+                        )
+                        for d in D
+                    ],
+                )
+            )
+            return dat
+    else:
+        with Pool(cores) as p:
+            dat = list(
+                p.map(
+                    random_replay_p,
+                    [
+                        (
+                            d,
+                            move_stats,
                             np.random.default_rng(seed + i * 1000),
                         )
                         for i, d in enumerate(D)
