@@ -467,7 +467,7 @@ def random_run_replay_p(f):
             success = False
             break
         p_dist = rng.normal(move_stats[0], move_stats[1])
-        r_dir = rng.uniform(0,360)
+        r_dir = rng.uniform(0, 360)
         new_p_X = old_p_X + (p_dist * cos_plus(r_dir))
         new_p_Y = old_p_Y + (p_dist * sin_plus(r_dir))
         p_X_list.append(new_p_X)
@@ -544,7 +544,7 @@ def random_replay_p(
         with Pool(cores) as p:
             dat = list(
                 p.map(
-                    random_replay_p,
+                    random_run_replay_p,
                     [
                         (
                             d,
@@ -560,7 +560,7 @@ def random_replay_p(
         with Pool(cores) as p:
             dat = list(
                 p.map(
-                    random_replay_p,
+                    random_run_replay_p,
                     [
                         (
                             d,
