@@ -4,7 +4,7 @@ import cloudpickle as pickle
 import os
 import jax.numpy as jnp
 import jax
-
+import numpy
 
 def set_random_seed(seed):
     np.random.seed(seed)
