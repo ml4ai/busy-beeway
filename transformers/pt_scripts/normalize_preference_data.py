@@ -1,6 +1,7 @@
 import argparse
-import sys
 import os
+import sys
+
 import numpy as np
 
 sys.path.insert(0, os.path.abspath("../.."))
@@ -8,6 +9,7 @@ from pathlib import Path
 
 import h5py
 from argformat import StructuredFormatter
+
 from transformers.data_utils.bb_data_loading import load_list
 
 
@@ -32,31 +34,18 @@ def main(argv):
     args = parser.parse_args(argv)
     p_id = load_list(args.p_id)
     data_dir = os.path.expanduser(args.data_dir)
-    # first pass collects min max data
-    mins_1 = []
-    maxs_1 = []
-    mins_2 = []
-    maxs_2 = []
+    # first pass collects mean data
+    sum_1 = []
+    sum_2 = []
+    num = 0 
     for p in p_id:
         with h5py.File(f"{data_dir}/{p}.hdf5", "r") as f:
-            ob = f["observations"][:]
-            ob_t = ob != 0
+            num += f["observations"].shape[0]
+            sum_1.append(np.sum(np.sum(f["observations"][:], 1), 0))
+            sum_2.append(np.sum(np.sum(f["observations_2"][:], 1), 0))
 
-            mins_1.append(np.min(np.min(ob, 1, initial=100, where=ob_t), 0))
-            maxs_1.append(np.max(np.max(ob, 1, initial=-1, where=ob_t), 0))
-
-            ob = f["observations_2"][:]
-            ob_t = ob != 0
-            mins_2.append(np.min(np.min(ob, 1, initial=100, where=ob_t), 0))
-            maxs_2.append(np.max(np.max(ob, 1, initial=-1, where=ob_t), 0))
-
-    min_1 = np.min(mins_1, 0)
-    min_2 = np.min(mins_2, 0)
-    max_1 = np.max(maxs_1, 0)
-    max_2 = np.max(maxs_2, 0)
-    maxmin_1 = max_1 - min_1
-    maxmin_2 = max_2 - min_2
-    # second pass applies scaling
+    mean_1 = sum_1 / num
+    # second pass 
     for p in p_id:
         with h5py.File(f"{data_dir}/{p}.hdf5", "r+") as f:
             ob = f["observations"][:]
