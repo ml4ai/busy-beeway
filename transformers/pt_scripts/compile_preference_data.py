@@ -20,8 +20,8 @@ from transformers.data_utils.data_utils import (
 )
 from transformers.replayer.replayer import (
     generate_stats,
-    goal_only_replay,
-    goal_only_replay_p,
+    random_replay,
+    random_replay_p,
     load_stats,
 )
 
@@ -185,7 +185,7 @@ def main(argv):
                         p_id=p_id, path=path, exclusion_list=L, study=study
                     )
                     pd_not_loaded = False
-                    RD = goal_only_replay_p(D, stats, simulate_forward=False, seed=seed)
+                    RD = random_replay_p(D, stats, seed=seed)
                     RF = compute_features_p(RD, arc_sweep, save_dir=save_rf)
                     del RD
                 try:
@@ -233,7 +233,7 @@ def main(argv):
                         p_id=p_id, path=path, exclusion_list=L, study=study
                     )
                     pd_not_loaded = False
-                    RD = goal_only_replay(D, stats, simulate_forward=False, seed=seed)
+                    RD = random_replay(D, stats, seed=seed)
                     RF = compute_features(RD, arc_sweep, save_dir=save_rf)
                     del RD
                 try:
@@ -288,7 +288,7 @@ def main(argv):
                     p_id=p_id, path=path, exclusion_list=L, study=study
                 )
                 pd_not_loaded = False
-                RD = goal_only_replay_p(D, stats, simulate_forward=False, seed=seed)
+                RD = random_replay_p(D, stats, seed=seed)
                 RF = compute_features_p(RD, arc_sweep, save_dir=save_rf)
                 del RD
             try:
@@ -333,7 +333,7 @@ def main(argv):
                 p_id=p_id, path=path, exclusion_list=L, study=study
             )
             pd_not_loaded = False
-            RD = goal_only_replay(D, stats, simulate_forward=False, seed=seed)
+            RD = random_replay(D, stats, seed=seed)
             RF = compute_features(RD, arc_sweep, save_dir=save_rf)
             del RD
         try:
