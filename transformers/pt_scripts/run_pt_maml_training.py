@@ -34,7 +34,7 @@ def main(argv):
         help="Percentage of training data.",
     )
     parser.add_argument(
-        "-w",
+        "-c",
         "--N_way",
         type=int,
         default=5,
