@@ -118,7 +118,7 @@ def main(argv):
         train_pt(
             data,
             seed,
-            train_val_test_split=train_split,
+            train_val_test_split=train_val_test_split,
             N_way=N_way,
             K_shot=K_shot,
             num_workers=workers,
