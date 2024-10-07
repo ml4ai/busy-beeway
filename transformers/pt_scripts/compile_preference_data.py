@@ -35,7 +35,7 @@ def main(argv):
         "p_id",
         metavar="PID",
         type=str,
-        help="Either a single Participant ID or \na .txt file containing a list of \nParticipant IDs to process",
+        help="Either a single auto ID or \na .txt file containing a list of \nAuto IDs to process",
     )
     parser.add_argument(
         "-d",
