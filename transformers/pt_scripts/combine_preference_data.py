@@ -69,6 +69,7 @@ def main(argv):
 
     l_layout = h5py.VirtualLayout(shape=(d_s_sum,), dtype="<f8")
     prev_size = 0
+    p_idx = []
     for i, p in enumerate(p_id):
         o_vsource = h5py.VirtualSource(
             f"{data_dir}/{p}.hdf5",
@@ -111,7 +112,8 @@ def main(argv):
         am_2_layout[prev_size : (prev_size + data_sizes[i]), :] = am_2_vsource
 
         l_layout[prev_size : (prev_size + data_sizes[i])] = l_vsource
-
+        # end of range is exclusive. So 0,100 is really 0 to 99 inclusive.
+        p_idx.append(np.array([prev_size, (prev_size + data_sizes[i])]))
         prev_size += data_sizes[i]
 
     with h5py.File(save_file, "w") as f:
@@ -122,8 +124,10 @@ def main(argv):
         f.create_virtual_dataset("observations_2", o_2_layout)
         f.create_virtual_dataset("timesteps_2", t_2_layout)
         f.create_virtual_dataset("attn_mask_2", am_2_layout)
-        
+
         f.create_virtual_dataset("labels", l_layout)
+        for i, p in enumerate(p_id):
+            f.attrs[p] = p_idx[i]
     sys.exit(0)
 
 
