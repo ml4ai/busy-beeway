@@ -342,7 +342,7 @@ def train_mamlpt(
         if epoch % eval_period == 0:
             e_keys = jax.random.split(e_key, eval_interval)
             for j, e_data in tqdm(
-                enumerate(test_data_loader),
+                enumerate(validation_data_loader),
                 total=eval_interval,
                 desc=f"Evaluation Epoch {epoch}",
             ):
