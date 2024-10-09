@@ -36,6 +36,7 @@ def train_pt(
     criteria_key="eval_loss",
     save_dir="~/busy-beeway/transformers/logs",
     save_model=True,
+    pretrained_params=None,
     **kwargs,
 ):
 
@@ -74,6 +75,7 @@ def train_pt(
 
     interval = len(training_data_loader)
     eval_interval = len(test_data_loader)
+    rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
     max_pos = 512
     while query_len > max_pos:
         max_pos *= 2
@@ -92,12 +94,11 @@ def train_pt(
         max_pos=kwargs.get("max_pos", max_pos),
         eps=kwargs.get("eps", 0.1),
     )
-
-    rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
     model = PrefTransformerTrainer(
         trans,
         rng_subkey1,
         rng_subkey2,
+        pretrained_params,
         init_value=kwargs.get("init_value", 0),
         peak_value=kwargs.get("peak_value", 1e-4),
         warmup_steps=kwargs.get("warmup_steps", int(n_epochs * interval * 0.1)),
@@ -370,7 +371,7 @@ def train_mamlpt(
                     "epoch": epoch,
                     "training_participants": training_p_idx.keys(),
                     "validation_participants": validation_p_idx.keys(),
-                    "test_participants": test_p_idx.keys()
+                    "test_participants": test_p_idx.keys(),
                 }
                 save_pickle(save_data, "best_model.pkl", save_dir)
 
@@ -383,11 +384,12 @@ def train_mamlpt(
         logger.record_dict(metrics)
         logger.dump_tabular(with_prefix=False, with_timestamp=False)
     if save_model:
-        save_data = {"model": model, 
-                     "epoch": epoch,
-                     "training_participants": training_p_idx.keys(),
-                     "validation_participants": validation_p_idx.keys(),
-                     "test_participants": test_p_idx.keys()
+        save_data = {
+            "model": model,
+            "epoch": epoch,
+            "training_participants": training_p_idx.keys(),
+            "validation_participants": validation_p_idx.keys(),
+            "test_participants": test_p_idx.keys(),
         }
         save_pickle(save_data, "model.pkl", save_dir)
 

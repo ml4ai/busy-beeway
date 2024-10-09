@@ -11,7 +11,7 @@ from transformers.training.jax_utils import pref_loss_fn
 
 class PrefTransformerTrainer(object):
 
-    def __init__(self, trans, rng_key1, rng_key2, **kwargs):
+    def __init__(self, trans, rng_key1, rng_key2, pretrained_params=None, **kwargs):
         self.trans = trans
 
         optimizer_class = optax.adamw
@@ -25,14 +25,19 @@ class PrefTransformerTrainer(object):
         )
         tx = optimizer_class(scheduler_class)
         # Reconfigure for our data
-        trans_params = self.trans.init(
-            {"params": rng_key1, "dropout": rng_key2},
-            jnp.zeros((10, 25, trans.observation_dim)),
-            jnp.ones((10, 25), dtype=jnp.int32),
-        )
-        self._train_state = TrainState.create(
-            params=trans_params, tx=tx, apply_fn=self.trans.apply
-        )
+        if pretrained_params is None:
+            trans_params = self.trans.init(
+                {"params": rng_key1, "dropout": rng_key2},
+                jnp.zeros((10, 25, trans.observation_dim)),
+                jnp.ones((10, 25), dtype=jnp.int32),
+            )
+            self._train_state = TrainState.create(
+                params=trans_params, tx=tx, apply_fn=self.trans.apply
+            )
+        else:
+            self._train_state = TrainState.create(
+                params=pretrained_params, tx=tx, apply_fn=self.trans.apply
+            )
 
     def evaluation(self, batch, rng_key):
         return _eval_pref_step(self._train_state, batch, rng_key)
@@ -40,6 +45,9 @@ class PrefTransformerTrainer(object):
     def train(self, batch, rng_key):
         self._train_state, metrics = _train_pref_step(self._train_state, batch, rng_key)
         return metrics
+
+    def get_params(self):
+        return self._train_state.params
 
 
 @jax.jit
@@ -91,6 +99,9 @@ class MAMLPTTrainer(object):
         )
         return metrics
 
+    def get_params(self):
+        return self._train_state.params
+
 
 @jax.jit
 def _eval_mamlp_step(state, inner_epochs, batch, rng_key):
@@ -114,7 +125,7 @@ def _eval_mamlp_step(state, inner_epochs, batch, rng_key):
         v_am2,
         v_l,
         rng_key1,
-        rng_key2
+        rng_key2,
     ):
         train_batch = {
             "observations": t_obs,
@@ -165,7 +176,7 @@ def _eval_mamlp_step(state, inner_epochs, batch, rng_key):
             v_am2,
             v_l,
             rng_keys1,
-            rng_keys2
+            rng_keys2,
         )
         return jnp.mean(p_losses), jnp.mean(p_acc)
 

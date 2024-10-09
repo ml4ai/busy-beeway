@@ -115,7 +115,7 @@ def main(argv):
     workers = args.workers
     try:
         data = Pref_H5Dataset(data)
-        train_pt(
+        train_mamlpt(
             data,
             seed,
             train_val_test_split=train_val_test_split,
