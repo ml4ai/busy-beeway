@@ -215,7 +215,6 @@ def train_mamlpt(
     K_shot=4,
     num_workers=2,
     n_epochs=50,
-    inner_epochs=1,
     eval_period=1,
     do_early_stop=False,
     criteria_key="eval_loss",
@@ -297,7 +296,6 @@ def train_mamlpt(
     rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
     model = MAMLPTTrainer(
         trans,
-        inner_epochs,
         rng_subkey1,
         rng_subkey2,
         init_value=kwargs.get("init_value", 0),

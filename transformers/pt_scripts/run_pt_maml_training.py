@@ -58,9 +58,6 @@ def main(argv):
         "-n", "--n_epochs", type=int, default=10, help="Number of training epochs."
     )
     parser.add_argument(
-        "-i", "--inner_epochs", type=int, default=1, help="Number of inner epochs."
-    )
-    parser.add_argument(
         "-s",
         "--seed",
         type=int,
@@ -104,7 +101,6 @@ def main(argv):
     K_shot = args.K_shot
     eval_period = args.eval_period
     n_epochs = args.n_epochs
-    inner_epochs = args.inner_epochs
     seed = args.seed
     learning_rate = args.learning_rate
     output_dir = os.path.expanduser(args.output_dir)
@@ -123,7 +119,6 @@ def main(argv):
             K_shot=K_shot,
             num_workers=workers,
             n_epochs=n_epochs,
-            inner_epochs=inner_epochs,
             eval_period=eval_period,
             save_dir=output_dir,
             init_value=init_value,
