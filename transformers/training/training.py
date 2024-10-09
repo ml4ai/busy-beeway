@@ -183,7 +183,7 @@ def _eval_mamlp_step(state, inner_epochs, batch, rng_key):
     loss, acc = task_loss(state.apply_fn, state.params, state.tx, inner_epochs)
     return dict(eval_loss=loss, eval_acc=acc)
 
-
+@partial(jax.jit, static_argnames=['inner_epochs'])
 def maml_fit_task(state_fn, train_params, optx, inner_epochs, batch, rng_key):
     grad_fn = jax.grad(pref_loss_fn, argnums=1, has_aux=True)
     inner_state = TrainState.create(params=train_params, tx=optx, apply_fn=state_fn)
