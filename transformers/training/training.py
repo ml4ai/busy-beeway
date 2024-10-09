@@ -105,7 +105,7 @@ class MAMLPTTrainer(object):
 def maml_fit_task(state_fn, train_params, optx, batch, rng_key):
     grad_fn = jax.grad(pref_loss_fn, argnums=1, has_aux=True)
     inner_state = TrainState.create(params=train_params, tx=optx, apply_fn=state_fn)
-    grads, _ = grad_fn(inner_state.apply_fn, inner_state.params, batch, rng_key)
+    grads, _ = grad_fn(inner_state.apply_fn, inner_state.params, batch, True,rng_key)
     inner_state = inner_state.apply_gradients(grads=grads)
     return inner_state
 
@@ -155,7 +155,7 @@ def _eval_mamlp_step(state, batch, rng_key):
             state_fn, train_params, optx, train_batch, rng_key1
         )
         loss, acc = pref_loss_fn(
-            updated_state.apply_fn, updated_state.params, val_batch, True, rng_key2
+            updated_state.apply_fn, updated_state.params, val_batch, False, rng_key2
         )
         return loss, acc
 
@@ -233,7 +233,7 @@ def _train_mamlp_step(state, batch, rng_key):
             state_fn, train_params, optx, train_batch, rng_key1
         )
         loss, acc = pref_loss_fn(
-            updated_state.apply_fn, updated_state.params, val_batch, True, rng_key2
+            updated_state.apply_fn, updated_state.params, val_batch, False, rng_key2
         )
         return loss, acc
 
