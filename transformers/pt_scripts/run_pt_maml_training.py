@@ -10,7 +10,7 @@ import numpy as np
 from argformat import StructuredFormatter
 
 from transformers.data_utils.data_loader import Pref_H5Dataset
-from transformers.training.train_model import train_pt
+from transformers.training.train_model import train_mamlpt
 import torch.multiprocessing as multiprocessing
 
 
