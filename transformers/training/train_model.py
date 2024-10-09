@@ -20,6 +20,7 @@ from transformers.training.logging_utils import logger, setup_logger
 from transformers.training.training import (
     InterventionMLPTrainer,
     PrefTransformerTrainer,
+    MAMLPTTrainer,
 )
 from transformers.training.utils import Timer, save_pickle
 
