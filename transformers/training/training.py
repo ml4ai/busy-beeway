@@ -69,6 +69,7 @@ class MAMLPTTrainer(object):
 
     def __init__(self, trans, rng_key1, rng_key2, **kwargs):
         self.trans = trans
+        self.inner_lr = kwargs.get("inner_lr", 0.01)
         optimizer_class = optax.adamw
         # May need to reconfigure for our data
         scheduler_class = optax.warmup_cosine_decay_schedule(
@@ -90,11 +91,11 @@ class MAMLPTTrainer(object):
         )
 
     def evaluation(self, batch, rng_key):
-        return _eval_mamlp_step(self._train_state, batch, rng_key)
+        return _eval_mamlp_step(self._train_state, self.inner_lr,batch, rng_key)
 
     def train(self, batch, rng_key):
         self._train_state, metrics = _train_mamlp_step(
-            self._train_state, batch, rng_key
+            self._train_state, self.inner_lr,batch, rng_key
         )
         return metrics
 
@@ -102,20 +103,21 @@ class MAMLPTTrainer(object):
         return self._train_state.params
 
 
-def maml_fit_task(state_fn, train_params, optx, batch, rng_key):
+def maml_fit_task(state_fn, train_params, inner_lr, batch, rng_key):
     grad_fn = jax.grad(pref_loss_fn, argnums=1, has_aux=True)
+    optx = optax.sgd(inner_lr)
     inner_state = TrainState.create(params=train_params, tx=optx, apply_fn=state_fn)
-    grads, _ = grad_fn(inner_state.apply_fn, inner_state.params, batch, True,rng_key)
+    grads, _ = grad_fn(inner_state.apply_fn, inner_state.params, batch, True, rng_key)
     inner_state = inner_state.apply_gradients(grads=grads)
     return inner_state
 
 
 @jax.jit
-def _eval_mamlp_step(state, batch, rng_key):
+def _eval_mamlp_step(state, inner_lr,batch, rng_key):
     def maml_loss(
         state_fn,
         train_params,
-        optx,
+        inner_lr,
         t_obs,
         t_ts,
         t_am,
@@ -152,19 +154,19 @@ def _eval_mamlp_step(state, batch, rng_key):
             "labels": v_l,
         }
         updated_state = maml_fit_task(
-            state_fn, train_params, optx, train_batch, rng_key1
+            state_fn, train_params, inner_lr, train_batch, rng_key1
         )
         loss, acc = pref_loss_fn(
             updated_state.apply_fn, updated_state.params, val_batch, False, rng_key2
         )
         return loss, acc
 
-    def task_loss(state_fn, train_params, optx):
+    def task_loss(state_fn, train_params, inner_lr, rng_key):
         train_batch, val_batch = batch
         t_obs, t_ts, t_am, t_obs2, t_ts2, t_am2, t_l = train_batch
         v_obs, v_ts, v_am, v_obs2, v_ts2, v_am2, v_l = val_batch
         rng_keys1, rng_keys2 = jax.random.split(rng_key, (2, t_obs.shape[0]))
-        p_losses, p_acc = jax.vmap(partial(maml_loss, state_fn, train_params, optx))(
+        p_losses, p_acc = jax.vmap(partial(maml_loss, state_fn, train_params, inner_lr))(
             t_obs,
             t_ts,
             t_am,
@@ -184,16 +186,16 @@ def _eval_mamlp_step(state, batch, rng_key):
         )
         return jnp.mean(p_losses), jnp.mean(p_acc)
 
-    loss, acc = task_loss(state.apply_fn, state.params, state.tx)
+    loss, acc = task_loss(state.apply_fn, state.params, inner_lr,rng_key)
     return dict(eval_loss=loss, eval_acc=acc)
 
 
 @jax.jit
-def _train_mamlp_step(state, batch, rng_key):
+def _train_mamlp_step(state, inner_lr,batch, rng_key):
     def maml_loss(
         state_fn,
         train_params,
-        optx,
+        inner_lr,
         t_obs,
         t_ts,
         t_am,
@@ -230,19 +232,19 @@ def _train_mamlp_step(state, batch, rng_key):
             "labels": v_l,
         }
         updated_state = maml_fit_task(
-            state_fn, train_params, optx, train_batch, rng_key1
+            state_fn, train_params, inner_lr, train_batch, rng_key1
         )
         loss, acc = pref_loss_fn(
             updated_state.apply_fn, updated_state.params, val_batch, False, rng_key2
         )
         return loss, acc
 
-    def task_loss(state_fn, train_params, optx, rng_key):
+    def task_loss(state_fn, train_params, inner_lr, rng_key):
         train_batch, val_batch = batch
         t_obs, t_ts, t_am, t_obs2, t_ts2, t_am2, t_l = train_batch
         v_obs, v_ts, v_am, v_obs2, v_ts2, v_am2, v_l = val_batch
         rng_keys1, rng_keys2 = jax.random.split(rng_key, (2, t_obs.shape[0]))
-        p_losses, p_acc = jax.vmap(partial(maml_loss, state_fn, train_params, optx))(
+        p_losses, p_acc = jax.vmap(partial(maml_loss, state_fn, train_params, inner_lr))(
             t_obs,
             t_ts,
             t_am,
@@ -263,7 +265,7 @@ def _train_mamlp_step(state, batch, rng_key):
         return jnp.mean(p_losses), jnp.mean(p_acc)
 
     grad_fn = jax.value_and_grad(task_loss, argnums=1, has_aux=True)
-    (loss, acc), grads = grad_fn(state.apply_fn, state.params, state.tx, rng_key)
+    (loss, acc), grads = grad_fn(state.apply_fn, state.params, inner_lr, rng_key)
     new_train_state = state.apply_gradients(grads=grads)
     metrics = dict(training_loss=loss, training_acc=acc)
     return new_train_state, metrics

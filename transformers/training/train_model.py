@@ -303,6 +303,7 @@ def train_mamlpt(
         warmup_steps=kwargs.get("warmup_steps", int(n_epochs * interval * 0.1)),
         decay_steps=kwargs.get("decay_steps", int(n_epochs * interval)),
         end_value=kwargs.get("end_value", 0),
+        inner_lr=kwargs.get("inner_lr",0.01),
     )
     early_stop = EarlyStopping(min_delta=0, patience=0)
     c_best_epoch = np.nan

@@ -73,6 +73,13 @@ def main(argv):
         help="Learning Rate parameters passed to optimizer. \nIt uses a Cosine Decay Schedule with warmup steps, \nso this option requires 3 arguments \n(initial learning rate, peak learning rate, end learning rate).",
     )
     parser.add_argument(
+        "-i",
+        "--inner_lr",
+        type=float,
+        default=0.01,
+        help="Learning rate for inner optimizer",
+    )
+    parser.add_argument(
         "-d",
         "--dim",
         type=int,
@@ -107,6 +114,7 @@ def main(argv):
     init_value = learning_rate[0]
     peak_value = learning_rate[1]
     end_value = learning_rate[2]
+    inner_lr = args.inner_lr
     dim = args.dim
     workers = args.workers
     try:
@@ -125,6 +133,7 @@ def main(argv):
             peak_value=peak_value,
             end_value=end_value,
             embd_dim=dim,
+            inner_lr=inner_lr,
         )
     except FileNotFoundError:
         raise FileNotFoundError(
