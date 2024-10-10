@@ -10,8 +10,8 @@ from tqdm import tqdm
 
 from transformers.data_utils.data_loader import (
     FewShotBatchSampler,
-    participant_train_val_test_split,
-    process_p_batch,
+    train_val_test_split,
+    process_c_batch,
 )
 from transformers.models.intervention_mlp import MLP
 from transformers.models.pref_transformer import PT
@@ -238,18 +238,18 @@ def train_mamlpt(
     gen1 = torch.Generator().manual_seed(int(rng_subkey[0]))
     gen2 = torch.Generator().manual_seed(int(rng_subkey[1]))
     train_n, val_n, test_n = train_val_test_split
-    training, val, test = participant_train_val_test_split(
+    training, val, test = train_val_test_split(
         data, train_n, val_n, test_n, gen=gen1
     )
-    training_data, training_p_idx = training
-    validation_data, validation_p_idx = val
+    training_data, training_c_idx = training
+    validation_data, validation_c_idx = val
     # The list of test candidates gets pickled, so that a test set can be built later.
-    _, test_p_idx = test
+    _, test_c_idx = test
 
     training_data_loader = DataLoader(
         training_data,
         batch_sampler=FewShotBatchSampler(
-            training_p_idx,
+            training_c_idx,
             include_query=True,
             N_way=N_way,
             K_shot=K_shot,
@@ -262,7 +262,7 @@ def train_mamlpt(
     validation_data_loader = DataLoader(
         validation_data,
         batch_sampler=FewShotBatchSampler(
-            validation_p_idx,
+            validation_c_idx,
             include_query=True,
             N_way=N_way,
             K_shot=K_shot,
@@ -329,7 +329,7 @@ def train_mamlpt(
                     total=interval,
                     desc=f"Training Epoch {epoch}",
                 ):
-                    batch = batch_to_jax(process_p_batch(t_data, N_way, K_shot))
+                    batch = batch_to_jax(process_c_batch(t_data, N_way, K_shot))
                     for key, val in model.train(batch, t_keys[i]).items():
                         metrics[key].append(val)
             metrics["train_time"] = train_timer()
@@ -345,7 +345,7 @@ def train_mamlpt(
                 total=eval_interval,
                 desc=f"Evaluation Epoch {epoch}",
             ):
-                batch = batch_to_jax(process_p_batch(e_data, N_way, K_shot))
+                batch = batch_to_jax(process_c_batch(e_data, N_way, K_shot))
                 for key, val in model.evaluation(batch, e_keys[j]).items():
                     metrics[key].append(val)
             criteria = np.mean(metrics[criteria_key])
@@ -369,9 +369,9 @@ def train_mamlpt(
                 save_data = {
                     "model": model,
                     "epoch": epoch,
-                    "training_participants": training_p_idx.keys(),
-                    "validation_participants": validation_p_idx.keys(),
-                    "test_participants": test_p_idx.keys(),
+                    "training_participants": training_c_idx.keys(),
+                    "validation_participants": validation_c_idx.keys(),
+                    "test_participants": test_c_idx.keys(),
                 }
                 save_pickle(save_data, "best_model.pkl", save_dir)
 
@@ -387,9 +387,9 @@ def train_mamlpt(
         save_data = {
             "model": model,
             "epoch": epoch,
-            "training_participants": training_p_idx.keys(),
-            "validation_participants": validation_p_idx.keys(),
-            "test_participants": test_p_idx.keys(),
+            "training_participants": training_c_idx.keys(),
+            "validation_participants": validation_c_idx.keys(),
+            "test_participants": test_c_idx.keys(),
         }
         save_pickle(save_data, "model.pkl", save_dir)
 
