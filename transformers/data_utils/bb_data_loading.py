@@ -736,6 +736,32 @@ def load_experiment_data(ai, path, skip=0, control=1, study=1, exclusion_list=[]
     return D
 
 
+def load_experiment_data_by_day(
+    ai, path, skip=0, control=1, study=1, exclusion_list=[]
+):
+
+    if exclusion_list:
+        D = {}
+        dir_path = os.path.expanduser(path)
+        dir_list = os.scandir(dir_path)
+        for i in dir_list:
+            if i.is_dir():
+                if i.path not in exclusion_list:
+                    d = load_test_data(ai, i.path, skip, control, study)
+                    if d:
+                        D[i.path] = d
+        return D
+    D = {}
+    dir_path = os.path.expanduser(path)
+    dir_list = os.scandir(dir_path)
+    for i in dir_list:
+        if i.is_dir():
+            d = load_test_data(ai, i.path, skip, control, study)
+            if d:
+                D[i.path] = d
+    return D
+
+
 # p_id is a participant id (e.g., auto-1ba807eecf3cf284). This function will look for experiment data for that paricipant for a given path variable.
 # It assumes that the format of the directories within the path are set-up as <experiment>/<participant_id>/<test days>/<data files>. study=1 looks for
 # directories with "T5" at the end.
@@ -787,6 +813,57 @@ def load_participant_data(
                     )
                     if d:
                         D += d
+    return D
+
+
+def load_participant_data_by_day(
+    p_id,
+    path="~/busy-beeway/data/game_data",
+    skip=0,
+    control=1,
+    study=1,
+    exclusion_list=[],
+):
+    if study == 1:
+        e_code = "T5"
+    else:
+        e_code = "D1"
+    D = {}
+    dir_path = os.path.expanduser(path)
+    dir_list = os.scandir(dir_path)
+    for i in dir_list:
+        if i.is_dir():
+            if (
+                i.path.endswith(e_code)
+                and not (i.path.endswith("97D1"))
+                and not (i.path.endswith("aiD1"))
+            ):
+                if (
+                    i.path.endswith("1T5")
+                    or i.path.endswith("5T5")
+                    or i.path.endswith("1D1")
+                    or i.path.endswith("3D1")
+                    or i.path.endswith("4D1")
+                ):
+                    ai = 1
+                elif (
+                    i.path.endswith("2T5")
+                    or i.path.endswith("6T5")
+                    or i.path.endswith("2D1")
+                    or i.path.endswith("5D1")
+                ):
+                    ai = 2
+                elif i.path.endswith("3T5") or i.path.endswith("7T5"):
+                    ai = 3
+                else:
+                    ai = 4
+                e_path = f"{i.path}/{p_id}"
+                if e_path not in exclusion_list:
+                    d = load_experiment_data_by_day(
+                        ai, e_path, skip, control, study, exclusion_list
+                    )
+                    if d:
+                        D.update(d)
     return D
 
 
