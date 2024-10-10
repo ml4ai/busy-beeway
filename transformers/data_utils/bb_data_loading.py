@@ -749,7 +749,7 @@ def load_experiment_data_by_day(
                 if i.path not in exclusion_list:
                     d = load_test_data(ai, i.path, skip, control, study)
                     if d:
-                        D[i.path] = d
+                        D[i.name] = d
         return D
     D = {}
     dir_path = os.path.expanduser(path)
@@ -758,7 +758,7 @@ def load_experiment_data_by_day(
         if i.is_dir():
             d = load_test_data(ai, i.path, skip, control, study)
             if d:
-                D[i.path] = d
+                D[i.name] = d
     return D
 
 
