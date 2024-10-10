@@ -13,14 +13,14 @@ from transformers.data_utils.bb_data_loading import load_list
 
 def main(argv):
     parser = argparse.ArgumentParser(
-        description="Combines preference data for multiple participants. \nThe combined datasets are virtual \n(see https://docs.h5py.org/en/latest/vds.html) \nand are externally linked to the \ninvidiual preference data files. \nRenaming, Modifying, deleting, or moving any of the \nfiles that comprise the virtual datasets \nmay cause undefined behavior.",
+        description="Combines preference data for files. \nThe combined datasets are virtual \n(see https://docs.h5py.org/en/latest/vds.html) \nand are externally linked to the \ninvidiual preference data files. \nRenaming, Modifying, deleting, or moving any of the \nfiles that comprise the virtual datasets \nmay cause undefined behavior.",
         formatter_class=StructuredFormatter,
     )
     parser.add_argument(
         "p_id",
         metavar="PID",
         type=str,
-        help="A .txt file containing a list of Participant IDs to process",
+        help="A .txt file containing a list of filenames (no extensions) to process",
     )
     parser.add_argument(
         "-d",
