@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from transformers.data_utils.data_loader import (
     FewShotBatchSampler,
-    train_val_test_split,
+    get_train_val_test_split,
     process_c_batch,
 )
 from transformers.models.intervention_mlp import MLP
@@ -238,7 +238,7 @@ def train_mamlpt(
     gen1 = torch.Generator().manual_seed(int(rng_subkey[0]))
     gen2 = torch.Generator().manual_seed(int(rng_subkey[1]))
     train_n, val_n, test_n = train_val_test_split
-    training, val, test = train_val_test_split(
+    training, val, test = get_train_val_test_split(
         data, train_n, val_n, test_n, gen=gen1
     )
     training_data, training_c_idx = training

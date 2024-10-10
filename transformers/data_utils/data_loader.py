@@ -83,7 +83,7 @@ def create_subset(dataset, n_idx):
 
 # gen must be a torch generator. If shuffle is false, first training, then validation, then test sets are filled in the
 # order that classes appear in the dataset.
-def train_val_test_split(dataset, train_n, val_n, test_n, shuffle=True, gen=None):
+def get_train_val_test_split(dataset, train_n, val_n, test_n, shuffle=True, gen=None):
     assert dataset.c_num() == (
         train_n + val_n + test_n
     ), "The training, validation, and test sets must add up to the total amount of classes!"
@@ -169,9 +169,7 @@ class FewShotBatchSampler(object):
                 for i, c in enumerate(self.classes)
                 for p in range(self.batches_per_class[c])
             ]
-            self.class_list = np.array(self.class_list)[
-                np.argsort(sort_idxs)
-            ].tolist()
+            self.class_list = np.array(self.class_list)[np.argsort(sort_idxs)].tolist()
 
     def shuffle_data(self):
         # Shuffle the examples per class
