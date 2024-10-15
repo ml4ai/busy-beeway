@@ -50,10 +50,12 @@ def train_pt(
     )
 
     _, query_len, observation_dim = data.obs_shape()
-    if pretrain_params is None:
+    if pretrained_params is None:
         max_episode_length = data.max_episode_length()
     else:
-        max_episode_length = pretrain_params["params"]["Embed_0"]["embedding"].shape[0] - 1 
+        max_episode_length = (
+            pretrained_params["params"]["Embed_0"]["embedding"].shape[0] - 1
+        )
     rng_key = jax.random.PRNGKey(seed)
     rng_key, rng_subkey = jax.random.split(rng_key, 2)
     gen1 = torch.Generator().manual_seed(int(rng_subkey[0]))
