@@ -11,6 +11,7 @@ from argformat import StructuredFormatter
 
 from transformers.data_utils.data_loader import Pref_H5Dataset
 from transformers.training.train_model import train_pt
+from transformers.training.utils import load_pickle
 import torch.multiprocessing as multiprocessing
 
 
