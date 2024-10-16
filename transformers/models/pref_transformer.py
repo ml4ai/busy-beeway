@@ -160,18 +160,18 @@ class PT(nn.Module):
             attn_mask = jnp.ones((batch_size, seq_length), dtype=jnp.float32)
 
         embd_states = nn.Dense(features=self.embd_dim)(states)
-        embd_action = nn.Dense(features=self.embd_dim)(actions)
+        embd_actions = nn.Dense(features=self.embd_dim)(actions)
 
         embd_timesteps = nn.Embed(
             num_embeddings=self.max_episode_steps + 1,
             features=self.embd_dim,
         )(timesteps)
 
-        embd_state = embd_state + embd_timesteps
-        embd_action = embd_action + embd_timesteps
+        embd_states = embd_states + embd_timesteps
+        embd_actions = embd_actions + embd_timesteps
 
         stacked_inputs = (
-            jnp.stack([embd_action, embd_state], axis=1)
+            jnp.stack([embd_actions, embd_states], axis=1)
             .transpose(0, 2, 1, 3)
             .reshape(batch_size, 2 * seq_length, self.embd_dim)
         )
