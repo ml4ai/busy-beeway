@@ -53,7 +53,7 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
         )
 
     def __len__(self):
-        return self._shape[0]
+        return self._sts_shape[0]
 
     def shapes(self):
         return self._sts_shape, self._acts_shape
