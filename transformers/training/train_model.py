@@ -49,7 +49,9 @@ def train_pt(
         include_exp_prefix_sub_dir=False,
     )
 
-    _, query_len, observation_dim = data.obs_shape()
+    state_shape, action_shape = data.shapes()
+    _, query_len, state_dim = state_shape
+    action_dim = action_shape[2]
     if pretrained_params is None:
         max_episode_length = data.max_episode_length()
     else:
@@ -87,7 +89,8 @@ def train_pt(
         max_pos *= 2
     embd_dim = kwargs.get("embd_dim", min(batch_size, 256))
     trans = PT(
-        observation_dim=observation_dim,
+        state_dim=state_dim,
+        action_dim=action_dim,
         max_episode_steps=kwargs.get("max_episode_steps", max_episode_length),
         embd_dim=embd_dim,
         pref_attn_embd_dim=kwargs.get("pref_attn_embd_dim", embd_dim),
@@ -137,10 +140,12 @@ def train_pt(
                 ):
                     batch = {}
                     (
-                        batch["observations"],
+                        batch["states"],
+                        batch["actions"],
                         batch["timesteps"],
                         batch["attn_mask"],
-                        batch["observations_2"],
+                        batch["states_2"],
+                        batch["actions_2"],
                         batch["timesteps_2"],
                         batch["attn_mask_2"],
                         batch["labels"],
@@ -165,10 +170,12 @@ def train_pt(
             ):
                 batch = {}
                 (
-                    batch["observations"],
+                    batch["states"],
+                    batch["actions"],
                     batch["timesteps"],
                     batch["attn_mask"],
-                    batch["observations_2"],
+                    batch["states_2"],
+                    batch["actions_2"],
                     batch["timesteps_2"],
                     batch["attn_mask_2"],
                     batch["labels"],
@@ -236,7 +243,9 @@ def train_mamlpt(
         include_exp_prefix_sub_dir=False,
     )
 
-    _, query_len, observation_dim = data.obs_shape()
+    state_shape, action_shape = data.shapes()
+    _, query_len, state_dim = state_shape
+    action_dim = action_shape[2]
     max_episode_length = data.max_episode_length()
     rng_key = jax.random.PRNGKey(seed)
     rng_key, rng_subkey = jax.random.split(rng_key, 2)
@@ -284,7 +293,8 @@ def train_mamlpt(
         max_pos *= 2
     embd_dim = kwargs.get("embd_dim", 256)
     trans = PT(
-        observation_dim=observation_dim,
+        state_dim=state_dim,
+        action_dim=action_dim,
         max_episode_steps=kwargs.get("max_episode_steps", max_episode_length),
         embd_dim=embd_dim,
         pref_attn_embd_dim=kwargs.get("pref_attn_embd_dim", embd_dim),

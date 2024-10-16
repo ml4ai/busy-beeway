@@ -1,8 +1,8 @@
 from collections import defaultdict
 
 import h5py
-import numpy as np
 import jax.numpy as jnp
+import numpy as np
 import torch
 from torch.utils.data import Subset
 
@@ -13,7 +13,8 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
         super(Pref_H5Dataset, self).__init__()
         self.file_path = file_path
         with h5py.File(self.file_path, "r") as f:
-            self._shape = f["observations"].shape
+            self._sts_shape = f["states"].shape
+            self._acts_shape = f["actions"].shape
             self._max_episode_length = np.max(f["timesteps"][:])
             if combined:
                 self._c_idx = {}
@@ -26,10 +27,12 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
 
     def open_hdf5(self):
         self.h5_file = h5py.File(self.file_path, "r")
-        self.observations = self.h5_file["observations"]
+        self.states = self.h5_file["states"]
+        self.actions = self.h5_file["actions"]
         self.timesteps = self.h5_file["timesteps"]
         self.attn_mask = self.h5_file["attn_mask"]
-        self.observations_2 = self.h5_file["observations_2"]
+        self.states_2 = self.h5_file["states_2"]
+        self.actions_2 = self.h5_file["actions_2"]
         self.timesteps_2 = self.h5_file["timesteps_2"]
         self.attn_mask_2 = self.h5_file["attn_mask_2"]
         self.labels = self.h5_file["labels"]
@@ -38,10 +41,12 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
         if not hasattr(self, "h5_file"):
             self.open_hdf5()
         return (
-            self.observations[index, ...],
+            self.states[index, ...],
+            self.actions[index, ...],
             self.timesteps[index, ...],
             self.attn_mask[index, ...],
-            self.observations_2[index, ...],
+            self.states_2[index, ...],
+            self.actions_2[index, ...],
             self.timesteps_2[index, ...],
             self.attn_mask_2[index, ...],
             self.labels[index],
@@ -50,8 +55,8 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
     def __len__(self):
         return self._shape[0]
 
-    def obs_shape(self):
-        return self._shape
+    def shapes(self):
+        return self._sts_shape, self._acts_shape
 
     def max_episode_length(self):
         return self._max_episode_length
@@ -223,38 +228,57 @@ class FewShotBatchSampler(object):
 
 # This splits class batch into support and query set and reshapes by class. Also converts to jax numpy arrays.
 def process_c_batch(batch, N_way, K_shot):
-    obs, ts, am, obs2, ts2, am2, lab = batch
-    _, seq_length, ob_dim = obs.shape
-    s_obs, q_obs = obs.chunk(2, dim=0)
+    sts, acts, ts, am, sts2, acts2, ts2, am2, lab = batch
+
+    _, seq_length, st_dim = sts.shape
+    act_dim = acts.shape[2]
+
+    s_sts, q_sts = sts.chunk(2, dim=0)
+    s_acts, q_acts = acts.chunk(2, dim=0)
     s_ts, q_ts = ts.chunk(2, dim=0)
     s_am, q_am = am.chunk(2, dim=0)
-    s_obs2, q_obs2 = obs2.chunk(2, dim=0)
+    s_sts2, q_sts2 = sts2.chunk(2, dim=0)
+    s_acts2, q_acts2 = acts2.chunk(2, dim=0)
     s_ts2, q_ts2 = ts2.chunk(2, dim=0)
     s_am2, q_am2 = am2.chunk(2, dim=0)
     s_lab, q_lab = lab.chunk(2, dim=0)
 
-    s_obs, q_obs = jnp.asarray(
-        s_obs.reshape(N_way, K_shot, seq_length, ob_dim)
-    ), jnp.asarray(q_obs.reshape(N_way, K_shot, seq_length, ob_dim))
+    s_sts, q_sts = jnp.asarray(
+        s_sts.reshape(N_way, K_shot, seq_length, st_dim)
+    ), jnp.asarray(q_sts.reshape(N_way, K_shot, seq_length, st_dim))
+
+    s_acts, q_acts = jnp.asarray(
+        s_acts.reshape(N_way, K_shot, seq_length, act_dim)
+    ), jnp.asarray(q_acts.reshape(N_way, K_shot, seq_length, act_dim))
+
     s_ts, q_ts = jnp.asarray(s_ts.reshape(N_way, K_shot, seq_length)), jnp.asarray(
         q_ts.reshape(N_way, K_shot, seq_length)
     )
+
     s_am, q_am = jnp.asarray(s_am.reshape(N_way, K_shot, seq_length)), jnp.asarray(
         q_am.reshape(N_way, K_shot, seq_length)
     )
-    s_obs2, q_obs2 = jnp.asarray(
-        s_obs2.reshape(N_way, K_shot, seq_length, ob_dim)
-    ), jnp.asarray(q_obs2.reshape(N_way, K_shot, seq_length, ob_dim))
+
+    s_sts2, q_sts2 = jnp.asarray(
+        s_sts2.reshape(N_way, K_shot, seq_length, st_dim)
+    ), jnp.asarray(q_sts2.reshape(N_way, K_shot, seq_length, st_dim))
+
+    s_acts2, q_acts2 = jnp.asarray(
+        s_acts2.reshape(N_way, K_shot, seq_length, act_dim)
+    ), jnp.asarray(q_acts2.reshape(N_way, K_shot, seq_length, act_dim))
+
     s_ts2, q_ts2 = jnp.asarray(s_ts2.reshape(N_way, K_shot, seq_length)), jnp.asarray(
         q_ts2.reshape(N_way, K_shot, seq_length)
     )
+
     s_am2, q_am2 = jnp.asarray(s_am2.reshape(N_way, K_shot, seq_length)), jnp.asarray(
         q_am2.reshape(N_way, K_shot, seq_length)
     )
+
     s_lab, q_lab = jnp.asarray(s_lab.reshape(N_way, K_shot)), jnp.asarray(
         q_lab.reshape(N_way, K_shot)
     )
 
-    train_batch = (s_obs, s_ts, s_am, s_obs2, s_ts2, s_am2, s_lab)
-    val_batch = (s_obs, s_ts, s_am, s_obs2, s_ts2, s_am2, s_lab)
+    train_batch = (s_sts, s_acts, s_ts, s_am, s_sts2, s_acts2, s_ts2, s_am2, s_lab)
+    val_batch = (q_sts, q_acts, q_ts, q_am, q_sts2, q_acts2, q_ts2, q_am2, q_lab)
     return train_batch, val_batch

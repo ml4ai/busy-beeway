@@ -64,6 +64,13 @@ def main(argv):
         help="Trajectory segment size.",
     )
     parser.add_argument(
+        "-n",
+        "--num_state_features",
+        type=int,
+        default=15,
+        help="Number of state features. \nThis helps seperate state features and actions.",
+    )
+    parser.add_argument(
         "-a",
         "--arc_sweep",
         type=int,
@@ -107,6 +114,7 @@ def main(argv):
     parallel = args.parallel
     path = args.data_dir
     o_path = args.output_dir
+    state_features = args.num_state_features
     if not Path(o_path).is_dir():
         raise FileNotFoundError(f"Cannot find output directory {o_path}!")
     split_size = args.split_size
@@ -163,7 +171,7 @@ def main(argv):
                 del D
 
                 create_preference_data(
-                    RF, F, split_size=split_size, save_data=save_pref
+                    RF, F,state_features=state_features,split_size=split_size, save_data=save_pref
                 )
                 del RF
                 del F
@@ -195,7 +203,7 @@ def main(argv):
                 del D
 
                 create_preference_data(
-                    RF, F, split_size=split_size, save_data=save_pref
+                    RF, F,state_features=state_features,split_size=split_size, save_data=save_pref
                 )
                 del RF
                 del F
@@ -226,7 +234,7 @@ def main(argv):
             F = compute_features_p(D, arc_sweep)
             del D
 
-            create_preference_data(RF, F, split_size=split_size, save_data=save_pref)
+            create_preference_data(RF, F, state_features=state_features,split_size=split_size, save_data=save_pref)
             del RF
             del F
             sys.exit(0)
@@ -255,7 +263,7 @@ def main(argv):
         F = compute_features(D, arc_sweep)
         del D
 
-        create_preference_data(RF, F, split_size=split_size, save_data=save_pref)
+        create_preference_data(RF, F, state_features=state_features,split_size=split_size, save_data=save_pref)
         del RF
         del F
         sys.exit(0)

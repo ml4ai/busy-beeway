@@ -42,57 +42,91 @@ def main(argv):
     save_file = os.path.expanduser(args.save_file)
     data_sizes = []
     segment_sizes = []
-    feature_sizes = []
+    state_sizes = []
+    action_sizes = []
     for p in p_id:
         with h5py.File(f"{data_dir}/{p}.hdf5") as f:
-            d, s, f = f["observations"].shape
+            d, s, st = f["states"].shape
+            act = f["actions"].shape[2]
             data_sizes.append(d)
             segment_sizes.append(s)
-            feature_sizes.append(f)
+            state_sizes.append(st)
+            action_sizes.append(act)
     if not np.all(np.array(segment_sizes) == segment_sizes[0]):
         raise ValueError("All segment lengths must be the same!")
-    if not np.all(np.array(feature_sizes) == feature_sizes[0]):
-        raise ValueError("The feature dimension must be the same across all datasets!")
+    if not np.all(np.array(state_sizes) == state_sizes[0]):
+        raise ValueError("The state dimension must be the same across all datasets!")
+    if not np.all(np.array(action_sizes) == action_sizes[0]):
+        raise ValueError("The state dimension must be the same across all datasets!")
 
     d_s_sum = sum(data_sizes)
-    o_layout = h5py.VirtualLayout(
-        shape=(d_s_sum, segment_sizes[0], feature_sizes[0]), dtype="<f8"
+    st_layout = h5py.VirtualLayout(
+        shape=(d_s_sum, segment_sizes[0], state_sizes[0]), dtype="<f8"
     )
+
+    act_layout = h5py.VirtualLayout(
+        shape=(d_s_sum, segment_sizes[0], action_sizes[0]), dtype="<f8"
+    )
+
     t_layout = h5py.VirtualLayout(shape=(d_s_sum, segment_sizes[0]), dtype="<i4")
+
     am_layout = h5py.VirtualLayout(shape=(d_s_sum, segment_sizes[0]), dtype="<f4")
 
-    o_2_layout = h5py.VirtualLayout(
-        shape=(d_s_sum, segment_sizes[0], feature_sizes[0]), dtype="<f8"
+    st_2_layout = h5py.VirtualLayout(
+        shape=(d_s_sum, segment_sizes[0], state_sizes[0]), dtype="<f8"
     )
+
+    act_2_layout = h5py.VirtualLayout(
+        shape=(d_s_sum, segment_sizes[0], action_sizes[0]), dtype="<f8"
+    )
+
     t_2_layout = h5py.VirtualLayout(shape=(d_s_sum, segment_sizes[0]), dtype="<i4")
+
     am_2_layout = h5py.VirtualLayout(shape=(d_s_sum, segment_sizes[0]), dtype="<f4")
 
     l_layout = h5py.VirtualLayout(shape=(d_s_sum,), dtype="<f8")
+
     prev_size = 0
     p_idx = []
     for i, p in enumerate(p_id):
-        o_vsource = h5py.VirtualSource(
+        st_vsource = h5py.VirtualSource(
             f"{data_dir}/{p}.hdf5",
-            "observations",
-            shape=(data_sizes[i], segment_sizes[i], feature_sizes[i]),
+            "states",
+            shape=(data_sizes[i], segment_sizes[i], state_sizes[i]),
         )
+        
+        act_vsource = h5py.VirtualSource(
+            f"{data_dir}/{p}.hdf5",
+            "actions",
+            shape=(data_sizes[i], segment_sizes[i], action_sizes[i]),
+        )
+        
         t_vsource = h5py.VirtualSource(
             f"{data_dir}/{p}.hdf5", "timesteps", shape=(data_sizes[i], segment_sizes[i])
         )
+        
         am_vsource = h5py.VirtualSource(
             f"{data_dir}/{p}.hdf5", "attn_mask", shape=(data_sizes[i], segment_sizes[i])
         )
 
-        o_2_vsource = h5py.VirtualSource(
+        st_2_vsource = h5py.VirtualSource(
             f"{data_dir}/{p}.hdf5",
-            "observations_2",
-            shape=(data_sizes[i], segment_sizes[i], feature_sizes[i]),
+            "states_2",
+            shape=(data_sizes[i], segment_sizes[i], state_sizes[i]),
         )
+
+        act_2_vsource = h5py.VirtualSource(
+            f"{data_dir}/{p}.hdf5",
+            "actions_2",
+            shape=(data_sizes[i], segment_sizes[i], action_sizes[i]),
+        )
+        
         t_2_vsource = h5py.VirtualSource(
             f"{data_dir}/{p}.hdf5",
             "timesteps_2",
             shape=(data_sizes[i], segment_sizes[i]),
         )
+        
         am_2_vsource = h5py.VirtualSource(
             f"{data_dir}/{p}.hdf5",
             "attn_mask_2",
@@ -103,11 +137,13 @@ def main(argv):
             f"{data_dir}/{p}.hdf5", "labels", shape=(data_sizes[i],)
         )
 
-        o_layout[prev_size : (prev_size + data_sizes[i]), :, :] = o_vsource
+        st_layout[prev_size : (prev_size + data_sizes[i]), :, :] = st_vsource
+        act_layout[prev_size : (prev_size + data_sizes[i]), :, :] = act_vsource
         t_layout[prev_size : (prev_size + data_sizes[i]), :] = t_vsource
         am_layout[prev_size : (prev_size + data_sizes[i]), :] = am_vsource
 
-        o_2_layout[prev_size : (prev_size + data_sizes[i]), :, :] = o_2_vsource
+        st_2_layout[prev_size : (prev_size + data_sizes[i]), :, :] = st_2_vsource
+        act_2_layout[prev_size : (prev_size + data_sizes[i]), :, :] = act_2_vsource
         t_2_layout[prev_size : (prev_size + data_sizes[i]), :] = t_2_vsource
         am_2_layout[prev_size : (prev_size + data_sizes[i]), :] = am_2_vsource
 
@@ -117,11 +153,13 @@ def main(argv):
         prev_size += data_sizes[i]
 
     with h5py.File(save_file, "w") as f:
-        f.create_virtual_dataset("observations", o_layout)
+        f.create_virtual_dataset("states", st_layout)
+        f.create_virtual_dataset("actions", act_layout)
         f.create_virtual_dataset("timesteps", t_layout)
         f.create_virtual_dataset("attn_mask", am_layout)
 
-        f.create_virtual_dataset("observations_2", o_2_layout)
+        f.create_virtual_dataset("states_2", st_2_layout)
+        f.create_virtual_dataset("actions_2", act_2_layout)
         f.create_virtual_dataset("timesteps_2", t_2_layout)
         f.create_virtual_dataset("attn_mask_2", am_2_layout)
 

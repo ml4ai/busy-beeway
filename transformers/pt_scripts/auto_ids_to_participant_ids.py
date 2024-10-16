@@ -54,20 +54,24 @@ def main(argv):
             except FileNotFoundError:
                 pass
         else:
-            obs = []
+            sts = []
+            acts = []
             ts = []
             am = []
-            obs2 = []
+            sts2 = []
+            acts2 = []
             ts2 = []
             am2 = []
             lab = []
             for p in d[0]:
                 try:
                     with h5py.File(f"{data_dir}/{p}.hdf5", "r") as f:
-                        obs.append(f["observations"][:])
+                        sts.append(f["states"][:])
+                        acts.append(f["actions"][:])
                         ts.append(f["timesteps"][:])
                         am.append(f["attn_mask"][:])
-                        obs2.append(f["observations_2"][:])
+                        sts2.append(f["states_2"][:])
+                        acts2.append(f["actions_2"][:])
                         ts2.append(f["timesteps_2"][:])
                         am2.append(f["attn_mask_2"][:])
                         lab.append(f["labels"][:])
@@ -75,10 +79,12 @@ def main(argv):
                 except FileNotFoundError:
                     pass
             with h5py.File(f"{data_dir}/{d[1].iloc[0]}.hdf5", "a") as f:
-                f.create_dataset("observations", data=np.concatenate(obs), chunks=True)
+                f.create_dataset("states", data=np.concatenate(sts), chunks=True)
+                f.create_dataset("actions", data=np.concatenate(acts), chunks=True)
                 f.create_dataset("timesteps", data=np.concatenate(ts), chunks=True)
                 f.create_dataset("attn_mask", data=np.concatenate(am), chunks=True)
-                f.create_dataset("observations_2", data=np.concatenate(obs2), chunks=True)
+                f.create_dataset("states_2", data=np.concatenate(sts2), chunks=True)
+                f.create_dataset("actions_2", data=np.concatenate(acts2), chunks=True)
                 f.create_dataset("timesteps_2", data=np.concatenate(ts2), chunks=True)
                 f.create_dataset("attn_mask_2", data=np.concatenate(am2), chunks=True)
                 f.create_dataset("labels", data=np.concatenate(lab), chunks=True)

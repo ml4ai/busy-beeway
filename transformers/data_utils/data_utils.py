@@ -361,6 +361,8 @@ def compute_run_features(p_df, g, O, arc_sweep=(10, 360, 10)):
     features["sigma"] = p_df["sigma"].to_numpy()
     features["repel_factor"] = p_df["repel_factor"].to_numpy()
     features["attempt"] = p_df["attempt"].to_numpy()
+    features["controlX"] = cos_plus(p_A)
+    features["controlY"] = sin_plus(p_A)
     features["userControl"] = p_df["userControl"].to_numpy().astype(int)
     features["t"] = p_df["t"].to_numpy()
     return pd.DataFrame(features)
@@ -655,6 +657,8 @@ def compute_run_features_p(d):
     features["sigma"] = p_df["sigma"].to_numpy()
     features["repel_factor"] = p_df["repel_factor"].to_numpy()
     features["attempt"] = p_df["attempt"].to_numpy()
+    features["controlX"] = cos_plus(p_A)
+    features["controlY"] = sin_plus(p_A)
     features["userControl"] = p_df["userControl"].to_numpy().astype(int)
     features["t"] = p_df["t"].to_numpy()
     df = pd.DataFrame(features)
@@ -729,62 +733,24 @@ def pad_run_features(f, fill_size=500):
     return f
 
 
-# If fill_size is none, then it computes the max seq length and uses that for the fill_size
-def pad_features(F, fill_size=None):
-    new_F = []
-    if not fill_size:
-        fill_size = max_seq_length(F)
-    for f in F:
-        new_F.append(pad_run_features(f, fill_size))
-    return new_F
-
-
 # Takes feature dataframe and transforms into np arrays with padding. Returns tuple of features matrix and timestep array for a state sequence
-def run_to_np(f, fill_size=500, with_attn_mask=True):
+def run_to_np(f, state_features=15, fill_size=500, with_attn_mask=True):
     p_f = pad_run_features(f, fill_size)
     nf = p_f.to_numpy()
     if with_attn_mask:
         attn_mask = np.zeros(nf.shape[0])
         attn_mask[: f.shape[0]] = 1.0
         return (
-            np.array(nf[:, 0:-1]),
+            np.array(nf[:, 0:state_features]),
+            np.array(nf[:, state_features:-1]),
             np.array(nf[:, -1], dtype=np.int32),
             np.array(attn_mask, dtype=np.float32),
         )
-    return np.array(nf[:, 0:-1]), np.array(nf[:, -1], dtype=np.int32)
-
-
-# Takes list of feature dataframes and transforms them into np arrays with padding. Returns a dictionary with array of "observations" and array of "timesteps"
-def to_np(
-    F,
-    fill_size=None,
-    labels=("observations", "timesteps", "attn_mask"),
-    with_attn_mask=True,
-):
-    if not fill_size:
-        fill_size = max_seq_length(F)
-
-    if with_attn_mask:
-        obs = []
-        ts = []
-        ams = []
-        for f in F:
-            o, t, am = run_to_np(f, fill_size, with_attn_mask)
-            obs.append(o)
-            ts.append(t)
-            ams.append(am)
-        return {
-            labels[0]: np.stack(obs),
-            labels[1]: np.stack(ts),
-            labels[2]: np.stack(ams),
-        }
-    obs = []
-    ts = []
-    for f in F:
-        o, t = run_to_np(f, fill_size, with_attn_mask)
-        obs.append(o)
-        ts.append(t)
-    return {labels[0]: np.stack(obs), labels[1]: np.stack(ts)}
+    return (
+        np.array(nf[:, 0:state_features]),
+        np.array(nf[:, state_features:-1]),
+        np.array(nf[:, -1], dtype=np.int32),
+    )
 
 
 def get_pref_labels(o, gh_idx=1):
@@ -803,12 +769,14 @@ def get_pref_labels(o, gh_idx=1):
 # _2 is appended to the dict labels for F_2
 # This is specifically for real data matched with generated goal only trajectory data.
 # save_data takes in a group path for a .hdf5 file
+# state_features is number of state features where the rest are actions and timesteps
 def create_preference_data(
     F_1,
     F_2,
     split_size=100,
     gh_idx=1,
-    labels=("observations", "timesteps", "attn_mask"),
+    state_features=15,
+    labels=("states", "actions", "timesteps", "attn_mask"),
     with_attn_mask=True,
     save_data=None,
 ):
@@ -816,53 +784,65 @@ def create_preference_data(
     assert len(F_1) == len(F_2), "F_1 and F_2 should be equal sizes!"
 
     if with_attn_mask:
-        obs = []
+        sts = []
+        acts = []
         ts = []
         ams = []
-        obs_2 = []
+        sts_2 = []
+        acts_2 = []
         ts_2 = []
         ams_2 = []
         lbs = []
         for i, f in enumerate(F_1):
             fill_size = F_2[i].shape[0] + (split_size - (F_2[i].shape[0] % split_size))
             n_splits = int(fill_size / split_size)
-            o, t, am = run_to_np(f, fill_size, with_attn_mask)
-            o = o.reshape((n_splits, split_size, o.shape[1]))
+            s, a, t, am = run_to_np(f, state_features, fill_size, with_attn_mask)
+            s = s.reshape((n_splits, split_size, s.shape[1]))
+            a = a.reshape((n_splits, split_size, a.shape[1]))
             t = t.reshape((n_splits, split_size))
             am = am.reshape((n_splits, split_size))
 
-            o_2, t_2, am_2 = run_to_np(F_2[i], fill_size, with_attn_mask)
-            o_2 = o_2.reshape((n_splits, split_size, o_2.shape[1]))
+            s_2, a_2, t_2, am_2 = run_to_np(
+                F_2[i], state_features, fill_size, with_attn_mask
+            )
+            s_2 = s_2.reshape((n_splits, split_size, s_2.shape[1]))
+            a_2 = a_2.reshape((n_splits, split_size, a_2.shape[1]))
             t_2 = t_2.reshape((n_splits, split_size))
             am_2 = am_2.reshape((n_splits, split_size))
 
-            obs.append(o)
+            sts.append(s)
+            acts.append(a)
             ts.append(t)
             ams.append(am)
 
-            obs_2.append(o_2)
+            sts_2.append(s_2)
+            acts_2.append(a_2)
             ts_2.append(t_2)
             ams_2.append(am_2)
 
-            lbs.append(get_pref_labels(o_2, gh_idx))
+            lbs.append(get_pref_labels(s_2, gh_idx))
         if save_data is None:
             return {
-                labels[0]: np.concatenate(obs),
-                labels[1]: np.concatenate(ts),
-                labels[2]: np.concatenate(ams),
-                f"{labels[0]}_2": np.concatenate(obs_2),
-                f"{labels[1]}_2": np.concatenate(ts_2),
-                f"{labels[2]}_2": np.concatenate(ams_2),
+                labels[0]: np.concatenate(sts),
+                labels[1]: np.concatenate(acts),
+                labels[2]: np.concatenate(ts),
+                labels[3]: np.concatenate(ams),
+                f"{labels[0]}_2": np.concatenate(sts_2),
+                f"{labels[1]}_2": np.concatenate(acts_2),
+                f"{labels[2]}_2": np.concatenate(ts_2),
+                f"{labels[3]}_2": np.concatenate(ams_2),
                 "labels": np.concatenate(lbs),
             }
         else:
             data = {
-                labels[0]: np.concatenate(obs),
-                labels[1]: np.concatenate(ts),
-                labels[2]: np.concatenate(ams),
-                f"{labels[0]}_2": np.concatenate(obs_2),
-                f"{labels[1]}_2": np.concatenate(ts_2),
-                f"{labels[2]}_2": np.concatenate(ams_2),
+                labels[0]: np.concatenate(sts),
+                labels[1]: np.concatenate(acts),
+                labels[2]: np.concatenate(ts),
+                labels[3]: np.concatenate(ams),
+                f"{labels[0]}_2": np.concatenate(sts_2),
+                f"{labels[1]}_2": np.concatenate(acts_2),
+                f"{labels[2]}_2": np.concatenate(ts_2),
+                f"{labels[3]}_2": np.concatenate(ams_2),
                 "labels": np.concatenate(lbs),
             }
             with h5py.File(save_data, "a") as f:
@@ -875,44 +855,54 @@ def create_preference_data(
                     else:
                         f.create_dataset(k, data=data[k], compression="lzf")
             return data
-    obs = []
+    sts = []
+    acts = []
     ts = []
-    obs_2 = []
+    sts_2 = []
+    acts_2 = []
     ts_2 = []
     lbs = []
     for i, f in enumerate(F_1):
         fill_size = F_2[i].shape[0] + (split_size - (F_2[i].shape[0] % split_size))
         n_splits = int(fill_size / split_size)
-        o, t, am = run_to_np(f, fill_size, with_attn_mask)
-        o = o.reshape((n_splits, split_size, o.shape[1]))
+        s,a, t = run_to_np(f, state_features,fill_size, with_attn_mask)
+        s = s.reshape((n_splits, split_size, s.shape[1]))
+        a = a.reshape((n_splits, split_size, a.shape[1]))
         t = t.reshape((n_splits, split_size))
 
-        o_2, t_2, am_2 = run_to_np(F_2[i], fill_size, with_attn_mask)
-        o_2 = o_2.reshape((n_splits, split_size, o_2.shape[1]))
+        s_2,a_2, t_2 = run_to_np(F_2[i], state_features,fill_size, with_attn_mask)
+        s_2 = s_2.reshape((n_splits, split_size, s_2.shape[1]))
+        a_2 = a_2.reshape((n_splits, split_size, a_2.shape[1]))
         t_2 = t_2.reshape((n_splits, split_size))
 
-        obs.append(o)
+        sts.append(s)
+        acts.append(a)
         ts.append(t)
 
-        obs_2.append(o_2)
+        sts_2.append(s_2)
+        acts_2.append(a_2)
         ts_2.append(t_2)
 
-        lbs.append(get_pref_labels(o_2, gh_idx))
+        lbs.append(get_pref_labels(s_2, gh_idx))
 
     if save_data is None:
         return {
-            labels[0]: np.concatenate(obs),
-            labels[1]: np.concatenate(ts),
-            f"{labels[0]}_2": np.concatenate(obs_2),
-            f"{labels[1]}_2": np.concatenate(ts_2),
+            labels[0]: np.concatenate(sts),
+            labels[1]: np.concatenate(acts),
+            labels[2]: np.concatenate(ts),
+            f"{labels[0]}_2": np.concatenate(sts_2),
+            f"{labels[1]}_2": np.concatenate(acts_2),
+            f"{labels[2]}_2": np.concatenate(ts_2),
             "labels": np.concatenate(lbs),
         }
     else:
         data = {
-            labels[0]: np.concatenate(obs),
-            labels[1]: np.concatenate(ts),
-            f"{labels[0]}_2": np.concatenate(obs_2),
-            f"{labels[1]}_2": np.concatenate(ts_2),
+            labels[0]: np.concatenate(sts),
+            labels[1]: np.concatenate(acts),
+            labels[2]: np.concatenate(ts),
+            f"{labels[0]}_2": np.concatenate(sts_2),
+            f"{labels[1]}_2": np.concatenate(acts_2),
+            f"{labels[2]}_2": np.concatenate(ts_2),
             "labels": np.concatenate(lbs),
         }
         with h5py.File(save_data, "a") as f:
@@ -926,17 +916,20 @@ def create_preference_data(
                     f.create_dataset(k, data=data[k], compression="lzf")
         return data
 
+
 # 0 for loss, otherwise accuracy
-def plot_training_validation_stats(load_log, ptype=0,eval_period=1, save_file=None, **kwargs):
+def plot_training_validation_stats(
+    load_log, ptype=0, eval_period=1, save_file=None, **kwargs
+):
     L = pd.read_csv(load_log)
     L = L[(L.index % eval_period == 0) & (L.index >= eval_period)]
 
     x = L.index.to_numpy()
     if ptype:
         y = L["training_acc"].to_numpy()
-        
+
         y2 = L["eval_acc"].to_numpy()
-        
+
         fig, ax = plt.subplots()
         ax.plot(x, y, label="Training Accuracy")
         ax.plot(x, y2, label="Validation Accuracy")
@@ -955,12 +948,12 @@ def plot_training_validation_stats(load_log, ptype=0,eval_period=1, save_file=No
             )
     else:
         y = L["training_loss"].to_numpy()
-        
+
         y2 = L["eval_loss"].to_numpy()
-        
+
         xb = L["best_epoch"].to_numpy()[-1]
         yb = L["eval_loss_best"].to_numpy()[-1]
-        
+
         fig, ax = plt.subplots()
         ax.plot(x, y, label="Training Loss")
         ax.plot(x, y2, label="Validation Loss")

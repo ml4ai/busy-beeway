@@ -139,7 +139,8 @@ class GPT2Model(nn.Module):
 
 
 class PT(nn.Module):
-    observation_dim: int = 327
+    state_dim: int = 15
+    action_dim: int = 3
     max_episode_steps: int = 1219
     embd_dim: int = 64
     pref_attn_embd_dim: int = 64
@@ -153,20 +154,34 @@ class PT(nn.Module):
     eps: float = 1e-05
 
     @nn.compact
-    def __call__(self, states, timesteps, training=False, attn_mask=None):
+    def __call__(self, states, actions, timesteps, training=False, attn_mask=None):
         batch_size, seq_length = states.shape[0], states.shape[1]
         if attn_mask is None:
             attn_mask = jnp.ones((batch_size, seq_length), dtype=jnp.float32)
 
         embd_states = nn.Dense(features=self.embd_dim)(states)
+        embd_action = nn.Dense(features=self.embd_dim)(actions)
+
         embd_timesteps = nn.Embed(
             num_embeddings=self.max_episode_steps + 1,
             features=self.embd_dim,
         )(timesteps)
 
-        embd_states = embd_states + embd_timesteps
+        embd_state = embd_state + embd_timesteps
+        embd_action = embd_action + embd_timesteps
 
-        inputs = nn.LayerNorm(epsilon=self.eps)(embd_states)
+        stacked_inputs = (
+            jnp.stack([embd_action, embd_state], axis=1)
+            .transpose(0, 2, 1, 3)
+            .reshape(batch_size, 2 * seq_length, self.embd_dim)
+        )
+
+        stacked_inputs = nn.LayerNorm(epsilon=self.eps)(stacked_inputs)
+
+        stacked_attn_mask = jnp.stack(
+            [attn_mask, attn_mask],
+            axis=1
+        ).transpose(0, 2, 1).reshape(batch_size, 2 * seq_length)
 
         transformer_outputs = GPT2Model(
             embd_dim=self.embd_dim,
@@ -178,10 +193,12 @@ class PT(nn.Module):
             embd_dropout=self.embd_dropout,
             max_pos=self.max_pos,
             eps=self.eps,
-        )(input_embds=inputs, attn_mask=attn_mask, training=training)
+        )(input_embds=stacked_inputs, attn_mask=stacked_attn_mask, training=training)
 
-        hidden_output = transformer_outputs["last_hidden_state"]
+        x = transformer_outputs["last_hidden_state"]
         attn_weights_list = transformer_outputs["attn_weights_list"]
+        x = x.reshape(batch_size, seq_length, 2, self.embd_dim).transpose(0, 2, 1, 3)
+        hidden_output = x[:, 1]
 
         x = nn.Dense(features=2 * self.pref_attn_embd_dim + 1)(hidden_output)
 
