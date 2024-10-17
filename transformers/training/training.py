@@ -175,7 +175,7 @@ def _eval_mamlp_step(state, inner_lr, batch, rng_key):
         train_batch, val_batch = batch
         t_sts, t_acts, t_ts, t_am, t_sts2, t_acts2, t_ts2, t_am2, t_l = train_batch
         v_sts, v_acts, v_ts, v_am, v_sts2, v_acts2, v_ts2, v_am2, v_l = val_batch
-        rng_keys1, rng_keys2 = jax.random.split(rng_key, (2, t_obs.shape[0]))
+        rng_keys1, rng_keys2 = jax.random.split(rng_key, (2, t_sts.shape[0]))
         p_losses, p_acc = jax.vmap(
             partial(maml_loss, state_fn, train_params, inner_lr)
         )(
@@ -267,7 +267,7 @@ def _train_mamlp_step(state, inner_lr, batch, rng_key):
         train_batch, val_batch = batch
         t_sts, t_acts, t_ts, t_am, t_sts2, t_acts2, t_ts2, t_am2, t_l = train_batch
         v_sts, v_acts, v_ts, v_am, v_sts2, v_acts2, v_ts2, v_am2, v_l = val_batch
-        rng_keys1, rng_keys2 = jax.random.split(rng_key, (2, t_obs.shape[0]))
+        rng_keys1, rng_keys2 = jax.random.split(rng_key, (2, t_sts.shape[0]))
         p_losses, p_acc = jax.vmap(
             partial(maml_loss, state_fn, train_params, inner_lr)
         )(
