@@ -299,3 +299,60 @@ def _train_mamlp_step(state, inner_lr, batch, rng_key):
     new_train_state = state.apply_gradients(grads=grads)
     metrics = dict(training_loss=loss, training_acc=acc)
     return new_train_state, metrics
+
+class DecTransformerTrainer(object):
+
+    def __init__(self, dec, rng_key1, rng_key2, pretrained_params=None, **kwargs):
+        self.dec = dec
+
+        optimizer_class = optax.adamw
+        # May need to reconfigure for our data
+        scheduler_class = optax.warmup_cosine_decay_schedule(
+            init_value=kwargs.get("init_value", 0),
+            peak_value=kwargs.get("peak_value", 1e-4),
+            warmup_steps=kwargs.get("warmup_steps", 65),
+            decay_steps=kwargs.get("decay_steps", 650),
+            end_value=kwargs.get("end_value", 0),
+        )
+        tx = optimizer_class(scheduler_class)
+        # Reconfigure for our data
+        if pretrained_params is None:
+            dec_params = self.dec.init(
+                {"params": rng_key1, "dropout": rng_key2},
+                jnp.zeros((10, 25, 1)),
+                jnp.zeros((10, 25, dec.state_dim)),
+                jnp.zeros((10, 25, dec.action_dim)),
+                jnp.ones((10, 25), dtype=jnp.int32),
+            )
+            self._train_state = TrainState.create(
+                params=dec_params, tx=tx, apply_fn=self.dec.apply
+            )
+        else:
+            self._train_state = TrainState.create(
+                params=pretrained_params, tx=tx, apply_fn=self.dec.apply
+            )
+
+    def evaluation(self, batch, rng_key):
+        return _eval_dec_step(self._train_state, batch, rng_key)
+
+    def train(self, batch, rng_key):
+        self._train_state, metrics = _train_dec_step(self._train_state, batch, rng_key)
+        return metrics
+
+    def get_params(self):
+        return self._train_state.params
+
+
+@jax.jit
+def _eval_pref_step(state, batch, rng_key):
+    loss, acc = pref_loss_fn(state.apply_fn, state.params, batch, False, rng_key)
+    return dict(eval_loss=loss, eval_acc=acc)
+
+
+@jax.jit
+def _train_pref_step(state, batch, rng_key):
+    grad_fn = jax.value_and_grad(pref_loss_fn, argnums=1, has_aux=True)
+    (loss, acc), grads = grad_fn(state.apply_fn, state.params, batch, True, rng_key)
+    new_train_state = state.apply_gradients(grads=grads)
+    metrics = dict(training_loss=loss, training_acc=acc)
+    return new_train_state, metrics

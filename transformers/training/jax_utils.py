@@ -32,10 +32,10 @@ def mse_loss(val, target):
     return jnp.mean(jnp.square(val - target))
 
 
-def cross_ent_loss(logits, target):
+def cross_ent_loss(logits, target, classes=2):
 
     if len(target.shape) == 1:
-        label = jax.nn.one_hot(target, num_classes=2)
+        label = jax.nn.one_hot(target, num_classes=classes)
     else:
         label = target
     loss = jnp.mean(optax.softmax_cross_entropy(logits=logits, labels=label))
@@ -58,6 +58,11 @@ def pref_accuracy(logits, target):
     predicted_class = jnp.where(
         jnp.isclose(logits[:, 0], logits[:, 1]), 0.5, predicted_class
     )
+    return jnp.mean(predicted_class == target)
+
+
+def pred_accuracy(logits, target):
+    predicted_class = jnp.argmax(logits, axis=1) * 1.0
     return jnp.mean(predicted_class == target)
 
 
@@ -124,30 +129,13 @@ def pref_loss_fn(state_fn, train_params, batch, training, rng):
 
     trans_pred_1 = trans_pred_1["weighted_sum"]
     trans_pred_2 = trans_pred_2["weighted_sum"]
-    
+
     sum_pred_1 = jnp.mean(trans_pred_1.reshape(B, T), axis=1).reshape(-1, 1)
     sum_pred_2 = jnp.mean(trans_pred_2.reshape(B, T), axis=1).reshape(-1, 1)
 
     logits = jnp.concatenate([sum_pred_1, sum_pred_2], axis=1)
 
     return cross_ent_loss(logits, labels), pref_accuracy(logits, labels)
-
-
-def imlp_loss_fn(state_fn, train_params, batch, training, rng):
-    obs = batch["observations"]
-    labels = batch["labels"]
-
-    imlp_pred = state_fn(
-        train_params,
-        obs,
-        training=training,
-        rngs={"dropout": rng},
-    ).squeeze(axis=-1)
-
-    pred_labels = (imlp_pred > 0).astype(jnp.float32)
-    imlp_loss = optax.sigmoid_binary_cross_entropy(imlp_pred, labels).mean()
-    imlp_acc = (pred_labels == labels).mean()
-    return imlp_loss, imlp_acc
 
 
 @jax.jit
