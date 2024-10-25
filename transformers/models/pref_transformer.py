@@ -171,7 +171,7 @@ class PT(nn.Module):
         embd_actions = embd_actions + embd_timesteps
 
         stacked_inputs = (
-            jnp.stack([embd_actions, embd_states], axis=1)
+            jnp.stack([embd_states,embed_actions], axis=1)
             .transpose(0, 2, 1, 3)
             .reshape(batch_size, 2 * seq_length, self.embd_dim)
         )
