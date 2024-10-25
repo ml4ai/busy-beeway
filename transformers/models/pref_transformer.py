@@ -171,17 +171,18 @@ class PT(nn.Module):
         embd_actions = embd_actions + embd_timesteps
 
         stacked_inputs = (
-            jnp.stack([embd_states,embed_actions], axis=1)
+            jnp.stack([embd_states, embd_actions], axis=1)
             .transpose(0, 2, 1, 3)
             .reshape(batch_size, 2 * seq_length, self.embd_dim)
         )
 
         stacked_inputs = nn.LayerNorm(epsilon=self.eps)(stacked_inputs)
 
-        stacked_attn_mask = jnp.stack(
-            [attn_mask, attn_mask],
-            axis=1
-        ).transpose(0, 2, 1).reshape(batch_size, 2 * seq_length)
+        stacked_attn_mask = (
+            jnp.stack([attn_mask, attn_mask], axis=1)
+            .transpose(0, 2, 1)
+            .reshape(batch_size, 2 * seq_length)
+        )
 
         transformer_outputs = GPT2Model(
             embd_dim=self.embd_dim,
