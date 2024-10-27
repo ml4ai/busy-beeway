@@ -5,7 +5,8 @@ import sys
 import h5py
 import jax.numpy as jnp
 import jax
-jax.config.update('jax_platform_name', 'cpu')
+
+jax.config.update("jax_platforms", "cpu")
 
 sys.path.insert(0, os.path.abspath("../.."))
 
