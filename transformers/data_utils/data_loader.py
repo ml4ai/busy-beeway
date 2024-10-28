@@ -70,6 +70,76 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
         return self._c_n
 
 
+class Dec_H5Dataset(torch.utils.data.Dataset):
+    # combined = true means this is a virtual dataset of combined data files
+    # the data tag is used for return_to_go if there are multiple in the file.
+    def __init__(self, file_path, combined=True, data_tag=None, set_2=False):
+        super(Dec_H5Dataset, self).__init__()
+        self.file_path = file_path
+        if data_tag is None:
+            self._r_label = "return_to_go"
+        else:
+            self._r_label = f"return_to_go_{data_tag}"
+        if set_2:
+            self._s_label = "states_2"
+            self._a_label = "actions_2"
+            self._t_label = "timesteps_2"
+            self._am_label = "attn_mask_2"
+        else:
+            self._s_label = "states"
+            self._a_label = "actions"
+            self._t_label = "timesteps"
+            self._am_label = "attn_mask"
+        with h5py.File(self.file_path, "r") as f:
+            self._sts_shape = f[self._s_label].shape
+            self._acts_shape = f[self._a_label].shape
+            self._max_episode_length = np.max(f[self._t_label][:])
+            if combined:
+                self._c_idx = {}
+                for key, val in f.attrs.items():
+                    self._c_idx[key] = val
+                self._c_n = len(self._c_idx)
+            else:
+                self._c_idx = None
+                self._c_n = 1
+
+    def open_hdf5(self):
+        self.h5_file = h5py.File(self.file_path, "r")
+        self.states = self.h5_file[self._s_label]
+        self.actions = self.h5_file[self._a_label]
+        self.timesteps = self.h5_file[self._t_label]
+        self.attn_mask = self.h5_file[self._am_label]
+        self.returns = self.h5_file[self._r_label]
+
+    def __getitem__(self, index):
+        if not hasattr(self, "h5_file"):
+            self.open_hdf5()
+        return (
+            self.states[index, ...],
+            self.actions[index, ...],
+            self.timesteps[index, ...],
+            self.attn_mask[index, ...],
+            self.returns[index],
+        )
+
+    def __len__(self):
+        return self._sts_shape[0]
+
+    def shapes(self):
+        return self._sts_shape, self._acts_shape
+
+    def max_episode_length(self):
+        return self._max_episode_length
+
+    # None if not a combined dataset
+    def c_idx(self):
+        return self._c_idx
+
+    # 1 if not a combined dataset
+    def c_num(self):
+        return self._c_n
+
+
 # Returns subset with list of ranges
 def create_subset(dataset, n_idx):
     idx = []

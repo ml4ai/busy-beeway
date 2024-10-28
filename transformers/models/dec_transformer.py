@@ -137,8 +137,8 @@ class GPT2Model(nn.Module):
             "attn_weights_list": attn_weights_list,
         }
 
-
-class PT(nn.Module):
+# state_dim/action_dim is either number of states/actions or the number of features
+class DT(nn.Module):
     state_dim: int = 15
     action_dim: int = 3
     max_episode_steps: int = 1219
@@ -155,7 +155,7 @@ class PT(nn.Module):
 
     @nn.compact
     def __call__(
-        self, returns,states, actions, timesteps, training=False, attn_mask=None
+        self, returns, states, actions, timesteps, training=False, attn_mask=None
     ):
         batch_size, seq_length = states.shape[0], states.shape[1]
         if attn_mask is None:
@@ -202,8 +202,10 @@ class PT(nn.Module):
 
         x = transformer_outputs["last_hidden_state"]
         x = x.reshape(batch_size, seq_length, 3, self.embd_dim).transpose(0, 2, 1, 3)
-        hidden_output = x[:, 1]
 
-        action_pred = nn.Dense(features=self.action_dim)(hidden_output)
+        Q_preds = nn.Dense(features=1)(x[:, 2])
+        V_preds = nn.Dense(features=1)(x[:, 1])
+        state_preds = nn.Dense(features=self.state_dim)(x[:, 2])
+        action_preds = nn.Dense(features=self.action_dim)(x[:, 1])
 
-        return action_pred
+        return Q_preds, V_preds, state_preds, action_preds

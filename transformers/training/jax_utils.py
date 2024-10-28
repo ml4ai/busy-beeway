@@ -32,6 +32,7 @@ def mse_loss(val, target):
     return jnp.mean(jnp.square(val - target))
 
 
+# classes only needs to be set if target is not a one hot vector, otherwise |logits| == |label| should already be true
 def cross_ent_loss(logits, target, classes=2):
 
     if len(target.shape) == 1:
@@ -61,9 +62,10 @@ def pref_accuracy(logits, target):
     return jnp.mean(predicted_class == target)
 
 
-def pred_accuracy(logits, target):
-    predicted_class = jnp.argmax(logits, axis=1) * 1.0
-    return jnp.mean(predicted_class == target)
+def dt_accuracy(logits, target):
+    predicted_class = jnp.argmax(logits, axis=2) * 1.0
+    true_target = jnp.argmax(target, axis=2) * 1.0
+    return jnp.mean(predicted_class == true_target)
 
 
 def value_and_multi_grad(fun, n_outputs, argnums=0, has_aux=False):
@@ -137,6 +139,124 @@ def pref_loss_fn(state_fn, train_params, batch, training, rng):
 
     return cross_ent_loss(logits, labels), pref_accuracy(logits, labels)
 
+
+def q_loss_fn(state_fn, train_params, batch, training, rng):
+    sts = batch["states"]
+    acts = batch["actions"]
+    timestep = batch["timesteps"]
+    am = batch["attn_mask"]
+    rtns = batch["returns"]
+
+    Q_preds, _, _, _ = state_fn(
+        train_params,
+        rtns,
+        sts,
+        acts,
+        timestep,
+        training=training,
+        attn_mask=am,
+        rngs={"dropout": rng},
+    )
+    return jnp.mean(optax.l2_loss(predictions=Q_preds, targets=rtns))
+
+
+def v_loss_fn(state_fn, train_params, batch, training, rng):
+    sts = batch["states"]
+    acts = batch["actions"]
+    timestep = batch["timesteps"]
+    am = batch["attn_mask"]
+    rtns = batch["returns"]
+
+    _, V_preds, _, _ = state_fn(
+        train_params,
+        rtns,
+        sts,
+        acts,
+        timestep,
+        training=training,
+        attn_mask=am,
+        rngs={"dropout": rng},
+    )
+    return jnp.mean(optax.l2_loss(predictions=V_preds, targets=rtns))
+
+
+def sd_loss_fn(state_fn, train_params, batch, training, rng):
+    sts = batch["states"]
+    acts = batch["actions"]
+    timestep = batch["timesteps"]
+    am = batch["attn_mask"]
+    rtns = batch["returns"]
+
+    _, _, s_preds, _ = state_fn(
+        train_params,
+        rtns,
+        sts,
+        acts,
+        timestep,
+        training=training,
+        attn_mask=am,
+        rngs={"dropout": rng},
+    )
+    return cross_ent_loss(s_preds, sts), dt_accuracy(s_preds, sts)
+
+
+def sf_loss_fn(state_fn, train_params, batch, training, rng):
+    sts = batch["states"]
+    acts = batch["actions"]
+    timestep = batch["timesteps"]
+    am = batch["attn_mask"]
+    rtns = batch["returns"]
+
+    _, _, s_preds, _ = state_fn(
+        train_params,
+        rtns,
+        sts,
+        acts,
+        timestep,
+        training=training,
+        attn_mask=am,
+        rngs={"dropout": rng},
+    )
+    return jnp.mean(optax.l2_loss(predictions=s_preds, targets=sts))
+
+def ad_loss_fn(state_fn, train_params, batch, training, rng):
+    sts = batch["states"]
+    acts = batch["actions"]
+    timestep = batch["timesteps"]
+    am = batch["attn_mask"]
+    rtns = batch["returns"]
+
+    _, _, _, a_preds = state_fn(
+        train_params,
+        rtns,
+        sts,
+        acts,
+        timestep,
+        training=training,
+        attn_mask=am,
+        rngs={"dropout": rng},
+    )
+    return cross_ent_loss(a_preds, acts), dt_accuracy(a_preds, acts)
+
+
+def af_loss_fn(state_fn, train_params, batch, training, rng):
+    sts = batch["states"]
+    acts = batch["actions"]
+    timestep = batch["timesteps"]
+    am = batch["attn_mask"]
+    rtns = batch["returns"]
+
+    _, _, _, a_preds = state_fn(
+        train_params,
+        rtns,
+        sts,
+        acts,
+        timestep,
+        training=training,
+        attn_mask=am,
+        rngs={"dropout": rng},
+    )
+    return jnp.mean(optax.l2_loss(predictions=a_preds, targets=acts))
 
 @jax.jit
 def batch_to_jax(batch):

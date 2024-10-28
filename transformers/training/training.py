@@ -6,7 +6,7 @@ import optax
 from flax.training.train_state import TrainState
 from ml_collections import ConfigDict
 
-from transformers.training.jax_utils import pref_loss_fn
+from transformers.training.jax_utils import pref_loss_fn,q_loss_fn,v_loss_fn,sd_loss_fn,sf_loss_fn,ad_loss_fn,af_loss_fn
 
 
 class PrefTransformerTrainer(object):
@@ -300,11 +300,23 @@ def _train_mamlp_step(state, inner_lr, batch, rng_key):
     metrics = dict(training_loss=loss, training_acc=acc)
     return new_train_state, metrics
 
+
 class DecTransformerTrainer(object):
-
-    def __init__(self, dec, rng_key1, rng_key2, pretrained_params=None, **kwargs):
+    # output_type (str) helps the trainer know which to loss function to use, == "Q" (state-action values),
+    # == "V" (state values), == "S_D" (discrete states), == "S_F" (feature-based states),
+    # == "A_D" (discete actions), == "A_F" (feature-based actions).
+    # S_F/A_F uses l2 loss regardless of whether features are continuous or discrete
+    def __init__(
+        self,
+        dec,
+        rng_key1,
+        rng_key2,
+        output_type="A_F",
+        pretrained_params=None,
+        **kwargs,
+    ):
         self.dec = dec
-
+        self.output_type = output_type
         optimizer_class = optax.adamw
         # May need to reconfigure for our data
         scheduler_class = optax.warmup_cosine_decay_schedule(
@@ -333,10 +345,46 @@ class DecTransformerTrainer(object):
             )
 
     def evaluation(self, batch, rng_key):
-        return _eval_dec_step(self._train_state, batch, rng_key)
+        match self.output_type:
+            case "Q":
+                return _eval_Qdec_step(self._train_state, batch, rng_key)
+            case "V":
+                return _eval_Vdec_step(self._train_state, batch, rng_key)
+            case "S_D":
+                return _eval_S_Ddec_step(self._train_state, batch, rng_key)
+            case "S_F":
+                return _eval_S_Fdec_step(self._train_state, batch, rng_key)
+            case "A_D":
+                return _eval_A_Ddec_step(self._train_state, batch, rng_key)
+            case _:
+                return _eval_A_Fdec_step(self._train_state, batch, rng_key)
 
     def train(self, batch, rng_key):
-        self._train_state, metrics = _train_dec_step(self._train_state, batch, rng_key)
+        match self.output_type:
+            case "Q":
+                self._train_state, metrics = _train_Qdec_step(
+                    self._train_state, batch, rng_key
+                )
+            case "V":
+                self._train_state, metrics = _train_Vdec_step(
+                    self._train_state, batch, rng_key
+                )
+            case "S_D":
+                self._train_state, metrics = _train_S_Ddec_step(
+                    self._train_state, batch, rng_key
+                )
+            case "S_F":
+                self._train_state, metrics = _train_S_Fdec_step(
+                    self._train_state, batch, rng_key
+                )
+            case "A_D":
+                self._train_state, metrics = _train_A_Ddec_step(
+                    self._train_state, batch, rng_key
+                )
+            case _:
+                self._train_state, metrics = _train_A_Fdec_step(
+                    self._train_state, batch, rng_key
+                )
         return metrics
 
     def get_params(self):
@@ -344,15 +392,90 @@ class DecTransformerTrainer(object):
 
 
 @jax.jit
-def _eval_pref_step(state, batch, rng_key):
-    loss, acc = pref_loss_fn(state.apply_fn, state.params, batch, False, rng_key)
+def _eval_Qdec_step(state, batch, rng_key):
+    loss = q_loss_fn(state.apply_fn, state.params, batch, False, rng_key)
+    return dict(eval_loss=loss)
+
+
+@jax.jit
+def _eval_Vdec_step(state, batch, rng_key):
+    loss = v_loss_fn(state.apply_fn, state.params, batch, False, rng_key)
+    return dict(eval_loss=loss)
+
+
+@jax.jit
+def _eval_S_Ddec_step(state, batch, rng_key):
+    loss, acc = sd_loss_fn(state.apply_fn, state.params, batch, False, rng_key)
     return dict(eval_loss=loss, eval_acc=acc)
 
 
 @jax.jit
-def _train_pref_step(state, batch, rng_key):
-    grad_fn = jax.value_and_grad(pref_loss_fn, argnums=1, has_aux=True)
+def _eval_S_Fdec_step(state, batch, rng_key):
+    loss = sf_loss_fn(state.apply_fn, state.params, batch, False, rng_key)
+    return dict(eval_loss=loss)
+
+
+@jax.jit
+def _eval_A_Ddec_step(state, batch, rng_key):
+    loss, acc = ad_loss_fn(state.apply_fn, state.params, batch, False, rng_key)
+    return dict(eval_loss=loss, eval_acc=acc)
+
+
+@jax.jit
+def _eval_A_Fdec_step(state, batch, rng_key):
+    loss = sf_loss_fn(state.apply_fn, state.params, batch, False, rng_key)
+    return dict(eval_loss=loss)
+
+
+@jax.jit
+def _train_Qdec_step(state, batch, rng_key):
+    grad_fn = jax.value_and_grad(q_loss_fn, argnums=1)
+    loss, grads = grad_fn(state.apply_fn, state.params, batch, True, rng_key)
+    new_train_state = state.apply_gradients(grads=grads)
+    metrics = dict(training_loss=loss)
+    return new_train_state, metrics
+
+
+@jax.jit
+def _train_Vdec_step(state, batch, rng_key):
+    grad_fn = jax.value_and_grad(v_loss_fn, argnums=1)
+    loss, grads = grad_fn(state.apply_fn, state.params, batch, True, rng_key)
+    new_train_state = state.apply_gradients(grads=grads)
+    metrics = dict(training_loss=loss)
+    return new_train_state, metrics
+
+
+@jax.jit
+def _train_S_Ddec_step(state, batch, rng_key):
+    grad_fn = jax.value_and_grad(sd_loss_fn, argnums=1, has_aux=True)
     (loss, acc), grads = grad_fn(state.apply_fn, state.params, batch, True, rng_key)
     new_train_state = state.apply_gradients(grads=grads)
     metrics = dict(training_loss=loss, training_acc=acc)
+    return new_train_state, metrics
+
+
+@jax.jit
+def _train_S_Fdec_step(state, batch, rng_key):
+    grad_fn = jax.value_and_grad(sf_loss_fn, argnums=1)
+    loss, grads = grad_fn(state.apply_fn, state.params, batch, True, rng_key)
+    new_train_state = state.apply_gradients(grads=grads)
+    metrics = dict(training_loss=loss)
+    return new_train_state, metrics
+
+
+@jax.jit
+def _train_A_Ddec_step(state, batch, rng_key):
+    grad_fn = jax.value_and_grad(ad_loss_fn, argnums=1, has_aux=True)
+    (loss, acc), grads = grad_fn(state.apply_fn, state.params, batch, True, rng_key)
+    new_train_state = state.apply_gradients(grads=grads)
+    metrics = dict(training_loss=loss, training_acc=acc)
+    return new_train_state, metrics
+
+
+@jax.jit
+def _train_A_Fdec_step(state, batch, rng_key):
+    grad_fn = jax.value_and_grad(af_loss_fn, argnums=1)
+    loss, grads = grad_fn(state.apply_fn, state.params, batch, True, rng_key)
+    new_train_state = state.apply_gradients(grads=grads)
+    metrics = dict(training_loss=loss)
     return new_train_state, metrics
