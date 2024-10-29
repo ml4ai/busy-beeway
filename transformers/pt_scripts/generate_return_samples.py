@@ -5,6 +5,7 @@ import sys
 import h5py
 import jax
 import jax.numpy as jnp
+from tqdm import tqdm
 
 jax.config.update("jax_platforms", "cpu")
 
@@ -75,7 +76,7 @@ def main(argv):
         del f["attn_mask"]
         seq_length = sts.shape[1]
         return_to_go = []
-        for i in range(seq_length):
+        for i in tqdm(range(seq_length)):
             preds, _ = r_model._train_state.apply_fn(
                 r_model._train_state.params,
                 sts[:, : (i + 1), :],
@@ -90,16 +91,28 @@ def main(argv):
                 return_to_go.append(preds["value"][:, 0, -1])
         return_to_go = jnp.concatenate(return_to_go, axis=1)
         if jnp.any(jnp.isnan(return_to_go)):
-            sts = np.delete(sts,jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:,0]),axis=0)
-            acts = np.delete(acts,jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:,0]),axis=0)
-            ts = np.delete(ts,jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:,0]),axis=0)
-            am = np.delete(am,jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:,0]),axis=0)
-            return_to_go = np.delete(return_to_go,jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:,0]),axis=0)
-        f.create_dataset("states",data=sts,chunks=True)
-        f.create_dataset("actions",data=acts,chunks=True)
-        f.create_dataset("timesteps",data=ts,chunks=True)
-        f.create_dataset("attn_mask",data=ts,chunks=True)
-        f.create_dataset(r_l, data=return_to_go,chunks=True)
+            sts = np.delete(
+                sts, jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:, 0]), axis=0
+            )
+            acts = np.delete(
+                acts, jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:, 0]), axis=0
+            )
+            ts = np.delete(
+                ts, jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:, 0]), axis=0
+            )
+            am = np.delete(
+                am, jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:, 0]), axis=0
+            )
+            return_to_go = np.delete(
+                return_to_go,
+                jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:, 0]),
+                axis=0,
+            )
+        f.create_dataset("states", data=sts, chunks=True)
+        f.create_dataset("actions", data=acts, chunks=True)
+        f.create_dataset("timesteps", data=ts, chunks=True)
+        f.create_dataset("attn_mask", data=ts, chunks=True)
+        f.create_dataset(r_l, data=return_to_go, chunks=True)
     sys.exit(0)
 
 
