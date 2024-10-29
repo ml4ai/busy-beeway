@@ -6,7 +6,15 @@ import optax
 from flax.training.train_state import TrainState
 from ml_collections import ConfigDict
 
-from transformers.training.jax_utils import pref_loss_fn,q_loss_fn,v_loss_fn,sd_loss_fn,sf_loss_fn,ad_loss_fn,af_loss_fn
+from transformers.training.jax_utils import (
+    pref_loss_fn,
+    q_loss_fn,
+    v_loss_fn,
+    sd_loss_fn,
+    sf_loss_fn,
+    ad_loss_fn,
+    af_loss_fn,
+)
 
 
 class PrefTransformerTrainer(object):
@@ -331,7 +339,7 @@ class DecTransformerTrainer(object):
         if pretrained_params is None:
             dec_params = self.dec.init(
                 {"params": rng_key1, "dropout": rng_key2},
-                jnp.zeros((10, 25)),
+                jnp.zeros((10, 25, 1)),
                 jnp.zeros((10, 25, dec.state_dim)),
                 jnp.zeros((10, 25, dec.action_dim)),
                 jnp.ones((10, 25), dtype=jnp.int32),

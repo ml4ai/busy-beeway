@@ -119,7 +119,7 @@ class Dec_H5Dataset(torch.utils.data.Dataset):
             self.actions[index, ...],
             self.timesteps[index, ...],
             self.attn_mask[index, ...],
-            self.returns[index],
+            self.returns[index, ...],
         )
 
     def __len__(self):
