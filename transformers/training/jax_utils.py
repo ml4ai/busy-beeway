@@ -145,7 +145,8 @@ def q_loss_fn(state_fn, train_params, batch, training, rng):
     acts = batch["actions"]
     timestep = batch["timesteps"]
     am = batch["attn_mask"]
-    rtns = batch["returns"]
+    B, T, _ = sts.shape
+    rtns = batch["returns"].reshape(B,T,1)
 
     Q_preds, _, _, _ = state_fn(
         train_params,
@@ -165,7 +166,8 @@ def v_loss_fn(state_fn, train_params, batch, training, rng):
     acts = batch["actions"]
     timestep = batch["timesteps"]
     am = batch["attn_mask"]
-    rtns = batch["returns"]
+    B, T, _ = sts.shape
+    rtns = batch["returns"].reshape(B,T,1)
 
     _, V_preds, _, _ = state_fn(
         train_params,
@@ -185,7 +187,8 @@ def sd_loss_fn(state_fn, train_params, batch, training, rng):
     acts = batch["actions"]
     timestep = batch["timesteps"]
     am = batch["attn_mask"]
-    rtns = batch["returns"]
+    B, T, _ = sts.shape
+    rtns = batch["returns"].reshape(B,T,1)
 
     _, _, s_preds, _ = state_fn(
         train_params,
@@ -205,7 +208,8 @@ def sf_loss_fn(state_fn, train_params, batch, training, rng):
     acts = batch["actions"]
     timestep = batch["timesteps"]
     am = batch["attn_mask"]
-    rtns = batch["returns"]
+    B, T, _ = sts.shape
+    rtns = batch["returns"].reshape(B,T,1)
 
     _, _, s_preds, _ = state_fn(
         train_params,
@@ -224,7 +228,8 @@ def ad_loss_fn(state_fn, train_params, batch, training, rng):
     acts = batch["actions"]
     timestep = batch["timesteps"]
     am = batch["attn_mask"]
-    rtns = batch["returns"]
+    B, T, _ = sts.shape
+    rtns = batch["returns"].reshape(B,T,1)
 
     _, _, _, a_preds = state_fn(
         train_params,
@@ -244,7 +249,8 @@ def af_loss_fn(state_fn, train_params, batch, training, rng):
     acts = batch["actions"]
     timestep = batch["timesteps"]
     am = batch["attn_mask"]
-    rtns = batch["returns"]
+    B, T, _ = sts.shape
+    rtns = batch["returns"].reshape(B,T,1)
 
     _, _, _, a_preds = state_fn(
         train_params,
