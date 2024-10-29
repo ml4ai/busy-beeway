@@ -18,7 +18,7 @@ from transformers.training.utils import load_pickle
 
 def main(argv):
     parser = argparse.ArgumentParser(
-        description="Generates Monte Carlo Targets for Value Function Approximations \nusing precollected trajectory samples. \nThis physically resaves the data to the given data file.",
+        description="Generates Monte Carlo Targets for Value Function Approximations \nusing precollected trajectory samples. \nThis physically resaves data to a new data file.",
         formatter_class=StructuredFormatter,
     )
     parser.add_argument(
@@ -32,6 +32,13 @@ def main(argv):
         metavar="D",
         type=str,
         help="File with sample Trajectories",
+    )
+    parser.add_argument(
+        "-o",
+        "--output_dir",
+        type=str,
+        default="~/busy-beeway/transformers",
+        help="Output directory",
     )
     parser.add_argument(
         "-s",
@@ -49,31 +56,23 @@ def main(argv):
     args = parser.parse_args(argv)
     reward = os.path.expanduser(args.reward)
     data = os.path.expanduser(args.data)
+    output_dir = os.path.expanduser(args.output_dir)
     if args.data_tag is not None:
-        r_l = f"return_to_go_{args.data_tag}"
+        data_tag = args.data_tag
     else:
-        r_l = "return_to_go"
+        data_tag = "data"
     r_model = load_pickle(reward)["model"]
-    with h5py.File(data, "r+") as f:
+    with h5py.File(data, "r") as f:
         if args.set_2:
             sts = f["states_2"][:]
             acts = f["actions_2"][:]
             ts = f["timesteps_2"][:]
             am = f["attn_mask_2"][:]
-            r_l = f"{r_l}_2"
         else:
             sts = f["states"][:]
             acts = f["actions"][:]
             ts = f["timesteps"][:]
             am = f["attn_mask"][:]
-        del f["states_2"]
-        del f["actions_2"]
-        del f["timesteps_2"]
-        del f["attn_mask_2"]
-        del f["states"]
-        del f["actions"]
-        del f["timesteps"]
-        del f["attn_mask"]
         seq_length = sts.shape[1]
         return_to_go = []
         for i in tqdm(range(seq_length)):
@@ -108,11 +107,12 @@ def main(argv):
                 jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:, 0]),
                 axis=0,
             )
-        f.create_dataset("states", data=sts, chunks=True)
-        f.create_dataset("actions", data=acts, chunks=True)
-        f.create_dataset("timesteps", data=ts, chunks=True)
-        f.create_dataset("attn_mask", data=ts, chunks=True)
-        f.create_dataset(r_l, data=return_to_go, chunks=True)
+        with h5py.File(f"{output_dir}/{data_tag}.hdf5",'a') as g:
+            g.create_dataset("states", data=sts, chunks=True)
+            g.create_dataset("actions", data=acts, chunks=True)
+            g.create_dataset("timesteps", data=ts, chunks=True)
+            g.create_dataset("attn_mask", data=am, chunks=True)
+            g.create_dataset("returns", data=return_to_go, chunks=True)
     sys.exit(0)
 
 
