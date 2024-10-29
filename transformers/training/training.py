@@ -331,7 +331,7 @@ class DecTransformerTrainer(object):
         if pretrained_params is None:
             dec_params = self.dec.init(
                 {"params": rng_key1, "dropout": rng_key2},
-                jnp.zeros((10, 25, 1)),
+                jnp.zeros((10, 25)),
                 jnp.zeros((10, 25, dec.state_dim)),
                 jnp.zeros((10, 25, dec.action_dim)),
                 jnp.ones((10, 25), dtype=jnp.int32),
