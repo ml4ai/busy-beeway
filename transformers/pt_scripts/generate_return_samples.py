@@ -90,24 +90,24 @@ def main(argv):
                 return_to_go.append(preds["value"][:, 0, -1])
         return_to_go = jnp.concatenate(return_to_go, axis=1)
         if jnp.any(jnp.isnan(return_to_go)):
-            sts = np.delete(
+            sts = jnp.delete(
                 sts, jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:, 0]), axis=0
             )
-            acts = np.delete(
+            acts = jnp.delete(
                 acts, jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:, 0]), axis=0
             )
-            ts = np.delete(
+            ts = jnp.delete(
                 ts, jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:, 0]), axis=0
             )
-            am = np.delete(
+            am = jnp.delete(
                 am, jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:, 0]), axis=0
             )
-            return_to_go = np.delete(
+            return_to_go = jnp.delete(
                 return_to_go,
                 jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:, 0]),
                 axis=0,
             )
-        with h5py.File(f"{output_dir}/{data_tag}.hdf5",'a') as g:
+        with h5py.File(f"{output_dir}/{data_tag}.hdf5", "a") as g:
             g.create_dataset("states", data=sts, chunks=True)
             g.create_dataset("actions", data=acts, chunks=True)
             g.create_dataset("timesteps", data=ts, chunks=True)
