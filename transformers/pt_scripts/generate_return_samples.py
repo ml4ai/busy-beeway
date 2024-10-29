@@ -3,8 +3,8 @@ import os
 import sys
 
 import h5py
-import jax.numpy as jnp
 import jax
+import jax.numpy as jnp
 
 jax.config.update("jax_platforms", "cpu")
 
@@ -17,7 +17,7 @@ from transformers.training.utils import load_pickle
 
 def main(argv):
     parser = argparse.ArgumentParser(
-        description="Generates Monte Carlo Targets for Value Function Approximations \nusing precollected trajectory samples",
+        description="Generates Monte Carlo Targets for Value Function Approximations \nusing precollected trajectory samples. \nThis physically resaves the data to the given data file.",
         formatter_class=StructuredFormatter,
     )
     parser.add_argument(
@@ -65,6 +65,14 @@ def main(argv):
             acts = f["actions"][:]
             ts = f["timesteps"][:]
             am = f["attn_mask"][:]
+        del f["states_2"]
+        del f["actions_2"]
+        del f["timesteps_2"]
+        del f["attn_mask_2"]
+        del f["states"]
+        del f["actions"]
+        del f["timesteps"]
+        del f["attn_mask"]
         seq_length = sts.shape[1]
         return_to_go = []
         for i in range(seq_length):
@@ -81,7 +89,17 @@ def main(argv):
             else:
                 return_to_go.append(preds["value"][:, 0, -1])
         return_to_go = jnp.concatenate(return_to_go, axis=1)
-        f.create_dataset(r_l, data=return_to_go)
+        if jnp.any(jnp.isnan(return_to_go)):
+            sts = np.delete(sts,jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:,0]),axis=0)
+            acts = np.delete(acts,jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:,0]),axis=0)
+            ts = np.delete(ts,jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:,0]),axis=0)
+            am = np.delete(am,jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:,0]),axis=0)
+            return_to_go = np.delete(return_to_go,jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:,0]),axis=0)
+        f.create_dataset("states",data=sts,chunks=True)
+        f.create_dataset("actions",data=acts,chunks=True)
+        f.create_dataset("timesteps",data=ts,chunks=True)
+        f.create_dataset("attn_mask",data=ts,chunks=True)
+        f.create_dataset(r_l, data=return_to_go,chunks=True)
     sys.exit(0)
 
 

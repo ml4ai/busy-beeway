@@ -73,27 +73,17 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
 class Dec_H5Dataset(torch.utils.data.Dataset):
     # combined = true means this is a virtual dataset of combined data files
     # the data tag is used for return_to_go if there are multiple in the file.
-    def __init__(self, file_path, combined=True, data_tag=None, set_2=False):
+    def __init__(self, file_path, combined=True, data_tag=None):
         super(Dec_H5Dataset, self).__init__()
         self.file_path = file_path
         if data_tag is None:
             self._r_label = "return_to_go"
         else:
             self._r_label = f"return_to_go_{data_tag}"
-        if set_2:
-            self._s_label = "states_2"
-            self._a_label = "actions_2"
-            self._t_label = "timesteps_2"
-            self._am_label = "attn_mask_2"
-        else:
-            self._s_label = "states"
-            self._a_label = "actions"
-            self._t_label = "timesteps"
-            self._am_label = "attn_mask"
         with h5py.File(self.file_path, "r") as f:
-            self._sts_shape = f[self._s_label].shape
-            self._acts_shape = f[self._a_label].shape
-            self._max_episode_length = np.max(f[self._t_label][:])
+            self._sts_shape = f["states"].shape
+            self._acts_shape = f["actions"].shape
+            self._max_episode_length = np.max(f["timesteps"][:])
             if combined:
                 self._c_idx = {}
                 for key, val in f.attrs.items():
@@ -105,10 +95,10 @@ class Dec_H5Dataset(torch.utils.data.Dataset):
 
     def open_hdf5(self):
         self.h5_file = h5py.File(self.file_path, "r")
-        self.states = self.h5_file[self._s_label]
-        self.actions = self.h5_file[self._a_label]
-        self.timesteps = self.h5_file[self._t_label]
-        self.attn_mask = self.h5_file[self._am_label]
+        self.states = self.h5_file["states"]
+        self.actions = self.h5_file["actions"]
+        self.timesteps = self.h5_file["timesteps"]
+        self.attn_mask = self.h5_file["attn_mask"]
         self.returns = self.h5_file[self._r_label]
 
     def __getitem__(self, index):

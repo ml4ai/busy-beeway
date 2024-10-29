@@ -106,12 +106,6 @@ def main(argv):
         default=None,
         help="A data tag for return_to_go",
     )
-    parser.add_argument(
-        "-y",
-        "--set_2",
-        action="store_true",
-        help="This uses the real data samples \nversus the random policy samples.",
-    )
     multiprocessing.set_start_method("forkserver")
     args = parser.parse_args(argv)
     data = os.path.expanduser(args.data)
@@ -133,7 +127,7 @@ def main(argv):
         pm = load_pickle(pm)["model"]
         pm = pm._train_state.params
     try:
-        data = Dec_H5Dataset(data, data_tag=args.data_tag, set_2=args.set_2)
+        data = Dec_H5Dataset(data, data_tag=args.data_tag)
         train_dt(
             data,
             seed,
