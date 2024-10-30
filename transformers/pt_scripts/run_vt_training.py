@@ -10,14 +10,14 @@ import numpy as np
 from argformat import StructuredFormatter
 
 from transformers.data_utils.data_loader import Dec_H5Dataset
-from transformers.training.train_model import train_dt
+from transformers.training.train_model import train_vt
 from transformers.training.utils import load_pickle
 import torch.multiprocessing as multiprocessing
 
 
 def main(argv):
     parser = argparse.ArgumentParser(
-        description="Runs Decision Transformer Training Algorithm given a compiled dataset (in jax.numpy.array form)",
+        description="Runs Value Transformer Training Algorithm given a compiled dataset (in jax.numpy.array form)",
         formatter_class=StructuredFormatter,
     )
     parser.add_argument(
@@ -25,12 +25,6 @@ def main(argv):
         metavar="D",
         type=str,
         help="HDF5 file containing data. \nThe file must have the datasets \n'Observations',timesteps',etc.",
-    )
-    parser.add_argument(
-        "output_type",
-        metavar="O",
-        type=str,
-        help="This determines what the DT is mainly trying to predict. \nOptions should be Q (state-action value), \nS_D (discrete states), \nS_F (feature-based states), \nA_D (discrete actions), \nA_F (feature-based actions",
     )
     parser.add_argument(
         "-t",
@@ -121,10 +115,9 @@ def main(argv):
         pm = pm._train_state.params
     try:
         data = Dec_H5Dataset(data)
-        train_dt(
+        train_vt(
             data,
             seed,
-            output_type=args.output_type,
             train_split=train_split,
             batch_size=batch_size,
             num_workers=workers,

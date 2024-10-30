@@ -163,17 +163,14 @@ def q_loss_fn(state_fn, train_params, batch, training, rng):
 
 def v_loss_fn(state_fn, train_params, batch, training, rng):
     sts = batch["states"]
-    acts = batch["actions"]
     timestep = batch["timesteps"]
     am = batch["attn_mask"]
     B, T, _ = sts.shape
     rtns = batch["returns"].reshape(B, T, 1)
 
-    _, V_preds, _, _ = state_fn(
+    V_preds = state_fn(
         train_params,
-        rtns,
         sts,
-        acts,
         timestep,
         training=training,
         attn_mask=am,

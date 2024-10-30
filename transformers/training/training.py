@@ -311,7 +311,7 @@ def _train_mamlp_step(state, inner_lr, batch, rng_key):
 
 class DecTransformerTrainer(object):
     # output_type (str) helps the trainer know which to loss function to use, == "Q" (state-action values),
-    # == "V" (state values), == "S_D" (discrete states), == "S_F" (feature-based states),
+    # == "S_D" (discrete states), == "S_F" (feature-based states),
     # == "A_D" (discete actions), == "A_F" (feature-based actions).
     # S_F/A_F uses l2 loss regardless of whether features are continuous or discrete
     def __init__(
@@ -356,8 +356,6 @@ class DecTransformerTrainer(object):
         match self.output_type:
             case "Q":
                 return _eval_Qdec_step(self._train_state, batch, rng_key)
-            case "V":
-                return _eval_Vdec_step(self._train_state, batch, rng_key)
             case "S_D":
                 return _eval_S_Ddec_step(self._train_state, batch, rng_key)
             case "S_F":
@@ -371,10 +369,6 @@ class DecTransformerTrainer(object):
         match self.output_type:
             case "Q":
                 self._train_state, metrics = _train_Qdec_step(
-                    self._train_state, batch, rng_key
-                )
-            case "V":
-                self._train_state, metrics = _train_Vdec_step(
                     self._train_state, batch, rng_key
                 )
             case "S_D":
@@ -398,6 +392,52 @@ class DecTransformerTrainer(object):
     def get_params(self):
         return self._train_state.params
 
+class ValTransformerTrainer(object):
+    def __init__(
+        self,
+        val,
+        rng_key1,
+        rng_key2,
+        pretrained_params=None,
+        **kwargs,
+    ):
+        self.val = val
+        optimizer_class = optax.adamw
+        # May need to reconfigure for our data
+        scheduler_class = optax.warmup_cosine_decay_schedule(
+            init_value=kwargs.get("init_value", 0),
+            peak_value=kwargs.get("peak_value", 1e-4),
+            warmup_steps=kwargs.get("warmup_steps", 65),
+            decay_steps=kwargs.get("decay_steps", 650),
+            end_value=kwargs.get("end_value", 0),
+        )
+        tx = optimizer_class(scheduler_class)
+        # Reconfigure for our data
+        if pretrained_params is None:
+            val_params = self.val.init(
+                {"params": rng_key1, "dropout": rng_key2},
+                jnp.zeros((10, 25, val.state_dim)),
+                jnp.ones((10, 25), dtype=jnp.int32),
+            )
+            self._train_state = TrainState.create(
+                params=val_params, tx=tx, apply_fn=self.val.apply
+            )
+        else:
+            self._train_state = TrainState.create(
+                params=pretrained_params, tx=tx, apply_fn=self.val.apply
+            )
+
+    def evaluation(self, batch, rng_key):
+        return _eval_val_step(self._train_state, batch, rng_key)
+
+    def train(self, batch, rng_key):
+        self._train_state, metrics = _train_val_step(
+            self._train_state, batch, rng_key
+        )
+        return metrics
+
+    def get_params(self):
+        return self._train_state.params
 
 @jax.jit
 def _eval_Qdec_step(state, batch, rng_key):
@@ -406,7 +446,7 @@ def _eval_Qdec_step(state, batch, rng_key):
 
 
 @jax.jit
-def _eval_Vdec_step(state, batch, rng_key):
+def _eval_val_step(state, batch, rng_key):
     loss = v_loss_fn(state.apply_fn, state.params, batch, False, rng_key)
     return dict(eval_loss=loss)
 
@@ -445,7 +485,7 @@ def _train_Qdec_step(state, batch, rng_key):
 
 
 @jax.jit
-def _train_Vdec_step(state, batch, rng_key):
+def _train_val_step(state, batch, rng_key):
     grad_fn = jax.value_and_grad(v_loss_fn, argnums=1)
     loss, grads = grad_fn(state.apply_fn, state.params, batch, True, rng_key)
     new_train_state = state.apply_gradients(grads=grads)

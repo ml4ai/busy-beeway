@@ -137,10 +137,10 @@ class GPT2Model(nn.Module):
             "attn_weights_list": attn_weights_list,
         }
 
+
 # state_dim/action_dim is either number of states/actions or the number of features
-class DT(nn.Module):
+class VT(nn.Module):
     state_dim: int = 15
-    action_dim: int = 3
     max_episode_steps: int = 1219
     embd_dim: int = 64
     pref_attn_embd_dim: int = 64
@@ -154,16 +154,12 @@ class DT(nn.Module):
     eps: float = 1e-05
 
     @nn.compact
-    def __call__(
-        self, returns, states, actions, timesteps, training=False, attn_mask=None
-    ):
+    def __call__(self, states, timesteps, training=False, attn_mask=None):
         batch_size, seq_length = states.shape[0], states.shape[1]
         if attn_mask is None:
             attn_mask = jnp.ones((batch_size, seq_length), dtype=jnp.float32)
 
         embd_states = nn.Dense(features=self.embd_dim)(states)
-        embd_actions = nn.Dense(features=self.embd_dim)(actions)
-        embd_returns = nn.Dense(features=self.embd_dim)(returns)
 
         embd_timesteps = nn.Embed(
             num_embeddings=self.max_episode_steps + 1,
@@ -171,22 +167,8 @@ class DT(nn.Module):
         )(timesteps)
 
         embd_states = embd_states + embd_timesteps
-        embd_actions = embd_actions + embd_timesteps
-        embd_returns = embd_returns + embd_timesteps
 
-        stacked_inputs = (
-            jnp.stack([embd_returns, embd_states, embd_actions], axis=1)
-            .transpose(0, 2, 1, 3)
-            .reshape(batch_size, 3 * seq_length, self.embd_dim)
-        )
-
-        stacked_inputs = nn.LayerNorm(epsilon=self.eps)(stacked_inputs)
-
-        stacked_attn_mask = (
-            jnp.stack([attn_mask, attn_mask, attn_mask], axis=1)
-            .transpose(0, 2, 1)
-            .reshape(batch_size, 3 * seq_length)
-        )
+        inputs = nn.LayerNorm(epsilon=self.eps)(embd_states)
 
         transformer_outputs = GPT2Model(
             embd_dim=self.embd_dim,
@@ -198,13 +180,11 @@ class DT(nn.Module):
             embd_dropout=self.embd_dropout,
             max_pos=self.max_pos,
             eps=self.eps,
-        )(input_embds=stacked_inputs, attn_mask=stacked_attn_mask, training=training)
+        )(input_embds=inputs, attn_mask=attn_mask, training=training)
 
         x = transformer_outputs["last_hidden_state"]
-        x = x.reshape(batch_size, seq_length, 3, self.embd_dim).transpose(0, 2, 1, 3)
+        x = x.reshape(batch_size, seq_length, 1, self.embd_dim).transpose(0, 2, 1, 3)
 
-        Q_preds = nn.Dense(features=1)(x[:, 2])
-        state_preds = nn.Dense(features=self.state_dim)(x[:, 2])
-        action_preds = nn.Dense(features=self.action_dim)(x[:, 1])
+        V_preds = nn.Dense(features=1)(x[:, 0])
 
-        return Q_preds, state_preds, action_preds
+        return V_preds

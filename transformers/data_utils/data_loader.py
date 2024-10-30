@@ -73,13 +73,9 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
 class Dec_H5Dataset(torch.utils.data.Dataset):
     # combined = true means this is a virtual dataset of combined data files
     # the data tag is used for return_to_go if there are multiple in the file.
-    def __init__(self, file_path, combined=True, data_tag=None):
+    def __init__(self, file_path, combined=True):
         super(Dec_H5Dataset, self).__init__()
         self.file_path = file_path
-        if data_tag is None:
-            self._r_label = "return_to_go"
-        else:
-            self._r_label = f"return_to_go_{data_tag}"
         with h5py.File(self.file_path, "r") as f:
             self._sts_shape = f["states"].shape
             self._acts_shape = f["actions"].shape
@@ -99,7 +95,7 @@ class Dec_H5Dataset(torch.utils.data.Dataset):
         self.actions = self.h5_file["actions"]
         self.timesteps = self.h5_file["timesteps"]
         self.attn_mask = self.h5_file["attn_mask"]
-        self.returns = self.h5_file[self._r_label]
+        self.returns = self.h5_file["returns"]
 
     def __getitem__(self, index):
         if not hasattr(self, "h5_file"):
