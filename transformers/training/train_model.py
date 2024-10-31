@@ -715,7 +715,8 @@ def train_vt(
         include_exp_prefix_sub_dir=False,
     )
 
-    _, query_len, state_dim = data.shape()
+    state_shape, _ = data.shapes()
+    _, query_len, state_dim = state_shape
     if pretrained_params is None:
         max_episode_length = data.max_episode_length()
     else:
