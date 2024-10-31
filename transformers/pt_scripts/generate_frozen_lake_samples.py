@@ -42,7 +42,7 @@ def main(argv):
     args = parser.parse_args(argv)
     trials = args.trials
     seed = args.seed
-    output_file = args.output_file
+    output_file = os.path.expanduser(args.output_file)
     env = gym.make(
         "FrozenLake-v1",
         render_mode="rgb_array",
