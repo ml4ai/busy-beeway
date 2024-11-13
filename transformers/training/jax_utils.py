@@ -187,7 +187,7 @@ def sd_loss_fn(state_fn, train_params, batch, training, rng):
     B, T, _ = sts.shape
     rtns = batch["returns"].reshape(B, T, 1)
 
-    _, _, s_preds, _ = state_fn(
+    _, s_preds, _ = state_fn(
         train_params,
         rtns,
         sts,
@@ -208,7 +208,7 @@ def sf_loss_fn(state_fn, train_params, batch, training, rng):
     B, T, _ = sts.shape
     rtns = batch["returns"].reshape(B, T, 1)
 
-    _, _, s_preds, _ = state_fn(
+    _, s_preds, _ = state_fn(
         train_params,
         rtns,
         sts,
@@ -229,7 +229,7 @@ def ad_loss_fn(state_fn, train_params, batch, training, rng):
     B, T, _ = sts.shape
     rtns = batch["returns"].reshape(B, T, 1)
 
-    _, _, _, a_preds = state_fn(
+    _, _, a_preds = state_fn(
         train_params,
         rtns,
         sts,
@@ -250,7 +250,7 @@ def af_loss_fn(state_fn, train_params, batch, training, rng):
     B, T, _ = sts.shape
     rtns = batch["returns"].reshape(B, T, 1)
 
-    _, _, _, a_preds = state_fn(
+    _, _, a_preds = state_fn(
         train_params,
         rtns,
         sts,
