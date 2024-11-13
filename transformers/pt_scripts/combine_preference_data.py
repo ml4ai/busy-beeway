@@ -94,17 +94,17 @@ def main(argv):
             "states",
             shape=(data_sizes[i], segment_sizes[i], state_sizes[i]),
         )
-        
+
         act_vsource = h5py.VirtualSource(
             f"{data_dir}/{p}.hdf5",
             "actions",
             shape=(data_sizes[i], segment_sizes[i], action_sizes[i]),
         )
-        
+
         t_vsource = h5py.VirtualSource(
             f"{data_dir}/{p}.hdf5", "timesteps", shape=(data_sizes[i], segment_sizes[i])
         )
-        
+
         am_vsource = h5py.VirtualSource(
             f"{data_dir}/{p}.hdf5", "attn_mask", shape=(data_sizes[i], segment_sizes[i])
         )
@@ -120,13 +120,13 @@ def main(argv):
             "actions_2",
             shape=(data_sizes[i], segment_sizes[i], action_sizes[i]),
         )
-        
+
         t_2_vsource = h5py.VirtualSource(
             f"{data_dir}/{p}.hdf5",
             "timesteps_2",
             shape=(data_sizes[i], segment_sizes[i]),
         )
-        
+
         am_2_vsource = h5py.VirtualSource(
             f"{data_dir}/{p}.hdf5",
             "attn_mask_2",
@@ -152,7 +152,7 @@ def main(argv):
         p_idx.append(np.array([prev_size, (prev_size + data_sizes[i])]))
         prev_size += data_sizes[i]
 
-    with h5py.File(save_file, "w") as f:
+    with h5py.File(save_file, "a") as f:
         f.create_virtual_dataset("states", st_layout)
         f.create_virtual_dataset("actions", act_layout)
         f.create_virtual_dataset("timesteps", t_layout)
