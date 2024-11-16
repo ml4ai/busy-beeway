@@ -46,7 +46,7 @@ def main(argv):
     env = gym.make(
         "FrozenLake-v1",
         render_mode="rgb_array",
-        max_episode_steps=100,
+        max_episode_steps=15,
         desc=["SFHH", "FFHH", "FFFH", "FFFG"],
         map_name="Custom",
         is_slippery=True,
