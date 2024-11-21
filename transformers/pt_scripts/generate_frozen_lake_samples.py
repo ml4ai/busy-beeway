@@ -39,14 +39,30 @@ def main(argv):
         default="~/busy-beeway/transformers/random_policy_frozen_lake.hdf5",
         help="Output file",
     )
+    parser.add_argument(
+        "-c",
+        "--context_length",
+        type=int,
+        default=5,
+        help="Episodes are divided into segments of the set context length",
+    )
+    parser.add_argument(
+        "-m",
+        "--max_episode_steps",
+        type=int,
+        default=30,
+        help="Episodes are divided into segments of the set context length",
+    )
     args = parser.parse_args(argv)
     trials = args.trials
     seed = args.seed
     output_file = os.path.expanduser(args.output_file)
+    max_episode_steps = args.max_episode_steps
+    context = args.context_length
     env = gym.make(
         "FrozenLake-v1",
         render_mode="rgb_array",
-        max_episode_steps=15,
+        max_episode_steps=max_episode_steps,
         desc=["SFHH", "FFHH", "FFFH", "FFFG"],
         map_name="Custom",
         is_slippery=True,
@@ -87,26 +103,40 @@ def main(argv):
         t_rtns.append(returns)
         t_ts.append(timesteps)
 
-    max_size = max([i.shape[0] for i in t_sts])
-    t_am = []
+    am = []
+    sts = []
+    acts = []
+    rtns = []
+    ts = []
     for i in range(trials):
+        fill_size = t_sts[i].shape[0] + (context - (t_sts[i].shape[0] % context))
+        n_splits = int(fill_size / context)
+        pad_size = fill_size - t_sts[i].shape[0]
         attn_mask = jnp.ones(t_sts[i].shape[0])
-        t_sts[i] = jnp.pad(t_sts[i], ((0, max_size - t_sts[i].shape[0]), (0, 0)))
-        t_acts[i] = jnp.pad(t_acts[i], ((0, max_size - t_acts[i].shape[0]), (0, 0)))
-        t_rtns[i] = jnp.pad(t_rtns[i], (0, max_size - t_rtns[i].shape[0]))
-        t_ts[i] = jnp.pad(t_ts[i], (0, max_size - t_ts[i].shape[0]))
-        t_am.append(jnp.pad(attn_mask, (0, max_size - attn_mask.shape[0])))
-    t_sts = jnp.stack(t_sts)
-    t_acts = jnp.stack(t_acts)
-    t_rtns = jnp.stack(t_rtns)
-    t_ts = jnp.stack(t_ts)
-    t_am = jnp.stack(t_am)
+        sts.append(
+            jnp.pad(t_sts[i], ((0, pad_size), (0, 0))).reshape(
+                n_splits, context, t_sts[i].shape[1]
+            )
+        )
+        acts.append(
+            jnp.pad(t_acts[i], ((0, pad_size), (0, 0))).reshape(
+                n_splits, context, t_acts[i].shape[1]
+            )
+        )
+        rtns.append(jnp.pad(t_rtns[i], (0, pad_size)).reshape(n_splits, context))
+        ts.append(jnp.pad(t_ts[i], (0, pad_size)).reshape(n_splits, context))
+        am.append(jnp.pad(attn_mask, (0, pad_size)).reshape(n_splits, context))
+    sts = jnp.concatenate(sts)
+    acts = jnp.concatenate(acts)
+    rtns = jnp.concatenate(rtns)
+    ts = jnp.concatenate(ts)
+    am = jnp.concatenate(am)
     with h5py.File(output_file, "a") as g:
-        g.create_dataset("states", data=t_sts, chunks=True)
-        g.create_dataset("actions", data=t_acts, chunks=True)
-        g.create_dataset("timesteps", data=t_ts, chunks=True)
-        g.create_dataset("attn_mask", data=t_am, chunks=True)
-        g.create_dataset("returns", data=t_rtns, chunks=True)
+        g.create_dataset("states", data=sts, chunks=True)
+        g.create_dataset("actions", data=acts, chunks=True)
+        g.create_dataset("timesteps", data=ts, chunks=True)
+        g.create_dataset("attn_mask", data=am, chunks=True)
+        g.create_dataset("returns", data=rtns, chunks=True)
     sys.exit(0)
 
 
