@@ -67,6 +67,9 @@ def dt_accuracy(logits, target):
     true_target = jnp.argmax(target, axis=2) * 1.0
     return jnp.nanmean(predicted_class == true_target)
 
+def mt_accuracy(logits, target):
+    predicted_class = (logits > 0).astype(int)
+    return jnp.nanmean(predicted_class == target)
 
 def value_and_multi_grad(fun, n_outputs, argnums=0, has_aux=False):
     def select_output(index):
@@ -139,6 +142,30 @@ def pref_loss_fn(state_fn, train_params, batch, training, rng):
 
     return cross_ent_loss(logits, labels), pref_accuracy(logits, labels)
 
+def mentor_loss_fn(state_fn, train_params, batch, training, rng):
+    sts_1 = batch["states"]
+    acts_1 = batch["actions"]
+    timestep_1 = batch["timesteps"]
+    am_1 = batch["attn_mask"]
+    labels = batch["labels"]
+
+    B, T, _ = batch["states"].shape
+
+    trans_pred_1, _ = state_fn(
+        train_params,
+        sts_1,
+        acts_1,
+        timestep_1,
+        training=training,
+        attn_mask=am_1,
+        rngs={"dropout": rng},
+    )
+
+    trans_pred_1 = trans_pred_1["weighted_sum"]
+
+    sum_pred_1 = jnp.nanmean(trans_pred_1.reshape(B, T), axis=1)
+
+    return jnp.nanmean(optax.sigmoid_binary_cross_entropy(logits=sum_pred_1,labels=labels)), mt_accuracy(logits, labels)
 
 def q_loss_fn(state_fn, train_params, batch, training, rng):
     sts = batch["states"]
