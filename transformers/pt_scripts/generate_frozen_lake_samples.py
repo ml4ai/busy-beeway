@@ -74,6 +74,8 @@ def main(argv):
     env.reset(seed=seed)
     env.action_space.seed(seed)
     env.observation_space.seed(seed)
+    holes = [2,3,6,7,11]
+    goal = 15
     for i in range(trials):
         states = []
         actions = []
@@ -87,7 +89,13 @@ def main(argv):
                 env.action_space.sample()
             )  # agent policy that uses the observation and info
             actions.append(jax.nn.one_hot(action, env.action_space.n))
-            state, reward, terminated, truncated, info = env.step(action)
+            state, _, terminated, truncated, info = env.step(action)
+            if state in holes:
+                reward = -1
+            elif state == goal:
+                reward = 1
+            else:
+                reward = 0
             rtn += reward
             returns.append(rtn)
             episode_over = terminated or truncated
