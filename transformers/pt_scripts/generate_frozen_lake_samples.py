@@ -5,6 +5,7 @@ import gymnasium as gym
 import h5py
 import jax
 import jax.numpy as jnp
+import numpy as np
 from pathlib import Path
 
 jax.config.update("jax_platforms", "cpu")
@@ -71,11 +72,10 @@ def main(argv):
     t_acts = []
     t_rtns = []
     t_ts = []
+    e_labels = []
     env.reset(seed=seed)
     env.action_space.seed(seed)
     env.observation_space.seed(seed)
-    holes = [2,3,6,7,11]
-    goal = 15
     for i in range(trials):
         states = []
         actions = []
@@ -89,13 +89,7 @@ def main(argv):
                 env.action_space.sample()
             )  # agent policy that uses the observation and info
             actions.append(jax.nn.one_hot(action, env.action_space.n))
-            state, _, terminated, truncated, info = env.step(action)
-            if state in holes:
-                reward = -1
-            elif state == goal:
-                reward = 1
-            else:
-                reward = 0
+            state, reward, terminated, truncated, info = env.step(action)
             rtn += reward
             returns.append(rtn)
             episode_over = terminated or truncated
@@ -110,12 +104,13 @@ def main(argv):
         t_acts.append(actions)
         t_rtns.append(returns)
         t_ts.append(timesteps)
-
+        e_labels.append(int(returns[-1]))
     am = []
     sts = []
     acts = []
     rtns = []
     ts = []
+    labels = []
     for i in range(trials):
         fill_size = t_sts[i].shape[0] + (context - (t_sts[i].shape[0] % context))
         n_splits = int(fill_size / context)
@@ -131,20 +126,26 @@ def main(argv):
                 n_splits, context, t_acts[i].shape[1]
             )
         )
+        
         rtns.append(jnp.pad(t_rtns[i], (0, pad_size)).reshape(n_splits, context))
         ts.append(jnp.pad(t_ts[i], (0, pad_size)).reshape(n_splits, context))
         am.append(jnp.pad(attn_mask, (0, pad_size)).reshape(n_splits, context))
+        l = np.zeros(n_splits)
+        l[-1] = e_labels[i]
+        labels.append(l)
     sts = jnp.concatenate(sts)
     acts = jnp.concatenate(acts)
     rtns = jnp.concatenate(rtns)
     ts = jnp.concatenate(ts)
     am = jnp.concatenate(am)
+    labels = jnp.concatenate(labels)
     with h5py.File(output_file, "a") as g:
         g.create_dataset("states", data=sts, chunks=True)
         g.create_dataset("actions", data=acts, chunks=True)
         g.create_dataset("timesteps", data=ts, chunks=True)
         g.create_dataset("attn_mask", data=am, chunks=True)
         g.create_dataset("returns", data=rtns, chunks=True)
+        g.create_dataset("labels", data=labels, chunks=True)
     sys.exit(0)
 
 
