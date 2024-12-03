@@ -125,11 +125,12 @@ class Dec_H5Dataset(torch.utils.data.Dataset):
     def c_num(self):
         return self._c_n
 
+
 class Mentor_H5Dataset(torch.utils.data.Dataset):
     # combined = true means this is a virtual dataset of combined data files
     # the data tag is used for return_to_go if there are multiple in the file.
     def __init__(self, file_path, combined=True):
-        super(Dec_H5Dataset, self).__init__()
+        super(Mentor_H5Dataset, self).__init__()
         self.file_path = file_path
         with h5py.File(self.file_path, "r") as f:
             self._sts_shape = f["states"].shape
@@ -179,6 +180,7 @@ class Mentor_H5Dataset(torch.utils.data.Dataset):
     # 1 if not a combined dataset
     def c_num(self):
         return self._c_n
+
 
 # Returns subset with list of ranges
 def create_subset(dataset, n_idx):
