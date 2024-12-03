@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import numpy as np
 from argformat import StructuredFormatter
 
-from transformers.data_utils.data_loader import Pref_H5Dataset
+from transformers.data_utils.data_loader import Mentor_H5Dataset
 from transformers.training.train_model import train_mt
 from transformers.training.utils import load_pickle
 import torch.multiprocessing as multiprocessing
@@ -114,7 +114,7 @@ def main(argv):
         pm = load_pickle(pm)["model"]
         pm = pm._train_state.params
     try:
-        data = Pref_H5Dataset(data)
+        data = Mentor_H5Dataset(data)
         train_mt(
             data,
             seed,

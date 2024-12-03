@@ -125,6 +125,60 @@ class Dec_H5Dataset(torch.utils.data.Dataset):
     def c_num(self):
         return self._c_n
 
+class Mentor_H5Dataset(torch.utils.data.Dataset):
+    # combined = true means this is a virtual dataset of combined data files
+    # the data tag is used for return_to_go if there are multiple in the file.
+    def __init__(self, file_path, combined=True):
+        super(Dec_H5Dataset, self).__init__()
+        self.file_path = file_path
+        with h5py.File(self.file_path, "r") as f:
+            self._sts_shape = f["states"].shape
+            self._acts_shape = f["actions"].shape
+            self._max_episode_length = np.max(f["timesteps"][:])
+            if combined:
+                self._c_idx = {}
+                for key, val in f.attrs.items():
+                    self._c_idx[key] = val
+                self._c_n = len(self._c_idx)
+            else:
+                self._c_idx = None
+                self._c_n = 1
+
+    def open_hdf5(self):
+        self.h5_file = h5py.File(self.file_path, "r")
+        self.states = self.h5_file["states"]
+        self.actions = self.h5_file["actions"]
+        self.timesteps = self.h5_file["timesteps"]
+        self.attn_mask = self.h5_file["attn_mask"]
+        self.labels = self.h5_file["labels"]
+
+    def __getitem__(self, index):
+        if not hasattr(self, "h5_file"):
+            self.open_hdf5()
+        return (
+            self.states[index, ...],
+            self.actions[index, ...],
+            self.timesteps[index, ...],
+            self.attn_mask[index, ...],
+            self.labels[index, ...],
+        )
+
+    def __len__(self):
+        return self._sts_shape[0]
+
+    def shapes(self):
+        return self._sts_shape, self._acts_shape
+
+    def max_episode_length(self):
+        return self._max_episode_length
+
+    # None if not a combined dataset
+    def c_idx(self):
+        return self._c_idx
+
+    # 1 if not a combined dataset
+    def c_num(self):
+        return self._c_n
 
 # Returns subset with list of ranges
 def create_subset(dataset, n_idx):
