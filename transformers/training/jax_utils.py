@@ -165,7 +165,7 @@ def mentor_loss_fn(state_fn, train_params, batch, training, rng):
 
     sum_pred_1 = jnp.nanmean(trans_pred_1.reshape(B, T), axis=1)
 
-    return jnp.nanmean(optax.sigmoid_binary_cross_entropy(logits=sum_pred_1,labels=labels)), mt_accuracy(logits, labels)
+    return jnp.nanmean(optax.sigmoid_binary_cross_entropy(logits=sum_pred_1,labels=labels)), mt_accuracy(sum_pred_1, labels)
 
 def q_loss_fn(state_fn, train_params, batch, training, rng):
     sts = batch["states"]
