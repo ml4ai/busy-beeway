@@ -1,6 +1,8 @@
 import argparse
 import os
 import sys
+import pandas as pd
+import numpy as np
 
 sys.path.insert(0, os.path.abspath("../.."))
 from pathlib import Path
@@ -53,7 +55,7 @@ def main(argv):
     )
     args = parser.parse_args(argv)
     study_list = args.study_list
-    sl = pd.read_csv(study_list, header=None, names=["autoID","subjectID","study"])
+    sl = pd.read_csv(study_list, header=None, names=["autoID", "subjectID", "study"])
     path = args.data_dir
     o_path = args.output_dir
     if not Path(o_path).is_dir():
@@ -104,6 +106,20 @@ def main(argv):
                     case 100:
                         ai.append(4)
         subject_ids += [sl[sl["autoID"] == p_id]["subjectID"].to_numpy()[0]] * n_runs
+    df = pd.DataFrame(
+        {
+            "AI": ai,
+            "level": level,
+            "n_frames": frames,
+            "n_control_frames": control_frames,
+            "collision": collisions,
+            "subject_id": subject_ids,
+            "date": dates,
+        }
+    )
+    df["date"] = pd.to_datetime(df["date"])
+    df.sort_values(by=["subject_id","date", "level"], inplace=True)
+    df.to_csv(f"{o_path}/bbway1_run_stats.csv", index=False)
     sys.exit(0)
 
 
