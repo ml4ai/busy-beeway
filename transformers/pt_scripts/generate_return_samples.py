@@ -74,7 +74,7 @@ def main(argv):
             ts = f["timesteps"][:]
             am = f["attn_mask"][:]
         seq_length = sts.shape[1]
-        return_to_go = []
+        rewards = []
         for i in tqdm(range(seq_length)):
             preds, _ = r_model._train_state.apply_fn(
                 r_model._train_state.params,
@@ -84,35 +84,36 @@ def main(argv):
                 training=False,
                 attn_mask=am[:, : (i + 1)],
             )
-            if return_to_go:
-                return_to_go.append(return_to_go[-1] + preds["value"][:, 0, -1])
-            else:
-                return_to_go.append(preds["value"][:, 0, -1])
-        return_to_go = jnp.concatenate(return_to_go, axis=1)
-        if jnp.any(jnp.isnan(return_to_go)):
+            rewards.append(preds["value"][:, 0, -1])
+        rewards = jnp.concatenate(rewards, axis=1)
+        if jnp.any(jnp.isnan(rewards)):
             sts = jnp.delete(
-                sts, jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:, 0]), axis=0
+                sts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
             )
             acts = jnp.delete(
-                acts, jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:, 0]), axis=0
+                acts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
             )
             ts = jnp.delete(
-                ts, jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:, 0]), axis=0
+                ts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
             )
             am = jnp.delete(
-                am, jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:, 0]), axis=0
+                am, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
             )
-            return_to_go = jnp.delete(
-                return_to_go,
-                jnp.unique(jnp.argwhere(jnp.isnan(return_to_go))[:, 0]),
+            rewards = jnp.delete(
+                rewards,
+                jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]),
                 axis=0,
             )
+        rtns = []
+        for c in range(seq_length):
+            rtns.append(jnp.sum(rewards[:, c:]*am[:,c:], axis=1))
+        rtns = jnp.stack(rtns).transpose()
         with h5py.File(f"{output_dir}/{data_tag}.hdf5", "a") as g:
             g.create_dataset("states", data=sts, chunks=True)
             g.create_dataset("actions", data=acts, chunks=True)
             g.create_dataset("timesteps", data=ts, chunks=True)
             g.create_dataset("attn_mask", data=am, chunks=True)
-            g.create_dataset("returns", data=return_to_go, chunks=True)
+            g.create_dataset("returns", data=rtns, chunks=True)
     sys.exit(0)
 
 
