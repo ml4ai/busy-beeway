@@ -15,6 +15,8 @@ from transformers.data_utils.bb_data_loading import (
     load_participant_data_by_day,
 )
 
+from transformers.data_utils.data_utils import find_direction, cos_plus
+
 
 def main(argv):
     parser = argparse.ArgumentParser(
@@ -73,6 +75,8 @@ def main(argv):
     collisions = []
     dates = []
     subject_ids = []
+    average_gh = []
+    std_gh = []
     for p_id in tqdm(S):
         n_runs = 0
         D = load_participant_data_by_day(
@@ -84,6 +88,16 @@ def main(argv):
             date = date[1] + "-" + date[2] + "-" + date[3]
             dates += [date] * len(D[i])
             for d in D[i]:
+                
+                p_X = d["player"]["posX"].to_numpy()
+                p_Y = d["player"]["posY"].to_numpy()
+                p_A = d["player"]["angle"].to_numpy()
+                goal_directions = find_direction(p_X, p_Y, d["goal"][0], d["goal"][1])
+                goal_headings = cos_plus(goal_directions - p_A)
+
+                mean_gh = np.mean(goal_headings)
+                average_gh.append(mean_gh)
+                std_gh.append(np.std(goal_headings,mean=mean_gh))
                 control_frames.append(np.sum(d["player"]["userControl"].to_numpy()))
                 frames.append(d["player"].shape[0])
                 collisions.append(not (d["reached_goal"]))
@@ -113,12 +127,14 @@ def main(argv):
             "n_frames": frames,
             "n_control_frames": control_frames,
             "collision": collisions,
+            "mean_gh": average_gh,
+            "std_gh": std_gh,
             "subject_id": subject_ids,
             "date": dates,
         }
     )
     df["date"] = pd.to_datetime(df["date"])
-    df.sort_values(by=["subject_id","date", "level"], inplace=True)
+    df.sort_values(by=["subject_id", "date", "level"], inplace=True)
     df.to_csv(f"{o_path}/bbway1_run_stats.csv", index=False)
     sys.exit(0)
 
