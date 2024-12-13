@@ -70,7 +70,7 @@ def main(argv):
     )
     t_sts = []
     t_acts = []
-    t_rtns = []
+    t_rwds = []
     t_ts = []
     e_labels = []
     env.reset(seed=seed)
@@ -79,36 +79,34 @@ def main(argv):
     for i in range(trials):
         states = []
         actions = []
-        returns = []
+        rewards = []
         state, info = env.reset()
         states.append(jax.nn.one_hot(state, env.observation_space.n))
         episode_over = False
-        rtn = 0
         while not episode_over:
             action = (
                 env.action_space.sample()
             )  # agent policy that uses the observation and info
             actions.append(jax.nn.one_hot(action, env.action_space.n))
             state, reward, terminated, truncated, info = env.step(action)
-            rtn += reward
-            returns.append(rtn)
+            rewards.append(reward)
             episode_over = terminated or truncated
             if not episode_over:
                 states.append(jax.nn.one_hot(state, env.observation_space.n))
         env.close()
         actions = jnp.stack(actions)
         states = jnp.stack(states)
-        returns = jnp.stack(returns)
+        rewards = jnp.stack(rewards)
         timesteps = jnp.arange(states.shape[0])
         t_sts.append(states)
         t_acts.append(actions)
-        t_rtns.append(returns)
+        t_rwds.append(rewards)
         t_ts.append(timesteps)
-        e_labels.append(int(returns[-1]))
+        e_labels.append(int(rewards[-1]))
     am = []
     sts = []
     acts = []
-    rtns = []
+    rwds = []
     ts = []
     labels = []
     for i in range(trials):
@@ -126,8 +124,8 @@ def main(argv):
                 n_splits, context, t_acts[i].shape[1]
             )
         )
-        
-        rtns.append(jnp.pad(t_rtns[i], (0, pad_size)).reshape(n_splits, context))
+
+        rwds.append(jnp.pad(t_rwds[i], (0, pad_size)).reshape(n_splits, context))
         ts.append(jnp.pad(t_ts[i], (0, pad_size)).reshape(n_splits, context))
         am.append(jnp.pad(attn_mask, (0, pad_size)).reshape(n_splits, context))
         l = np.zeros(n_splits)
@@ -135,10 +133,14 @@ def main(argv):
         labels.append(l)
     sts = jnp.concatenate(sts)
     acts = jnp.concatenate(acts)
-    rtns = jnp.concatenate(rtns)
+    rwds = jnp.concatenate(rwds)
     ts = jnp.concatenate(ts)
     am = jnp.concatenate(am)
     labels = jnp.concatenate(labels)
+    rtns = []
+    for c in range(context):
+        rtns.append(jnp.sum(rwds[:, c:], axis=1))
+    rtns = jnp.stack(rtns).transpose()
     with h5py.File(output_file, "a") as g:
         g.create_dataset("states", data=sts, chunks=True)
         g.create_dataset("actions", data=acts, chunks=True)
