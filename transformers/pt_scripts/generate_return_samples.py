@@ -41,12 +41,6 @@ def main(argv):
         help="Output directory",
     )
     parser.add_argument(
-        "-s",
-        "--set_2",
-        action="store_true",
-        help="This uses the real data samples \nversus the random policy samples.",
-    )
-    parser.add_argument(
         "-t",
         "--data_tag",
         type=str,
@@ -63,16 +57,10 @@ def main(argv):
         data_tag = "data"
     r_model = load_pickle(reward)["model"]
     with h5py.File(data, "r") as f:
-        if args.set_2:
-            sts = f["states_2"][:]
-            acts = f["actions_2"][:]
-            ts = f["timesteps_2"][:]
-            am = f["attn_mask_2"][:]
-        else:
-            sts = f["states"][:]
-            acts = f["actions"][:]
-            ts = f["timesteps"][:]
-            am = f["attn_mask"][:]
+        sts = jnp.concatenate([f["states_2"][:],f["states"][:]])
+        acts = jnp.concatenate([f["actions_2"][:],f["actions"][:]])
+        ts = jnp.concatenate([f["timesteps_2"][:],f["timesteps"][:]])
+        am = jnp.concatenate([f["attn_mask_2"][:],f["attn_mask"][:]])
         seq_length = sts.shape[1]
         rewards = []
         for i in tqdm(range(seq_length)):
