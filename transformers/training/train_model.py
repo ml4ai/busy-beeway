@@ -673,7 +673,7 @@ def train_dt(
         attn_dropout=kwargs.get("attn_dropout", 0.1),
         resid_dropout=kwargs.get("resid_dropout", 0.1),
         intermediate_dim=kwargs.get("intermediate_dim", 4 * embd_dim),
-        num_layers=kwargs.get("num_layers", 1),
+        num_layers=kwargs.get("num_layers", 2),
         embd_dropout=kwargs.get("embd_dropout", 0.1),
         max_pos=kwargs.get("max_pos", max_pos),
         eps=kwargs.get("eps", 0.1),
