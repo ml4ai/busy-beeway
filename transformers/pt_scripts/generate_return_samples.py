@@ -57,10 +57,10 @@ def main(argv):
         data_tag = "data"
     r_model = load_pickle(reward)["model"]
     with h5py.File(data, "r") as f:
-        sts = jnp.concatenate([f["states_2"][:],f["states"][:]])
-        acts = jnp.concatenate([f["actions_2"][:],f["actions"][:]])
-        ts = jnp.concatenate([f["timesteps_2"][:],f["timesteps"][:]])
-        am = jnp.concatenate([f["attn_mask_2"][:],f["attn_mask"][:]])
+        sts = jnp.concatenate([f["states_2"][:], f["states"][:]])
+        acts = jnp.concatenate([f["actions_2"][:], f["actions"][:]])
+        ts = jnp.concatenate([f["timesteps_2"][:], f["timesteps"][:]])
+        am = jnp.concatenate([f["attn_mask_2"][:], f["attn_mask"][:]])
         seq_length = sts.shape[1]
         rewards = []
         for i in tqdm(range(seq_length)):
@@ -92,16 +92,28 @@ def main(argv):
                 jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]),
                 axis=0,
             )
-        rtns = []
-        for c in range(seq_length):
-            rtns.append(jnp.sum(rewards[:, c:]*am[:,c:], axis=1))
-        rtns = jnp.stack(rtns).transpose()
+        rewards = rewards.ravel()
+        r_am = am.ravel()
+        returns = np.zeros(rewards.shape[0])*1.0
+        s_id = 0
+        for i, c in enumerate(rewards):
+            if r_am[i] != 0:
+                mask = jnp.where(
+                    jnp.isin(jnp.arange(len(returns)), jnp.arange(s_id, i + 1)),
+                    True,
+                    False,
+                )
+                returns = jnp.where(mask, returns + c, returns)
+            else:
+                s_id = i + 1
+
+        returns = returns.reshape(am.shape[0],am.shape[1])
         with h5py.File(f"{output_dir}/{data_tag}.hdf5", "a") as g:
             g.create_dataset("states", data=sts, chunks=True)
             g.create_dataset("actions", data=acts, chunks=True)
             g.create_dataset("timesteps", data=ts, chunks=True)
             g.create_dataset("attn_mask", data=am, chunks=True)
-            g.create_dataset("returns", data=rtns, chunks=True)
+            g.create_dataset("returns", data=returns, chunks=True)
     sys.exit(0)
 
 
