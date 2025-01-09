@@ -63,7 +63,7 @@ def main(argv):
         am = jnp.concatenate([f["attn_mask_2"][:], f["attn_mask"][:]])
         seq_length = sts.shape[1]
         rewards = []
-        for i in tqdm(range(seq_length)):
+        for i in tqdm(range(seq_length),desc="Rewards"):
             preds, _ = r_model._train_state.apply_fn(
                 r_model._train_state.params,
                 sts[:, : (i + 1), :],
@@ -96,7 +96,7 @@ def main(argv):
         r_am = am.ravel()
         returns = jnp.zeros(rewards.shape[0]) * 1.0
         s_id = 0
-        for i, c in enumerate(rewards):
+        for i, c in tqdm(enumerate(rewards),desc="Returns"):
             if r_am[i] != 0:
                 mask = jnp.where(
                     jnp.isin(jnp.arange(len(returns)), jnp.arange(s_id, i + 1)),
