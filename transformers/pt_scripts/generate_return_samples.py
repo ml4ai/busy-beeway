@@ -94,7 +94,7 @@ def main(argv):
             )
         rewards = rewards.ravel()
         r_am = am.ravel()
-        returns = np.zeros(rewards.shape[0])*1.0
+        returns = jnp.zeros(rewards.shape[0]) * 1.0
         s_id = 0
         for i, c in enumerate(rewards):
             if r_am[i] != 0:
@@ -107,7 +107,7 @@ def main(argv):
             else:
                 s_id = i + 1
 
-        returns = returns.reshape(am.shape[0],am.shape[1])
+        returns = returns.reshape(am.shape[0], am.shape[1])
         with h5py.File(f"{output_dir}/{data_tag}.hdf5", "a") as g:
             g.create_dataset("states", data=sts, chunks=True)
             g.create_dataset("actions", data=acts, chunks=True)
