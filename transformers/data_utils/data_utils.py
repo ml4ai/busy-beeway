@@ -5,7 +5,6 @@ from pathlib import Path
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 
@@ -853,9 +852,9 @@ def create_preference_data(
                 for k in data:
                     if k in f:
                         del f[k]
-                        f.create_dataset(k, data=data[k], compression="lzf")
+                        f.create_dataset(k, data=data[k], chunks=True)
                     else:
-                        f.create_dataset(k, data=data[k], compression="lzf")
+                        f.create_dataset(k, data=data[k], chunks=True)
             return data
     sts = []
     acts = []
@@ -913,9 +912,120 @@ def create_preference_data(
             for k in data:
                 if k in f:
                     del f[k]
-                    f.create_dataset(k, data=data[k], compression="lzf")
+                    f.create_dataset(k, data=data[k], chunks=True)
                 else:
-                    f.create_dataset(k, data=data[k], compression="lzf")
+                    f.create_dataset(k, data=data[k], chunks=True)
+        return data
+
+
+def compute_returns(s, a, t, am, r_model, K):
+    rewards = []
+    for i in range(K):
+        preds, _ = r_model._train_state.apply_fn(
+            r_model._train_state.params,
+            s[:, : (i + 1), :],
+            a[:, : (i + 1), :],
+            t[:, : (i + 1)],
+            training=False,
+            attn_mask=am[:, : (i + 1)],
+        )
+        rewards.append(preds["value"][:, 0, -1])
+    rewards = np.concatenate(rewards, axis=1)
+    if np.any(np.isnan(rewards)):
+        s = np.delete(s, np.unique(np.argwhere(np.isnan(rewards))[:, 0]), axis=0)
+        a = np.delete(a, np.unique(np.argwhere(np.isnan(rewards))[:, 0]), axis=0)
+        t = np.delete(t, np.unique(np.argwhere(np.isnan(rewards))[:, 0]), axis=0)
+        am = np.delete(am, np.unique(np.argwhere(np.isnan(rewards))[:, 0]), axis=0)
+        rewards = np.delete(
+            rewards,
+            np.unique(np.argwhere(np.isnan(rewards))[:, 0]),
+            axis=0,
+        )
+    rewards = rewards.ravel()
+    returns = np.zeros_like(rewards, dtype=float)
+    R = 0.0
+    for i in reversed(range(int(np.sum(am)))):
+        R = R + rewards[i]
+        returns[i] = R
+    returns = returns.reshape(am.shape[0], am.shape[1])
+
+    return returns
+
+
+def create_return_data(
+    F_1,
+    F_2,
+    r_model,
+    split_size=100,
+    gh_idx=1,
+    state_features=15,
+    labels=("states", "actions", "timesteps", "attn_mask"),
+    save_data=None,
+):
+
+    assert len(F_1) == len(F_2), "F_1 and F_2 should be equal sizes!"
+
+    sts = []
+    acts = []
+    ts = []
+    ams = []
+    rtns = []
+    for i, f in enumerate(F_1):
+        fill_size = F_2[i].shape[0] + (split_size - (F_2[i].shape[0] % split_size))
+        n_splits = int(fill_size / split_size)
+        s, a, t, am = run_to_np(f, state_features, fill_size, with_attn_mask)
+        s = s.reshape((n_splits, split_size, s.shape[1]))
+        a = a.reshape((n_splits, split_size, a.shape[1]))
+        t = t.reshape((n_splits, split_size))
+        am = am.reshape((n_splits, split_size))
+        ret = compute_returns(s, a, t, am, r_model, split_size)
+
+        s_2, a_2, t_2, am_2 = run_to_np(
+            F_2[i], state_features, fill_size, with_attn_mask
+        )
+        s_2 = s_2.reshape((n_splits, split_size, s_2.shape[1]))
+        a_2 = a_2.reshape((n_splits, split_size, a_2.shape[1]))
+        t_2 = t_2.reshape((n_splits, split_size))
+        am_2 = am_2.reshape((n_splits, split_size))
+        ret_2 = compute_returns(s_2, a_2, t_2, am_2, r_model, split_size)
+
+        sts.append(s)
+        acts.append(a)
+        ts.append(t)
+        ams.append(am)
+        rtns.append(ret)
+
+        sts.append(s_2)
+        acts.append(a_2)
+        ts.append(t_2)
+        ams.append(am_2)
+        rtns.append(ret_2)
+
+    if save_data is None:
+        return {
+            labels[0]: np.concatenate(sts),
+            labels[1]: np.concatenate(acts),
+            labels[2]: np.concatenate(ts),
+            labels[3]: np.concatenate(ams),
+            "returns": np.concatenate(rtns),
+        }
+    else:
+        data = {
+            labels[0]: np.concatenate(sts),
+            labels[1]: np.concatenate(acts),
+            labels[2]: np.concatenate(ts),
+            labels[3]: np.concatenate(ams),
+            "returns": np.concatenate(rtns),
+        }
+        with h5py.File(save_data, "a") as f:
+            # WARNING if this file already exists, datasets of the same name of "observations","timesteps","attn_mask", etc.
+            # will be overwritten with new datasets.
+            for k in data:
+                if k in f:
+                    del f[k]
+                    f.create_dataset(k, data=data[k], chunks=True)
+                else:
+                    f.create_dataset(k, data=data[k], chunks=True)
         return data
 
 
