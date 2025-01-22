@@ -24,7 +24,6 @@ from transformers.replayer.replayer import (
     random_replay,
     random_replay_p,
 )
-from transformers.training.utils import load_pickle
 
 
 def main(argv):
@@ -33,10 +32,10 @@ def main(argv):
         formatter_class=StructuredFormatter,
     )
     parser.add_argument(
-        "reward",
+        "reward_list",
         metavar="R",
         type=str,
-        help="File with Reward function (as pickled dictionary)",
+        help="File with list of reward model directories",
     )
     parser.add_argument(
         "p_id",
@@ -50,6 +49,13 @@ def main(argv):
         type=str,
         default="~/busy-beeway/data/game_data",
         help="Data Directory.",
+    )
+    parser.add_argument(
+        "-r",
+        "--reward_dir",
+        type=str,
+        default="~/busy-beeway/transformers/",
+        help="Reward Model Directory.",
     )
     parser.add_argument(
         "-e",
@@ -104,11 +110,11 @@ def main(argv):
         help="Tries to load movement statistics \nfrom 'p_stats.npy' \nwithin the cache directory of \nthe current working directory (recommended).",
     )
     args = parser.parse_args(argv)
-    reward = os.path.expanduser(args.reward)
-    r_model = load_pickle(reward)["model"]
+    reward_list = load_list(os.path.expanduser(args.reward_list))
     parallel = args.parallel
     path = args.data_dir
     o_path = args.output_dir
+    r_path = os.path.expanduser(args.reward_dir)
     state_features = args.num_state_features
     if not Path(o_path).is_dir():
         raise FileNotFoundError(f"Cannot find output directory {o_path}!")
@@ -121,20 +127,21 @@ def main(argv):
         L = []
 
     arc_sweep = None
-    Path(f"{o_path}/returns_1").mkdir(parents=True, exist_ok=True)
+    study = 1
+    Path(o_path + "/returns_1").mkdir(parents=True, exist_ok=True)
     if args.cache_stats:
-        Path(f"{o_path}/cache").mkdir(parents=True, exist_ok=True)
-        save_p_stats = f"{o_path}/cache/p_stats.npy"
+        Path(o_path + "/cache").mkdir(parents=True, exist_ok=True)
+        save_p_stats = o_path + "/cache/p_stats.npy"
     else:
         save_p_stats = None
     p_id = args.p_id
 
-    save_pref = f"{o_path}/returns_1/"
+    save_pref = o_path + "/returns_1/"
 
     if parallel:
         try:
             if load_stats:
-                stats = load_stats(f"{o_path}/cache/p_stats.npy")
+                stats = load_stats(o_path + "/cache/p_stats.npy")
             else:
                 raise FileNotFoundError
         except FileNotFoundError:
@@ -155,10 +162,11 @@ def main(argv):
         create_return_data(
             RF,
             F,
-            r_model,
+            reward_list,
+            reward_dir,
+            save_pref,
             state_features=state_features,
             split_size=split_size,
-            save_data=save_pref+reward.split("/")[-2]+".hdf5",
         )
         del RF
         del F
@@ -166,7 +174,7 @@ def main(argv):
 
     try:
         if load_stats:
-            stats = load_stats(f"{o_path}/cache/p_stats.npy")
+            stats = load_stats(o_path + "/cache/p_stats.npy")
         else:
             raise FileNotFoundError
     except FileNotFoundError:
@@ -191,10 +199,11 @@ def main(argv):
     create_return_data(
         RF,
         F,
-        r_model,
+        reward_list,
+        reward_dir,
+        save_pref,
         state_features=state_features,
         split_size=split_size,
-        save_data=save_pref+reward.split("/")[-2]+".hdf5",
     )
     del RF
     del F
