@@ -7,7 +7,6 @@ from pathlib import Path
 
 from argformat import StructuredFormatter
 from tqdm import tqdm
-
 from transformers.data_utils.bb_data_loading import (
     load_list,
     load_participant_data,
@@ -25,7 +24,6 @@ from transformers.replayer.replayer import (
     random_replay,
     random_replay_p,
 )
-
 from transformers.training.utils import load_pickle
 
 
@@ -105,13 +103,6 @@ def main(argv):
         action="store_true",
         help="Tries to load movement statistics \nfrom 'p_stats.npy' \nwithin the cache directory of \nthe current working directory (recommended).",
     )
-    parser.add_argument(
-        "-b",
-        "--bbway",
-        type=int,
-        default=1,
-        help="Busy Beeway study (1 or 2).",
-    )
     args = parser.parse_args(argv)
     reward = os.path.expanduser(args.reward)
     r_model = load_pickle(reward)["model"]
@@ -124,14 +115,13 @@ def main(argv):
     split_size = args.split_size
     seed = args.seed
     load_p_stats = args.load_stats
-    study = args.bbway
     if args.exclusion_list:
         L = load_list(args.exclusion_list)
     else:
         L = []
 
     arc_sweep = None
-    Path(f"{o_path}/preference_data_{study}").mkdir(parents=True, exist_ok=True)
+    Path(f"{o_path}/returns_1").mkdir(parents=True, exist_ok=True)
     if args.cache_stats:
         Path(f"{o_path}/cache").mkdir(parents=True, exist_ok=True)
         save_p_stats = f"{o_path}/cache/p_stats.npy"
@@ -139,7 +129,7 @@ def main(argv):
         save_p_stats = None
     p_id = args.p_id
 
-    save_pref = f"{o_path}/preference_data_{study}/"
+    save_pref = f"{o_path}/returns_1/"
 
     if parallel:
         try:
@@ -168,7 +158,7 @@ def main(argv):
             r_model,
             state_features=state_features,
             split_size=split_size,
-            save_data=save_pref,
+            save_data=save_pref+reward.split("/")[-2]+".hdf5",
         )
         del RF
         del F
@@ -199,7 +189,12 @@ def main(argv):
     del D
 
     create_return_data(
-        RF, F, r_model,state_features=state_features, split_size=split_size, save_data=save_pref
+        RF,
+        F,
+        r_model,
+        state_features=state_features,
+        split_size=split_size,
+        save_data=save_pref+reward.split("/")[-2]+".hdf5",
     )
     del RF
     del F
