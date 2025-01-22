@@ -1,11 +1,14 @@
 import os
 from multiprocessing import Pool
 from pathlib import Path
+from collections import defaultdict
 
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+
+from transformers.training.utils import load_pickle
 
 
 # Finds distance between a set of coordinates and a single coordinate. vecX and vecY are numpy arrays, px and py are scalars (floats/ints/etc.)
@@ -955,12 +958,13 @@ def compute_returns(s, a, t, am, r_model, K):
 def create_return_data(
     F_1,
     F_2,
-    r_model,
+    reward_list,
+    reward_dir,
+    save_data,
     split_size=100,
     gh_idx=1,
     state_features=15,
     labels=("states", "actions", "timesteps", "attn_mask"),
-    save_data=None,
 ):
 
     assert len(F_1) == len(F_2), "F_1 and F_2 should be equal sizes!"
@@ -969,7 +973,7 @@ def create_return_data(
     acts = []
     ts = []
     ams = []
-    rtns = []
+    rtns = defaultdict(list)
     for i, f in enumerate(F_1):
         fill_size = F_2[i].shape[0] + (split_size - (F_2[i].shape[0] % split_size))
         n_splits = int(fill_size / split_size)
@@ -978,7 +982,6 @@ def create_return_data(
         a = a.reshape((n_splits, split_size, a.shape[1]))
         t = t.reshape((n_splits, split_size))
         am = am.reshape((n_splits, split_size))
-        ret = compute_returns(s, a, t, am, r_model, split_size)
 
         s_2, a_2, t_2, am_2 = run_to_np(
             F_2[i], state_features, fill_size, with_attn_mask
@@ -987,37 +990,31 @@ def create_return_data(
         a_2 = a_2.reshape((n_splits, split_size, a_2.shape[1]))
         t_2 = t_2.reshape((n_splits, split_size))
         am_2 = am_2.reshape((n_splits, split_size))
-        ret_2 = compute_returns(s_2, a_2, t_2, am_2, r_model, split_size)
+
+        for r in reward_list:
+            r_model = load_pickle(reward_dir + "/" + r + "/best_model.pkl")["model"]
+            rtns[r].append(compute_returns(s, a, t, am, r_model, split_size))
+            rtns[r].append(compute_returns(s_2, a_2, t_2, am_2, r_model, split_size))
 
         sts.append(s)
         acts.append(a)
         ts.append(t)
         ams.append(am)
-        rtns.append(ret)
 
         sts.append(s_2)
         acts.append(a_2)
         ts.append(t_2)
         ams.append(am_2)
-        rtns.append(ret_2)
 
-    if save_data is None:
-        return {
-            labels[0]: np.concatenate(sts),
-            labels[1]: np.concatenate(acts),
-            labels[2]: np.concatenate(ts),
-            labels[3]: np.concatenate(ams),
-            "returns": np.concatenate(rtns),
-        }
-    else:
+    for r in reward_list:
         data = {
             labels[0]: np.concatenate(sts),
             labels[1]: np.concatenate(acts),
             labels[2]: np.concatenate(ts),
             labels[3]: np.concatenate(ams),
-            "returns": np.concatenate(rtns),
+            "returns": np.concatenate(rtns[r]),
         }
-        with h5py.File(save_data, "a") as f:
+        with h5py.File(save_data+r+".hdf5", "a") as f:
             # WARNING if this file already exists, datasets of the same name of "observations","timesteps","attn_mask", etc.
             # will be overwritten with new datasets.
             for k in data:
@@ -1026,7 +1023,6 @@ def create_return_data(
                     f.create_dataset(k, data=data[k], chunks=True)
                 else:
                     f.create_dataset(k, data=data[k], chunks=True)
-        return data
 
 
 # 0 for loss, otherwise accuracy
