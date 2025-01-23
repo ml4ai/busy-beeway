@@ -16,7 +16,7 @@ from transformers.data_utils.bb_data_loading import (
 from transformers.data_utils.data_utils import (
     compute_features,
     compute_features_p,
-    create_preference_data,
+    create_return_data,
 )
 from transformers.replayer.replayer import (
     generate_stats,
