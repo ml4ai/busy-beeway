@@ -114,7 +114,7 @@ def main(argv):
     parallel = args.parallel
     path = args.data_dir
     o_path = args.output_dir
-    r_path = os.path.expanduser(args.reward_dir)
+    reward_dir = os.path.expanduser(args.reward_dir)
     state_features = args.num_state_features
     if not Path(o_path).is_dir():
         raise FileNotFoundError(f"Cannot find output directory {o_path}!")
