@@ -977,14 +977,14 @@ def create_return_data(
     for i, f in enumerate(F_1):
         fill_size = F_2[i].shape[0] + (split_size - (F_2[i].shape[0] % split_size))
         n_splits = int(fill_size / split_size)
-        s, a, t, am = run_to_np(f, state_features, fill_size, with_attn_mask)
+        s, a, t, am = run_to_np(f, state_features, fill_size, True)
         s = s.reshape((n_splits, split_size, s.shape[1]))
         a = a.reshape((n_splits, split_size, a.shape[1]))
         t = t.reshape((n_splits, split_size))
         am = am.reshape((n_splits, split_size))
 
         s_2, a_2, t_2, am_2 = run_to_np(
-            F_2[i], state_features, fill_size, with_attn_mask
+            F_2[i], state_features, fill_size, True
         )
         s_2 = s_2.reshape((n_splits, split_size, s_2.shape[1]))
         a_2 = a_2.reshape((n_splits, split_size, a_2.shape[1]))
@@ -1014,7 +1014,7 @@ def create_return_data(
             labels[3]: np.concatenate(ams),
             "returns": np.concatenate(rtns[r]),
         }
-        with h5py.File(save_data+r+".hdf5", "a") as f:
+        with h5py.File(save_data + r + ".hdf5", "a") as f:
             # WARNING if this file already exists, datasets of the same name of "observations","timesteps","attn_mask", etc.
             # will be overwritten with new datasets.
             for k in data:
