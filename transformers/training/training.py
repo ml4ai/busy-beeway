@@ -5,7 +5,6 @@ import jax.numpy as jnp
 import optax
 from flax.training.train_state import TrainState
 from ml_collections import ConfigDict
-
 from transformers.training.jax_utils import (
     ad_loss_fn,
     af_loss_fn,
@@ -411,19 +410,6 @@ class DecTransformerTrainer(object):
             self._train_state = TrainState.create(
                 params=pretrained_params, tx=tx, apply_fn=self.dec.apply
             )
-
-    def evaluation(self, batch, rng_key):
-        match self.output_type:
-            case "Q":
-                return _eval_Qdec_step(self._train_state, batch, rng_key)
-            case "S_D":
-                return _eval_S_Ddec_step(self._train_state, batch, rng_key)
-            case "S_F":
-                return _eval_S_Fdec_step(self._train_state, batch, rng_key)
-            case "A_D":
-                return _eval_A_Ddec_step(self._train_state, batch, rng_key)
-            case _:
-                return _eval_A_Fdec_step(self._train_state, batch, rng_key)
 
     def train(self, batch, rng_key):
         match self.output_type:

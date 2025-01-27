@@ -7,22 +7,22 @@ import torch
 from flax.training.early_stopping import EarlyStopping
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
-
 from transformers.data_utils.data_loader import (
     FewShotBatchSampler,
     get_train_val_test_split,
     process_c_batch,
 )
+from transformers.evaluation.eval_episodes import bb_run_episode
 from transformers.models.dec_transformer import DT
+from transformers.models.mentor_transformer import MT
 from transformers.models.pref_transformer import PT
 from transformers.models.val_transformer import VT
-from transformers.models.mentor_transformer import MT
 from transformers.training.jax_utils import batch_to_jax
 from transformers.training.logging_utils import logger, setup_logger
 from transformers.training.training import (
-    MentorTransformerTrainer,
     DecTransformerTrainer,
     MAMLPTTrainer,
+    MentorTransformerTrainer,
     PrefTransformerTrainer,
     ValTransformerTrainer,
 )
@@ -601,13 +601,14 @@ def train_mamlpt(
 
 def train_dt(
     data,
+    r_model,
+    move_stats,
     seed,
     output_type="A_F",
-    train_split=0.7,
     batch_size=64,
     num_workers=2,
     n_epochs=50,
-    eval_period=1,
+    eval_settings=[1, 10, 100, 500, 0],
     do_early_stop=False,
     criteria_key="eval_loss",
     save_dir="~/busy-beeway/transformers/logs",
@@ -637,27 +638,18 @@ def train_dt(
     rng_key, rng_subkey = jax.random.split(rng_key, 2)
     gen1 = torch.Generator().manual_seed(int(rng_subkey[0]))
     gen2 = torch.Generator().manual_seed(int(rng_subkey[1]))
-    training_data, test_data = random_split(
-        data, [train_split, 1 - train_split], generator=gen1
-    )
+
     training_data_loader = DataLoader(
-        training_data,
+        data,
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
         generator=gen2,
         pin_memory=True,
     )
-    test_data_loader = DataLoader(
-        test_data,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        shuffle=False,
-        pin_memory=True,
-    )
 
     interval = len(training_data_loader)
-    eval_interval = len(test_data_loader)
+
     rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
     max_pos = 512
     while query_len > max_pos:
@@ -678,6 +670,8 @@ def train_dt(
         max_pos=kwargs.get("max_pos", max_pos),
         eps=kwargs.get("eps", 0.1),
     )
+    # TODO: Control statement for different environments
+    eval_sim = bb_run_episode
     model = DecTransformerTrainer(
         dec,
         rng_subkey1,
@@ -703,7 +697,6 @@ def train_dt(
                 "training_loss": [],
                 "training_acc": [],
                 "eval_loss": [],
-                "eval_acc": [],
                 "best_epoch": c_best_epoch,
                 f"{criteria_key}_best": c_criteria_key,
             }
@@ -734,26 +727,24 @@ def train_dt(
                 metrics["training_loss"] = np.nan
 
             # eval phase
-            if epoch % eval_period == 0:
-                e_keys = jax.random.split(e_key, eval_interval)
-                for j, e_data in tqdm(
-                    enumerate(test_data_loader),
-                    total=eval_interval,
+            if epoch % eval_setting[0] == 0:
+                for eval_key in tqdm(
+                    jax.random.split(e_key, eval_settings[1]),
+                    total=eval_settings[1],
                     desc=f"Evaluation Epoch {epoch}",
                 ):
-                    batch = {}
-                    (
-                        batch["states"],
-                        batch["actions"],
-                        batch["timesteps"],
-                        batch["attn_mask"],
-                        batch["returns"],
-                    ) = e_data
-                    for k in batch:
-                        batch[k] = jnp.asarray(batch[k])
-                    batch = batch_to_jax(batch)
-                    for key, val in model.evaluation(batch, e_keys[j]).items():
-                        metrics[key].append(val)
+                    ep_return, ep_length = eval_sim(
+                        model,
+                        r_model,
+                        move_stats,
+                        eval_key,
+                        query_len,
+                        eval_settings[2],
+                        eval_settings[3],
+                    )
+                    metrics["eval_loss"].append(
+                        ((eval_settings[2] - ep_return) ** 2) / ep_length
+                    )
                 criteria = np.mean(metrics[criteria_key])
                 early_stop = early_stop.update(criteria)
                 if early_stop.should_stop and do_early_stop:
@@ -825,26 +816,25 @@ def train_dt(
                 metrics["training_loss"] = np.nan
 
             # eval phase
-            if epoch % eval_period == 0:
+            if epoch % eval_settings[0] == 0:
                 e_keys = jax.random.split(e_key, eval_interval)
                 for j, e_data in tqdm(
                     enumerate(test_data_loader),
                     total=eval_interval,
                     desc=f"Evaluation Epoch {epoch}",
                 ):
-                    batch = {}
-                    (
-                        batch["states"],
-                        batch["actions"],
-                        batch["timesteps"],
-                        batch["attn_mask"],
-                        batch["returns"],
-                    ) = e_data
-                    for k in batch:
-                        batch[k] = jnp.asarray(batch[k])
-                    batch = batch_to_jax(batch)
-                    for key, val in model.evaluation(batch, e_keys[j]).items():
-                        metrics[key].append(val)
+                    ep_return, ep_length = eval_sim(
+                        model,
+                        r_model,
+                        move_stats,
+                        eval_key,
+                        query_len,
+                        eval_settings[2],
+                        eval_settings[3],
+                    )
+                    metrics["eval_loss"].append(
+                        ((eval_settings[2] - ep_return) ** 2) / ep_length
+                    )
                 criteria = np.mean(metrics[criteria_key])
                 early_stop = early_stop.update(criteria)
                 if early_stop.should_stop and do_early_stop:
