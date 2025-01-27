@@ -4,15 +4,14 @@ import sys
 
 sys.path.insert(0, os.path.abspath("../.."))
 import jax
-
 import jax.numpy as jnp
 import numpy as np
+import torch.multiprocessing as multiprocessing
 from argformat import StructuredFormatter
-
 from transformers.data_utils.data_loader import Dec_H5Dataset
 from transformers.training.train_model import train_dt
 from transformers.training.utils import load_pickle
-import torch.multiprocessing as multiprocessing
+from transformers.replayer.replayer import load_stats
 
 
 def main(argv):
@@ -27,17 +26,24 @@ def main(argv):
         help="HDF5 file containing data. \nThe file must have the datasets \n'Observations',timesteps',etc.",
     )
     parser.add_argument(
+        "reward",
+        metavar="R",
+        type=str,
+        help="File containing reward model",
+    )
+    parser.add_argument(
         "output_type",
         metavar="O",
         type=str,
         help="This determines what the DT is mainly trying to predict. \nOptions should be Q (state-action value), \nS_D (discrete states), \nS_F (feature-based states), \nA_D (discrete actions), \nA_F (feature-based actions",
     )
     parser.add_argument(
-        "-t",
-        "--training_split",
-        type=float,
-        default=0.7,
-        help="Percentage of training data.",
+        "-e",
+        "--eval_settings",
+        type=int,
+        default=[1, 10, 100, 500, 0],
+        nargs=4,
+        help="Eval settings (period, number of episodes, target return, max horizon, eval_type)",
     )
     parser.add_argument(
         "-b",
@@ -45,13 +51,6 @@ def main(argv):
         type=int,
         default=64,
         help="Batch size. Powers of 2 work best.",
-    )
-    parser.add_argument(
-        "-e",
-        "--eval_period",
-        type=int,
-        default=1,
-        help="Period in which the validation set is ran and evaluated.",
     )
     parser.add_argument(
         "-n", "--n_epochs", type=int, default=10, help="Number of training epochs."
@@ -99,12 +98,21 @@ def main(argv):
         default=None,
         help="File with pickled pretrained model",
     )
+    parser.add_argument(
+        "-m",
+        "--move_stats",
+        type=str,
+        default="~/busy-beeway/transformers/t0012/cache/p_stats.npy",
+        help="File with obstacle stats",
+    )
     multiprocessing.set_start_method("forkserver")
     args = parser.parse_args(argv)
     data = os.path.expanduser(args.data)
+    r_model = load_pickle(os.path.expanduser(args.reward))["model"]
+    move_stats = load_stats(args.move_stats)
     train_split = args.training_split
     batch_size = args.batch_size
-    eval_period = args.eval_period
+    eval_settings = args.eval_settings
     n_epochs = args.n_epochs
     seed = args.seed
     learning_rate = args.learning_rate
@@ -123,13 +131,14 @@ def main(argv):
         data = Dec_H5Dataset(data)
         train_dt(
             data,
+            r_model,
+            move_stats,
             seed,
             output_type=args.output_type,
-            train_split=train_split,
             batch_size=batch_size,
             num_workers=workers,
             n_epochs=n_epochs,
-            eval_period=eval_period,
+            eval_settings=eval_settings,
             save_dir=output_dir,
             init_value=init_value,
             peak_value=peak_value,
