@@ -7,7 +7,7 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-
+from tqdm import tqdm
 from transformers.training.utils import load_pickle
 
 
@@ -364,8 +364,7 @@ def compute_run_features(p_df, g, O, arc_sweep=(10, 360, 10)):
     features["repel_factor"] = p_df["repel_factor"].to_numpy()
     features["attempt"] = p_df["attempt"].to_numpy()
     features["speed"] = np.append(np.sqrt(np.diff(p_X) ** 2 + np.diff(p_Y) ** 2), 0.0)
-    features["controlX"] = cos_plus(p_A)
-    features["controlY"] = sin_plus(p_A)
+    features["angle"] = p_A
     features["userControl"] = p_df["userControl"].to_numpy().astype(int)
     features["t"] = p_df["t"].to_numpy()
     return pd.DataFrame(features)
@@ -661,8 +660,7 @@ def compute_run_features_p(d):
     features["repel_factor"] = p_df["repel_factor"].to_numpy()
     features["attempt"] = p_df["attempt"].to_numpy()
     features["speed"] = np.append(np.sqrt(np.diff(p_X) ** 2 + np.diff(p_Y) ** 2), 0.0)
-    features["controlX"] = cos_plus(p_A)
-    features["controlY"] = sin_plus(p_A)
+    features["angle"] = p_A
     features["userControl"] = p_df["userControl"].to_numpy().astype(int)
     features["t"] = p_df["t"].to_numpy()
     df = pd.DataFrame(features)
@@ -974,7 +972,7 @@ def create_return_data(
     ts = []
     ams = []
     rtns = defaultdict(list)
-    for i, f in enumerate(F_1):
+    for i, f in tqdm(enumerate(F_1),total=len(F_1),desc="Runs"):
         fill_size = F_2[i].shape[0] + (split_size - (F_2[i].shape[0] % split_size))
         n_splits = int(fill_size / split_size)
         s, a, t, am = run_to_np(f, state_features, fill_size, True)
@@ -983,9 +981,7 @@ def create_return_data(
         t = t.reshape((n_splits, split_size))
         am = am.reshape((n_splits, split_size))
 
-        s_2, a_2, t_2, am_2 = run_to_np(
-            F_2[i], state_features, fill_size, True
-        )
+        s_2, a_2, t_2, am_2 = run_to_np(F_2[i], state_features, fill_size, True)
         s_2 = s_2.reshape((n_splits, split_size, s_2.shape[1]))
         a_2 = a_2.reshape((n_splits, split_size, a_2.shape[1]))
         t_2 = t_2.reshape((n_splits, split_size))
