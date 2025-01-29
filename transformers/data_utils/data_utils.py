@@ -919,9 +919,10 @@ def create_preference_data(
         return data
 
 
-def compute_returns(s, a, t, am, r_model, K):
+def compute_returns(D):
+    s, a, t, am, r_model, K = D
     rewards = []
-    for i in tqdm(range(K),total=K,desc="Reward Predictions"):
+    for i in tqdm(range(K), total=K, desc="Reward Predictions"):
         preds, _ = r_model._train_state.apply_fn(
             r_model._train_state.params,
             s[:, : (i + 1), :],
@@ -946,7 +947,7 @@ def compute_returns(s, a, t, am, r_model, K):
     returns = np.zeros_like(rewards, dtype=float)
     R = 0.0
     n_ts = int(np.sum(am))
-    for i in tqdm(reversed(range(n_ts)),total=n_ts,desc="Compute Returns"):
+    for i in tqdm(reversed(range(n_ts)), total=n_ts, desc="Compute Returns"):
         R = R + rewards[i]
         returns[i] = R
     returns = returns.reshape(am.shape[0], am.shape[1])
@@ -964,6 +965,7 @@ def create_return_data(
     gh_idx=1,
     state_features=15,
     labels=("states", "actions", "timesteps", "attn_mask"),
+    cores=None,
 ):
 
     assert len(F_1) == len(F_2), "F_1 and F_2 should be equal sizes!"
@@ -987,11 +989,30 @@ def create_return_data(
         a_2 = a_2.reshape((n_splits, split_size, a_2.shape[1]))
         t_2 = t_2.reshape((n_splits, split_size))
         am_2 = am_2.reshape((n_splits, split_size))
-
-        for r in tqdm(reward_list, total=len(reward_list),desc="Returns"):
-            r_model = load_pickle(reward_dir + "/" + r + "/best_model.pkl")["model"]
-            rtns[r].append(compute_returns(s, a, t, am, r_model, split_size))
-            rtns[r].append(compute_returns(s_2, a_2, t_2, am_2, r_model, split_size))
+        if cores is None:
+            cores = os.cpu_count()
+        with Pool(cores) as p:
+            dat = list(
+                p.map(
+                    compute_returns,
+                    [
+                        (s, a, t, am,load_pickle(reward_dir + "/" + r + "/best_model.pkl")["model"],split_size)
+                        for r in reward_list
+                    ],
+                )
+            )
+            dat_2 = list(
+                p.map(
+                    compute_returns,
+                    [
+                        (s_2, a_2, t_2, am_2,load_pickle(reward_dir + "/" + r + "/best_model.pkl")["model"],split_size)
+                        for r in reward_list
+                    ],
+                )
+            )
+            for i,r in enumerate(reward_list):
+                rtns[r].append(dat[i])
+                rtns[r].append(dat_2[i])
 
         sts.append(s)
         acts.append(a)
