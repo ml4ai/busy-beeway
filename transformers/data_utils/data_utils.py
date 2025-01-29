@@ -922,7 +922,7 @@ def create_preference_data(
 def compute_returns(D):
     s, a, t, am, r_model, K = D
     rewards = []
-    for i in tqdm(range(K), total=K, desc="Reward Predictions"):
+    for i in range(K):
         preds, _ = r_model._train_state.apply_fn(
             r_model._train_state.params,
             s[:, : (i + 1), :],
@@ -947,7 +947,7 @@ def compute_returns(D):
     returns = np.zeros_like(rewards, dtype=float)
     R = 0.0
     n_ts = int(np.sum(am))
-    for i in tqdm(reversed(range(n_ts)), total=n_ts, desc="Compute Returns"):
+    for i in reversed(range(int(np.sum(am)))):
         R = R + rewards[i]
         returns[i] = R
     returns = returns.reshape(am.shape[0], am.shape[1])
@@ -996,7 +996,16 @@ def create_return_data(
                 p.map(
                     compute_returns,
                     [
-                        (s, a, t, am,load_pickle(reward_dir + "/" + r + "/best_model.pkl")["model"],split_size)
+                        (
+                            s,
+                            a,
+                            t,
+                            am,
+                            load_pickle(reward_dir + "/" + r + "/best_model.pkl")[
+                                "model"
+                            ],
+                            split_size,
+                        )
                         for r in reward_list
                     ],
                 )
@@ -1005,12 +1014,21 @@ def create_return_data(
                 p.map(
                     compute_returns,
                     [
-                        (s_2, a_2, t_2, am_2,load_pickle(reward_dir + "/" + r + "/best_model.pkl")["model"],split_size)
+                        (
+                            s_2,
+                            a_2,
+                            t_2,
+                            am_2,
+                            load_pickle(reward_dir + "/" + r + "/best_model.pkl")[
+                                "model"
+                            ],
+                            split_size,
+                        )
                         for r in reward_list
                     ],
                 )
             )
-            for i,r in enumerate(reward_list):
+            for i, r in enumerate(reward_list):
                 rtns[r].append(dat[i])
                 rtns[r].append(dat_2[i])
 
