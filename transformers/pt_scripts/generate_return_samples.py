@@ -98,7 +98,7 @@ def main(argv):
         returns = jnp.zeros_like(rewards, dtype=float)
         R = 0.0
         for i in tqdm(
-            reverse(range(rewards.shape[0])), total=rewards.shape[0], desc="Returns"
+            reversed(range(rewards.shape[0])), total=rewards.shape[0], desc="Returns"
         ):
             if r_am[i] != 0:
                 R = R + rewards[i]
