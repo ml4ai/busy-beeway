@@ -95,7 +95,7 @@ def main(argv):
         rewards = rewards.ravel()
         r_am = am.ravel()
         r_ts = ts.ravel()
-        returns = np.zeros_like(rewards, dtype=float)
+        returns = jnp.zeros_like(rewards, dtype=float)
         R = 0.0
         for i in tqdm(
             reverse(range(rewards.shape[0])), total=rewards.shape[0], desc="Returns"
