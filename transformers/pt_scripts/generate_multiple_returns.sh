@@ -11,3 +11,4 @@ while read -r line; do
       count=0
   fi
 done < $filename
+wait
