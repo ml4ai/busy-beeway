@@ -975,6 +975,10 @@ def create_return_data(
     ts = []
     ams = []
     rtns = defaultdict(list)
+    r_models = [
+        load_pickle(reward_dir + "/" + r + "/best_model.pkl")["model"]
+        for r in reward_list
+    ]
     for i, f in tqdm(enumerate(F_1), total=len(F_1), desc="Runs"):
         fill_size = F_2[i].shape[0] + (split_size - (F_2[i].shape[0] % split_size))
         n_splits = int(fill_size / split_size)
@@ -1001,12 +1005,10 @@ def create_return_data(
                             a,
                             t,
                             am,
-                            load_pickle(reward_dir + "/" + r + "/best_model.pkl")[
-                                "model"
-                            ],
+                            r_model,
                             split_size,
                         )
-                        for r in reward_list
+                        for r_model in r_models
                     ],
                 )
             )
@@ -1019,12 +1021,10 @@ def create_return_data(
                             a_2,
                             t_2,
                             am_2,
-                            load_pickle(reward_dir + "/" + r + "/best_model.pkl")[
-                                "model"
-                            ],
+                            r_model,
                             split_size,
                         )
-                        for r in reward_list
+                        for r_model in r_models
                     ],
                 )
             )
