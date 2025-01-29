@@ -921,7 +921,7 @@ def create_preference_data(
 
 def compute_returns(s, a, t, am, r_model, K):
     rewards = []
-    for i in range(K):
+    for i in tqdm(range(K),total=K,desc="Reward Predictions"):
         preds, _ = r_model._train_state.apply_fn(
             r_model._train_state.params,
             s[:, : (i + 1), :],
@@ -945,7 +945,8 @@ def compute_returns(s, a, t, am, r_model, K):
     rewards = rewards.ravel()
     returns = np.zeros_like(rewards, dtype=float)
     R = 0.0
-    for i in reversed(range(int(np.sum(am)))):
+    n_ts = int(np.sum(am))
+    for i in tqdm(reversed(range(n_ts)),total=n_ts,desc="Compute Returns"):
         R = R + rewards[i]
         returns[i] = R
     returns = returns.reshape(am.shape[0], am.shape[1])
@@ -972,7 +973,7 @@ def create_return_data(
     ts = []
     ams = []
     rtns = defaultdict(list)
-    for i, f in tqdm(enumerate(F_1),total=len(F_1),desc="Runs"):
+    for i, f in tqdm(enumerate(F_1), total=len(F_1), desc="Runs"):
         fill_size = F_2[i].shape[0] + (split_size - (F_2[i].shape[0] % split_size))
         n_splits = int(fill_size / split_size)
         s, a, t, am = run_to_np(f, state_features, fill_size, True)
@@ -987,7 +988,7 @@ def create_return_data(
         t_2 = t_2.reshape((n_splits, split_size))
         am_2 = am_2.reshape((n_splits, split_size))
 
-        for r in reward_list:
+        for r in tqdm(reward_list, total=len(reward_list),desc="Returns"):
             r_model = load_pickle(reward_dir + "/" + r + "/best_model.pkl")["model"]
             rtns[r].append(compute_returns(s, a, t, am, r_model, split_size))
             rtns[r].append(compute_returns(s_2, a_2, t_2, am_2, r_model, split_size))
