@@ -817,10 +817,9 @@ def train_dt(
 
             # eval phase
             if epoch % eval_settings[0] == 0:
-                e_keys = jax.random.split(e_key, eval_interval)
-                for j, e_data in tqdm(
-                    enumerate(test_data_loader),
-                    total=eval_interval,
+                for eval_key in tqdm(
+                    jax.random.split(e_key, eval_settings[1]),
+                    total=eval_settings[1],
                     desc=f"Evaluation Epoch {epoch}",
                 ):
                     ep_return, ep_length = eval_sim(
