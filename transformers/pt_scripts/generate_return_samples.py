@@ -60,7 +60,6 @@ def main(argv):
         sts = jnp.concatenate([f["states_2"][:], f["states"][:]])
         acts = jnp.concatenate([f["actions_2"][:], f["actions"][:]])
         ts = jnp.concatenate([f["timesteps_2"][:], f["timesteps"][:]])
-        print(jnp.max(ts))
         am = jnp.concatenate([f["attn_mask_2"][:], f["attn_mask"][:]])
         seq_length = sts.shape[1]
         rewards = []
@@ -103,11 +102,10 @@ def main(argv):
         ):
             if r_am[i] != 0:
                 R = R + rewards[i]
-                returns[i] = R
+                returns.at[i].set(R)
             if r_ts[i] == 0:
                 R = 0.0
         returns = returns.reshape(am.shape[0], am.shape[1])
-        print(jnp.max(ts))
         with h5py.File(f"{output_dir}/{data_tag}.hdf5", "a") as g:
             g.create_dataset("states", data=sts, chunks=True)
             g.create_dataset("actions", data=acts, chunks=True)
