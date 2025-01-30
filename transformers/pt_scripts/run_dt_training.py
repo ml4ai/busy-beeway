@@ -110,7 +110,6 @@ def main(argv):
     data = os.path.expanduser(args.data)
     r_model = load_pickle(os.path.expanduser(args.reward))["model"]
     move_stats = load_stats(args.move_stats)
-    train_split = args.training_split
     batch_size = args.batch_size
     eval_settings = args.eval_settings
     n_epochs = args.n_epochs
