@@ -33,7 +33,6 @@ def closest_point_on_line(ax, ay, bx, by, px, py, thres):
     # Accounts for obstacles wrapping around map
     cond = ab2 < (thres**2)
     apab = apx * abx + apy * aby
-    jnp.seterr(divide="ignore", invalid="ignore")
     if isinstance(cond, bool):
         t = apab / ab2
         t = jnp.where(jnp.isnan(t), 0.0, t)
