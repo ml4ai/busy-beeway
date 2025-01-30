@@ -127,8 +127,8 @@ def bb_run_episode(
         g_h = jax.random.uniform(key8, maxval=360.0)
         g_r = jax.random.normal(key9) + 30
         g = (
-            float(p_posX[0] + g_r * cos_plus(g_h)),
-            float(p_posY[0] + g_r * sin_plus(g_h)),
+            float(p_posX + g_r * cos_plus(g_h)),
+            float(p_posY + g_r * sin_plus(g_h)),
         )
         if ((g[0] ** 2) + (g[1] ** 2)) <= 2500:
             break
