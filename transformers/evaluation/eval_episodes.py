@@ -249,10 +249,10 @@ def bb_run_episode(
         p_posY = p_posY + (action[0] * sin_plus(action[1]))
 
         coll, _, _ = collision(
-            old_p_posX,
-            old_p_posY,
-            p_posX,
-            p_posY,
+            float(old_p_posX),
+            float(old_p_posY),
+            float(p_posX),
+            float(p_posY),
             O_posX,
             O_posY,
         )
@@ -270,16 +270,16 @@ def bb_run_episode(
             old_O_posY,
             O_posX,
             O_posY,
-            p_posX,
-            p_posY,
+            float(p_posX),
+            float(p_posY),
         )
 
         coll, _, _ = collision(
-            old_p_posX, old_p_posY, p_posX, p_posY, g[0], g[1], radius_2=1.0
+            float(old_p_posX), float(old_p_posY), float(p_posX), float(p_posY), g[0], g[1], radius_2=1.0
         )
         p_angle = action[1]
 
-        s = jnp.concat([s, create_new_state().reshape(1,1,15)], axis=1)
+        s = jnp.concat([s, create_new_state().reshape(1, 1, 15)], axis=1)
         s[-context_length:]
 
         R = jnp.concat([R, (R[-1][-1] - reward).reshape(1, 1, 1)], axis=1)
