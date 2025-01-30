@@ -279,7 +279,7 @@ def bb_run_episode(
         )
         p_angle = action[1]
 
-        s = jnp.concat([s, create_new_state()], axis=1)
+        s = jnp.concat([s, create_new_state().reshape(1,1,15)], axis=1)
         s[-context_length:]
 
         R = jnp.concat([R, (R[-1][-1] - reward).reshape(1, 1, 1)], axis=1)
