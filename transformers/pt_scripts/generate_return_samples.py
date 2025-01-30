@@ -60,6 +60,7 @@ def main(argv):
         sts = jnp.concatenate([f["states_2"][:], f["states"][:]])
         acts = jnp.concatenate([f["actions_2"][:], f["actions"][:]])
         ts = jnp.concatenate([f["timesteps_2"][:], f["timesteps"][:]])
+        print(ts)
         am = jnp.concatenate([f["attn_mask_2"][:], f["attn_mask"][:]])
         seq_length = sts.shape[1]
         rewards = []
