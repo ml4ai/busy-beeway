@@ -88,7 +88,7 @@ def train_pt(
     interval = len(training_data_loader)
     eval_interval = len(test_data_loader)
     rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
-    max_pos = 1024
+    max_pos = 512
     while query_len > max_pos:
         max_pos *= 2
     embd_dim = kwargs.get("embd_dim", min(batch_size, 256))
@@ -651,7 +651,7 @@ def train_dt(
     interval = len(training_data_loader)
 
     rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
-    max_pos = 512
+    max_pos = 1024
     while query_len > max_pos:
         max_pos *= 2
     embd_dim = kwargs.get("embd_dim", min(batch_size, 256))
