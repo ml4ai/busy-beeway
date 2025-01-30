@@ -227,7 +227,7 @@ def bb_run_episode(
             a,
             t,
             training=False,
-            attn_mask=None,
+            attn_mask=jnp.ones((1, R.shape[1]), dtype=jnp.float32),
         )
 
         action = action[-1][-1]
@@ -239,7 +239,7 @@ def bb_run_episode(
             a,
             t,
             training=False,
-            attn_mask=None,
+            attn_mask=jnp.ones((1, R.shape[1]), dtype=jnp.float32),
         )
         reward = preds["value"][:, 0, -1]
 
@@ -275,7 +275,13 @@ def bb_run_episode(
         )
 
         coll, _, _ = collision(
-            float(old_p_posX), float(old_p_posY), float(p_posX), float(p_posY), g[0], g[1], radius_2=1.0
+            float(old_p_posX),
+            float(old_p_posY),
+            float(p_posX),
+            float(p_posY),
+            g[0],
+            g[1],
+            radius_2=1.0,
         )
         p_angle = action[1]
 
