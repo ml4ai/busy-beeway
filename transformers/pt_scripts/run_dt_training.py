@@ -41,9 +41,9 @@ def main(argv):
         "-e",
         "--eval_settings",
         type=int,
-        default=[1, 10, 100, 500, 0],
+        default=[1, 10, 100, 0],
         nargs=4,
-        help="Eval settings (period, number of episodes, target return, max horizon, eval_type)",
+        help="Eval settings (period, number of episodes, target return, eval_type)",
     )
     parser.add_argument(
         "-b",

@@ -88,7 +88,7 @@ def train_pt(
     interval = len(training_data_loader)
     eval_interval = len(test_data_loader)
     rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
-    max_pos = 512
+    max_pos = 2048
     while query_len > max_pos:
         max_pos *= 2
     embd_dim = kwargs.get("embd_dim", min(batch_size, 256))
@@ -282,7 +282,7 @@ def train_mt(
     interval = len(training_data_loader)
     eval_interval = len(test_data_loader)
     rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
-    max_pos = 512
+    max_pos = 2048
     while query_len > max_pos:
         max_pos *= 2
     embd_dim = kwargs.get("embd_dim", min(batch_size, 256))
@@ -478,7 +478,7 @@ def train_mamlpt(
 
     interval = len(training_data_loader)
     eval_interval = len(validation_data_loader)
-    max_pos = 512
+    max_pos = 2048
     while query_len > max_pos:
         max_pos *= 2
     embd_dim = kwargs.get("embd_dim", 256)
@@ -651,7 +651,7 @@ def train_dt(
     interval = len(training_data_loader)
 
     rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
-    max_pos = 1024
+    max_pos = 2048
     while query_len > max_pos:
         max_pos *= 2
     embd_dim = kwargs.get("embd_dim", min(batch_size, 256))
@@ -740,7 +740,7 @@ def train_dt(
                         eval_key,
                         query_len,
                         eval_settings[2],
-                        eval_settings[3],
+                        max_episode_length,
                     )
                     metrics["eval_loss"].append(
                         ((eval_settings[2] - ep_return) ** 2) / ep_length
@@ -829,7 +829,7 @@ def train_dt(
                         eval_key,
                         query_len,
                         eval_settings[2],
-                        eval_settings[3],
+                        max_episode_length,
                     )
                     metrics["eval_loss"].append(
                         ((eval_settings[2] - ep_return) ** 2) / ep_length
