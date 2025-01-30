@@ -81,7 +81,7 @@ class Dec_H5Dataset(torch.utils.data.Dataset):
             self._acts_shape = f["actions"].shape
             ts = f["timesteps"][:]
             self._max_episode_length = np.max(ts)
-            print(np.max(ts) + 1)
+            print(ts)
             if combined:
                 self._c_idx = {}
                 for key, val in f.attrs.items():
