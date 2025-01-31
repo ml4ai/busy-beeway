@@ -220,7 +220,7 @@ def bb_run_episode(
     for i, key in enumerate(jax.random.split(key10, max_horizon)):
         a = jnp.concat([a, jnp.zeros((1, 1, 3))], axis=1)
         a = a[-context_length:]
-        print(i)
+
         _, _, action = d_model._train_state.apply_fn(
             d_model._train_state.params,
             R,
