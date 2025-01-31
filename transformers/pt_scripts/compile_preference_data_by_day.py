@@ -46,6 +46,13 @@ def main(argv):
         help="Data Directory.",
     )
     parser.add_argument(
+        "-l",
+        "--day_list",
+        type=str,
+        default=None,
+        help="A sorted day list that adds number of days since start of experiment as a feature.",
+    )
+    parser.add_argument(
         "-e",
         "--exclusion_list",
         type=str,
@@ -64,21 +71,6 @@ def main(argv):
         type=int,
         default=100,
         help="Trajectory segment size.",
-    )
-    parser.add_argument(
-        "-n",
-        "--num_state_features",
-        type=int,
-        default=15,
-        help="Number of state features. \nThis helps seperate state features and actions.",
-    )
-    parser.add_argument(
-        "-a",
-        "--arc_sweep",
-        type=int,
-        default=None,
-        nargs=3,
-        help="Settings for arc sizes for feature computation. \n(Starting Size, Ending Size, Increment Size).",
     )
     parser.add_argument(
         "-s",
@@ -116,17 +108,16 @@ def main(argv):
     parallel = args.parallel
     path = args.data_dir
     o_path = args.output_dir
-    state_features = args.num_state_features
     if not Path(o_path).is_dir():
         raise FileNotFoundError(f"Cannot find output directory {o_path}!")
     split_size = args.split_size
-    if args.arc_sweep is not None:
-        arc_sweep = tuple(args.arc_sweep)
-    else:
-        arc_sweep = args.arc_sweep
     seed = args.seed
     load_p_stats = args.load_stats
     study = args.bbway
+    if args.day_list:
+        day_list = load_list(args.day_list)
+    else:
+        day_list = []
     if args.exclusion_list:
         L = load_list(args.exclusion_list)
     else:
@@ -164,19 +155,42 @@ def main(argv):
                 D = load_participant_data_by_day(
                     p_id=p_id, path=path, exclusion_list=L, study=study
                 )
-                for key, val in D.items():
-                    RD = random_replay_p(val, stats, seed=seed)
-                    RF = compute_features_p(RD, arc_sweep)
-                    del RD
+                if day_list:
+                    for i, key in enumerate(day_list):
+                        RD = random_replay_p(D[key], stats, seed=seed)
+                        RF = compute_features_p(RD, day=i)
+                        del RD
 
-                    F = compute_features_p(val, arc_sweep)
+                        F = compute_features_p(D[key], day=i)
 
-                    save_d_pref = save_pref + f"{key}.hdf5"
-                    create_preference_data(
-                        RF, F, state_features=state_features,split_size=split_size, save_data=save_d_pref
-                    )
-                    del RF
-                    del F
+                        save_d_pref = save_pref + f"{key}.hdf5"
+                        create_preference_data(
+                            RF,
+                            F,
+                            state_features=16,
+                            split_size=split_size,
+                            save_data=save_d_pref,
+                        )
+                        del RF
+                        del F
+                else:
+                    for key, val in D.items():
+                        RD = random_replay_p(val, stats, seed=seed)
+                        RF = compute_features_p(RD)
+                        del RD
+
+                        F = compute_features_p(val)
+
+                        save_d_pref = save_pref + f"{key}.hdf5"
+                        create_preference_data(
+                            RF,
+                            F,
+                            state_features=15,
+                            split_size=split_size,
+                            save_data=save_d_pref,
+                        )
+                        del RF
+                        del F
             else:
                 try:
                     if load_p_stats:
@@ -196,20 +210,43 @@ def main(argv):
                 D = load_participant_data_by_day(
                     p_id=p_id, path=path, exclusion_list=L, study=study
                 )
-                for key, val in D.items():
-                    RD = random_replay(val, stats, seed=seed)
-                    RF = compute_features(RD, arc_sweep)
-                    del RD
 
-                    F = compute_features(val, arc_sweep)
+                if day_list:
+                    for i, key in enumerate(day_list):
+                        RD = random_replay_p(D[key], stats, seed=seed)
+                        RF = compute_features_p(RD, day=i)
+                        del RD
 
-                    save_d_pref = save_pref + f"{key}.hdf5"
+                        F = compute_features_p(D[key], day=i)
 
-                    create_preference_data(
-                        RF, F, state_features=state_features,split_size=split_size, save_data=save_d_pref
-                    )
-                    del RF
-                    del F
+                        save_d_pref = save_pref + f"{key}.hdf5"
+                        create_preference_data(
+                            RF,
+                            F,
+                            state_features=16,
+                            split_size=split_size,
+                            save_data=save_d_pref,
+                        )
+                        del RF
+                        del F
+                else:
+                    for key, val in D.items():
+                        RD = random_replay_p(val, stats, seed=seed)
+                        RF = compute_features_p(RD)
+                        del RD
+
+                        F = compute_features_p(val)
+
+                        save_d_pref = save_pref + f"{key}.hdf5"
+                        create_preference_data(
+                            RF,
+                            F,
+                            state_features=15,
+                            split_size=split_size,
+                            save_data=save_d_pref,
+                        )
+                        del RF
+                        del F
         sys.exit(0)
     else:
         save_pref = f"{o_path}/preference_data_{study}/"
@@ -229,20 +266,42 @@ def main(argv):
             D = load_participant_data_by_day(
                 p_id=p_id, path=path, exclusion_list=L, study=study
             )
-            for key, val in D.items():
-                RD = random_replay_p(val, stats, seed=seed)
-                RF = compute_features_p(RD, arc_sweep)
-                del RD
+            if day_list:
+                for i, key in enumerate(day_list):
+                    RD = random_replay_p(D[key], stats, seed=seed)
+                    RF = compute_features_p(RD, day=i)
+                    del RD
 
-                F = compute_features_p(val, arc_sweep)
+                    F = compute_features_p(D[key], day=i)
 
-                save_d_pref = save_pref + f"{key}.hdf5"
+                    save_d_pref = save_pref + f"{key}.hdf5"
+                    create_preference_data(
+                        RF,
+                        F,
+                        state_features=16,
+                        split_size=split_size,
+                        save_data=save_d_pref,
+                    )
+                    del RF
+                    del F
+            else:
+                for key, val in D.items():
+                    RD = random_replay_p(val, stats, seed=seed)
+                    RF = compute_features_p(RD)
+                    del RD
 
-                create_preference_data(
-                    RF, F, state_features=state_features,split_size=split_size, save_data=save_d_pref
-                )
-                del RF
-                del F
+                    F = compute_features_p(val)
+
+                    save_d_pref = save_pref + f"{key}.hdf5"
+                    create_preference_data(
+                        RF,
+                        F,
+                        state_features=15,
+                        split_size=split_size,
+                        save_data=save_d_pref,
+                    )
+                    del RF
+                    del F
             sys.exit(0)
 
         try:
@@ -264,18 +323,42 @@ def main(argv):
             p_id=p_id, path=path, exclusion_list=L, study=study
         )
 
-        for key, val in D.items():
-            RD = random_replay(val, stats, seed=seed)
-            RF = compute_features(RD, arc_sweep)
-            del RD
+        if day_list:
+            for i, key in enumerate(day_list):
+                RD = random_replay_p(D[key], stats, seed=seed)
+                RF = compute_features_p(RD, day=i)
+                del RD
 
-            F = compute_features(val, arc_sweep)
+                F = compute_features_p(D[key], day=i)
 
-            save_d_pref = save_pref + f"{key}.hdf5"
+                save_d_pref = save_pref + f"{key}.hdf5"
+                create_preference_data(
+                    RF,
+                    F,
+                    state_features=16,
+                    split_size=split_size,
+                    save_data=save_d_pref,
+                )
+                del RF
+                del F
+        else:
+            for key, val in D.items():
+                RD = random_replay_p(val, stats, seed=seed)
+                RF = compute_features_p(RD)
+                del RD
 
-            create_preference_data(RF, F, state_features=state_features,split_size=split_size, save_data=save_d_pref)
-            del RF
-            del F
+                F = compute_features_p(val)
+
+                save_d_pref = save_pref + f"{key}.hdf5"
+                create_preference_data(
+                    RF,
+                    F,
+                    state_features=15,
+                    split_size=split_size,
+                    save_data=save_d_pref,
+                )
+                del RF
+                del F
         sys.exit(0)
 
 
