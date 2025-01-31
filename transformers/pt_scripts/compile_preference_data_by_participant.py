@@ -71,14 +71,6 @@ def main(argv):
         help="Number of state features. \nThis helps seperate state features and actions.",
     )
     parser.add_argument(
-        "-a",
-        "--arc_sweep",
-        type=int,
-        default=None,
-        nargs=3,
-        help="Settings for arc sizes for feature computation. \n(Starting Size, Ending Size, Increment Size).",
-    )
-    parser.add_argument(
         "-s",
         "--seed",
         type=int,
@@ -118,10 +110,6 @@ def main(argv):
     if not Path(o_path).is_dir():
         raise FileNotFoundError(f"Cannot find output directory {o_path}!")
     split_size = args.split_size
-    if args.arc_sweep is not None:
-        arc_sweep = tuple(args.arc_sweep)
-    else:
-        arc_sweep = args.arc_sweep
     seed = args.seed
     load_p_stats = args.load_stats
     study = args.bbway
@@ -164,10 +152,10 @@ def main(argv):
                 )
 
                 RD = random_replay_p(D, stats, seed=seed)
-                RF = compute_features_p(RD, arc_sweep)
+                RF = compute_features_p(RD)
                 del RD
 
-                F = compute_features_p(D, arc_sweep)
+                F = compute_features_p(D)
                 del D
 
                 create_preference_data(
@@ -196,10 +184,10 @@ def main(argv):
                 )
 
                 RD = random_replay(D, stats, seed=seed)
-                RF = compute_features(RD, arc_sweep)
+                RF = compute_features(RD)
                 del RD
 
-                F = compute_features(D, arc_sweep)
+                F = compute_features(D)
                 del D
 
                 create_preference_data(
@@ -228,10 +216,10 @@ def main(argv):
             )
 
             RD = random_replay_p(D, stats, seed=seed)
-            RF = compute_features_p(RD, arc_sweep)
+            RF = compute_features_p(RD)
             del RD
 
-            F = compute_features_p(D, arc_sweep)
+            F = compute_features_p(D)
             del D
 
             create_preference_data(RF, F, state_features=state_features,split_size=split_size, save_data=save_pref)
@@ -257,10 +245,10 @@ def main(argv):
         D = load_participant_data(p_id=p_id, path=path, exclusion_list=L, study=study)
 
         RD = random_replay(D, stats, seed=seed)
-        RF = compute_features(RD, arc_sweep)
+        RF = compute_features(RD)
         del RD
 
-        F = compute_features(D, arc_sweep)
+        F = compute_features(D)
         del D
 
         create_preference_data(RF, F, state_features=state_features,split_size=split_size, save_data=save_pref)
