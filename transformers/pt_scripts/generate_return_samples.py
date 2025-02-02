@@ -102,8 +102,8 @@ def main(argv):
             reversed(range(rewards.shape[0])), total=rewards.shape[0], desc="Returns"
         ):
             if r_am[i] != 0:
-                R = R + float(rewards[i])
-                returns.at[i].set(R)
+                R = R + rewards[i]
+                returns = returns.at[i].set(R)
             if r_ts[i] == 0:
                 R = 0.0
         returns = returns.reshape(am.shape[0], am.shape[1])
