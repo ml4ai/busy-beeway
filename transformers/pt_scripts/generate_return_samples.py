@@ -102,7 +102,6 @@ def main(argv):
             reversed(range(rewards.shape[0])), total=rewards.shape[0], desc="Returns"
         ):
             if r_am[i] != 0:
-                print("test")
                 R = R + rewards[i]
                 returns.at[i].set(R)
             if r_ts[i] == 0:
