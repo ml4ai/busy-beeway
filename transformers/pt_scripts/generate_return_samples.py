@@ -101,12 +101,12 @@ def main(argv):
             reversed(range(rewards.shape[0])), total=rewards.shape[0], desc="Returns"
         ):
             if r_am[i] != 0:
+                print("test")
                 R = R + rewards[i]
                 returns.at[i].set(R)
             if r_ts[i] == 0:
                 R = 0.0
         returns = returns.reshape(am.shape[0], am.shape[1])
-        print(returns)
         with h5py.File(f"{output_dir}/{data_tag}.hdf5", "a") as g:
             g.create_dataset("states", data=sts, chunks=True)
             g.create_dataset("actions", data=acts, chunks=True)
