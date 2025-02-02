@@ -92,6 +92,7 @@ def main(argv):
                 jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]),
                 axis=0,
             )
+        print(rewards)
         rewards = rewards.ravel()
         r_am = am.ravel()
         r_ts = ts.ravel()
