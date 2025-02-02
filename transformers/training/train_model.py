@@ -202,7 +202,7 @@ def train_pt(
                 logger.dump_tabular(with_prefix=False, with_timestamp=False)
                 print("Met early stopping criteria, breaking...")
                 break
-            elif epoch > 0 and early_stop.has_improved:
+            elif epoch >= 0 and early_stop.has_improved:
                 c_best_epoch = epoch
                 c_criteria_key = criteria
                 metrics["best_epoch"] = c_best_epoch
@@ -758,7 +758,7 @@ def train_dt(
                     logger.dump_tabular(with_prefix=False, with_timestamp=False)
                     print("Met early stopping criteria, breaking...")
                     break
-                elif epoch > 0 and early_stop.has_improved:
+                elif epoch >= 0 and early_stop.has_improved:
                     c_best_epoch = epoch
                     c_criteria_key = criteria
                     metrics["best_epoch"] = c_best_epoch
