@@ -234,7 +234,10 @@ def bb_run_episode(
         return s
 
     R = jnp.array(target_return).reshape(1, 1, 1)
-    s = create_new_state().reshape(1, 1, 15)
+    if days is not None:
+        s = create_new_state().reshape(1, 1, 16)
+    else:
+        s = create_new_state().reshape(1, 1, 15)
     a = jnp.zeros((1, 0, 3))
     t = jnp.zeros((1, 1), dtype=jnp.int32)
 
@@ -306,8 +309,10 @@ def bb_run_episode(
             radius_2=1.0,
         )
         p_angle = action[1]
-
-        s = jnp.concat([s, create_new_state().reshape(1, 1, 15)], axis=1)
+        if days is not None:
+            s = jnp.concat([s, create_new_state().reshape(1, 1, 16)], axis=1)
+        else:
+            s = jnp.concat([s, create_new_state().reshape(1, 1, 15)], axis=1)
         s[-context_length:]
 
         R = jnp.concat([R, (R[-1][-1] - reward).reshape(1, 1, 1)], axis=1)
