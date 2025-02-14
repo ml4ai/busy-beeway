@@ -83,14 +83,16 @@ def bb_run_episode(
     context_length=50,
     target_return=100.0,
     max_horizon=500,
+    days=153,
 ):
-    key1, key2, key3, key4, key5, key6, key7, key8, key9, key10, key11 = jax.random.split(
-        rng_key, 11
+    key1, key2, key3, key4, key5, key6, key7, key8, key9, key10, key11 = (
+        jax.random.split(rng_key, 11)
     )
     n_obstacles = jax.random.choice(key1, jnp.asarray([50, 100, 150]))
     ai = jax.random.choice(key2, 4)
     p_attempt = jax.random.choice(key3, 4)
-    day = jax.random.choice(key11,180)
+    if days is not None:
+        day = jax.random.choice(key11, days)
     match ai:
         case 0:
             sig = 55
@@ -188,26 +190,47 @@ def bb_run_episode(
         repel_factor = repel * 1.0
 
         attempt = p_attempt * 1.0
-
-        s = jnp.array(
-            [
-                goal_distances,
-                goal_headings,
-                min_obstacle_distances,
-                min_distance_obstacle_headings,
-                max_obstacle_headings,
-                max_heading_obstacle_distances,
-                max_op_headings,
-                min_distance_op_headings,
-                max_heading_obstacle_op_headings,
-                max_heading_op_distances,
-                max_heading_op_obstacle_headings,
-                obstacle_count,
-                sigma,
-                repel_factor,
-                attempt,
-            ]
-        )
+        if days is not None:
+            s = jnp.array(
+                [
+                    goal_distances,
+                    goal_headings,
+                    min_obstacle_distances,
+                    min_distance_obstacle_headings,
+                    max_obstacle_headings,
+                    max_heading_obstacle_distances,
+                    max_op_headings,
+                    min_distance_op_headings,
+                    max_heading_obstacle_op_headings,
+                    max_heading_op_distances,
+                    max_heading_op_obstacle_headings,
+                    obstacle_count,
+                    sigma,
+                    repel_factor,
+                    attempt,
+                    day,
+                ]
+            )
+        else:
+            s = jnp.array(
+                [
+                    goal_distances,
+                    goal_headings,
+                    min_obstacle_distances,
+                    min_distance_obstacle_headings,
+                    max_obstacle_headings,
+                    max_heading_obstacle_distances,
+                    max_op_headings,
+                    min_distance_op_headings,
+                    max_heading_obstacle_op_headings,
+                    max_heading_op_distances,
+                    max_heading_op_obstacle_headings,
+                    obstacle_count,
+                    sigma,
+                    repel_factor,
+                    attempt,
+                ]
+            )
         return s
 
     R = jnp.array(target_return).reshape(1, 1, 1)
