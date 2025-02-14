@@ -84,12 +84,13 @@ def bb_run_episode(
     target_return=100.0,
     max_horizon=500,
 ):
-    key1, key2, key3, key4, key5, key6, key7, key8, key9, key10 = jax.random.split(
-        rng_key, 10
+    key1, key2, key3, key4, key5, key6, key7, key8, key9, key10, key11 = jax.random.split(
+        rng_key, 11
     )
     n_obstacles = jax.random.choice(key1, jnp.asarray([50, 100, 150]))
     ai = jax.random.choice(key2, 4)
     p_attempt = jax.random.choice(key3, 4)
+    day = jax.random.choice(key11,180)
     match ai:
         case 0:
             sig = 55
