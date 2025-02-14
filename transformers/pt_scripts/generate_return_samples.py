@@ -110,7 +110,7 @@ def main(argv):
                 R = 0.0
         returns = returns.reshape(am.shape[0], am.shape[1])
         ep_rtns = jnp.array(ep_rtns)
-        
+
         sts_2 = f["states_2"][:]
         acts_2 = f["actions_2"][:]
         ts_2 = f["timesteps_2"][:]
@@ -153,7 +153,9 @@ def main(argv):
         R_2 = 0.0
         ep_rtns_2 = []
         for i in tqdm(
-            reversed(range(rewards_2.shape[0])), total=rewards_2.shape[0], desc="Returns_2"
+            reversed(range(rewards_2.shape[0])),
+            total=rewards_2.shape[0],
+            desc="Returns_2",
         ):
             if r_am_2[i] != 0:
                 R_2 = R_2 + rewards_2[i]
@@ -164,13 +166,13 @@ def main(argv):
         returns_2 = returns_2.reshape(am_2.shape[0], am_2.shape[1])
 
         ep_rtns_2 = jnp.array(ep_rtns_2)
-        
-        c_sts = jnp.concatenate([sts,sts_2])
-        c_acts = jnp.concatenate([acts,acts_2])
-        c_ts = jnp.concatenate([ts,ts_2])
-        c_am = jnp.concatenate([am,am_2])
-        c_returns = jnp.concatenate([c_returns,c_returns_2])
-        
+
+        c_sts = jnp.concatenate([sts, sts_2])
+        c_acts = jnp.concatenate([acts, acts_2])
+        c_ts = jnp.concatenate([ts, ts_2])
+        c_am = jnp.concatenate([am, am_2])
+        c_returns = jnp.concatenate([returns, returns_2])
+
         with h5py.File(f"{output_dir}/{data_tag}.hdf5", "a") as g:
             g.create_dataset("states", data=c_sts, chunks=True)
             g.create_dataset("actions", data=c_acts, chunks=True)
