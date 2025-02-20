@@ -586,7 +586,7 @@ def animate_run(d, interval=80, filename="run.gif"):
     scat1 = ax.scatter([], [], c="b", s=5, label="bee")
     scat2 = ax.scatter([], [], c="r", s=5, label="wasps")
     scat3 = ax.scatter([], [], c="g", s=5, label="goal")
-    ax.set(xlim=[-30, 30], ylim=[-30, 30], xlabel="X", ylabel="Y")
+    ax.set(xlim=[-50, 50], ylim=[-50, 50], xlabel="X", ylabel="Y")
     ax.legend(loc="upper right")
 
     def update(frame):
