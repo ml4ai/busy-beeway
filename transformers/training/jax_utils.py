@@ -3,6 +3,7 @@ import jax
 import jax.numpy as jnp
 import optax
 from functools import partial
+from flax import nnx
 
 
 class JaxRNG(object):
