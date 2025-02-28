@@ -85,7 +85,7 @@ def main(argv):
         help="Target return",
     )
     parser.add_argument(
-        "-h",
+        "-m",
         "--horizon",
         type=int,
         default=400,
@@ -194,13 +194,17 @@ def main(argv):
     real_prop_g = successes_g / len(D_g)
     real_var_r = np.sqrt((real_prop_r * (1.0 - real_prop_r)) / len(D_r))
     real_var_g = np.sqrt((real_prop_g * (1.0 - real_prop_g)) / len(D_g))
-    ax.bar(["Real", "Generated"], [real_prop_r, real_prop_g], yerr=[real_var_r, real_var_g])
-    ax.text(0, real_prop_r/2, f"N={len(D_r)}", ha='center', va='bottom')
-    ax.text(1, real_prop_g/2, f"N={len(D_g)}", ha='center', va='bottom')
+    ax.bar(
+        ["Real", "Generated"], [real_prop_r, real_prop_g], yerr=[real_var_r, real_var_g]
+    )
+    ax.text(0, real_prop_r / 2, f"N={len(D_r)}", ha="center", va="bottom")
+    ax.text(1, real_prop_g / 2, f"N={len(D_g)}", ha="center", va="bottom")
     fig.savefig(output_dir + "/successes.png")
 
     fig, ax = plt.subplots()
-    vp = ax.violinplot([end_goal_dist_r, end_goal_dist_g], showmeans=True, showmedians=True)
+    vp = ax.violinplot(
+        [end_goal_dist_r, end_goal_dist_g], showmeans=True, showmedians=True
+    )
     vp["cmeans"].set_color("orange")
     vp["cmeans"].set_label("Mean")
     vp["cmedians"].set_color("red")
@@ -210,7 +214,9 @@ def main(argv):
     ax.set_xticks([y + 1 for y in range(2)], labels=["Real", "Generated"])
     ax.set_ylabel("Distance")
     ax.scatter(
-        np.concatenate([np.ones(len(end_goal_dist_r)), np.ones(len(end_goal_dist_g)) * 2.0]),
+        np.concatenate(
+            [np.ones(len(end_goal_dist_r)), np.ones(len(end_goal_dist_g)) * 2.0]
+        ),
         np.concatenate([end_goal_dist_r, end_goal_dist_g]),
     )
     fig.savefig(output_dir + "/end_goal_dist.png")
