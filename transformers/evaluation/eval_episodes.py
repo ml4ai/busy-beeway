@@ -81,7 +81,7 @@ def bb_run_episode(
     r_model,
     move_stats,
     rng_key,
-    context_length=50,
+    context_length=100,
     target_return=100.0,
     max_horizon=500,
     days=153,
@@ -290,11 +290,11 @@ def bb_run_episode(
         old_O_posY = O_posY
         O_posX = O_posX + (o_dists * cos_plus(O_angle))
         O_posY = O_posY + (o_dists * sin_plus(O_angle))
-        
+
         g_o_dist = jnp.sqrt((O_posX**2) + (O_posY**2))
-        O_posX = jnp.where(g_o_dist > 50.0, -O_posX, O_posX)
-        O_posY = jnp.where(g_o_dist > 50.0, -O_posY, O_posY)
-        
+        O_posX = jnp.where(g_o_dist > 50.0, -old_O_posX, O_posX)
+        O_posY = jnp.where(g_o_dist > 50.0, -old_O_posY, O_posY)
+
         coll, _, _ = collision(
             old_O_posX,
             old_O_posY,
@@ -338,7 +338,7 @@ def bb_record_episode(
     r_model,
     move_stats,
     rng_key,
-    context_length=50,
+    context_length=100,
     target_return=100.0,
     max_horizon=500,
     days=153,
@@ -574,9 +574,9 @@ def bb_record_episode(
         O_posY = O_posY + (o_dists * sin_plus(O_angle))
 
         g_o_dist = jnp.sqrt((O_posX**2) + (O_posY**2))
-        O_posX = jnp.where(g_o_dist > 50.0, -O_posX, O_posX)
-        O_posY = jnp.where(g_o_dist > 50.0, -O_posY, O_posY)
-        
+        O_posX = jnp.where(g_o_dist > 50.0, -old_O_posX, O_posX)
+        O_posY = jnp.where(g_o_dist > 50.0, -old_O_posY, O_posY)
+
         coll, _, _ = collision(
             old_O_posX,
             old_O_posY,
