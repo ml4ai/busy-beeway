@@ -108,7 +108,7 @@ def main(argv):
     move_stats = load_stats(stats)
     key = jax.random.key(seed)
     D_g = []
-    for i in jax.random.split(key, episodes):
+    for i in tqdm(jax.random.split(key, episodes)):
         D_g.append(
             bb_record_episode(
                 d_model, r_model, move_stats, i, 100, target_return, horizon
