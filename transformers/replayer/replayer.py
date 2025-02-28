@@ -91,8 +91,8 @@ def goal_only_run_replay(
                     o_dists * sin_plus(old_O["angle"].to_numpy())
                 )
                 g_o_dist = np.sqrt((o_X**2) + (o_Y**2))
-                o_X = np.where(g_o_dist > 50.0, -o_X, o_X)
-                o_Y = np.where(g_o_dist > 50.0, -o_Y, o_Y)
+                o_X = np.where(g_o_dist > 50.0, -old_O["posX"].to_numpy(), o_X)
+                o_Y = np.where(g_o_dist > 50.0, -old_O["posY"].to_numpy(), o_Y)
                 new_O = pd.DataFrame(
                     {
                         "posX": o_X,
@@ -317,8 +317,8 @@ def goal_only_run_replay_p(f):
                     o_dists * sin_plus(old_O["angle"].to_numpy())
                 )
                 g_o_dist = np.sqrt((o_X**2) + (o_Y**2))
-                o_X = np.where(g_o_dist > 50.0, -o_X, o_X)
-                o_Y = np.where(g_o_dist > 50.0, -o_Y, o_Y)
+                o_X = np.where(g_o_dist > 50.0, -old_O["posX"].to_numpy(), o_X)
+                o_Y = np.where(g_o_dist > 50.0, -old_O["posY"].to_numpy(), o_Y)
                 new_O = pd.DataFrame(
                     {
                         "posX": o_X,
@@ -586,7 +586,7 @@ def animate_run(d, interval=80, filename="run.gif"):
     scat1 = ax.scatter([], [], c="b", s=5, label="bee")
     scat2 = ax.scatter([], [], c="r", s=5, label="wasps")
     scat3 = ax.scatter([], [], c="g", s=5, label="goal")
-    ax.set(xlim=[-50, 50], ylim=[-50, 50], xlabel="X", ylabel="Y")
+    ax.set(xlim=[-55, 55], ylim=[-55, 55], xlabel="X", ylabel="Y")
     ax.legend(loc="upper right")
 
     def update(frame):
