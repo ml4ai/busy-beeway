@@ -1,7 +1,7 @@
 import argparse
 import os
 import sys
-from multiprocessing import Pool
+
 import h5py
 import jax
 import jax.numpy as jnp
@@ -19,13 +19,6 @@ from transformers.evaluation.eval_episodes import bb_record_episode
 from transformers.replayer.replayer import animate_run, load_stats
 from transformers.training.utils import load_pickle
 from transformers.data_utils.bb_data_loading import load_participant_data_p
-
-
-def run_sim(P):
-    d_model, r_model, move_stats, key, target_return, horizon = P
-    return bb_record_episode(
-        d_model, r_model, move_stats, i, 100, target_return, horizon
-    )
 
 
 def main(argv):
@@ -92,13 +85,6 @@ def main(argv):
         help="Horizon",
     )
     parser.add_argument(
-        "-c",
-        "--cores",
-        type=int,
-        default=None,
-        help="Number of CPU cores to use",
-    )
-    parser.add_argument(
         "-o",
         "--output_dir",
         type=str,
@@ -116,25 +102,16 @@ def main(argv):
     target_return = args.target_return
     horizon = args.horizon
     output_dir = os.path.expanduser(args.output_dir)
-    if args.cores is None:
-        cores = os.cpu_count()
-    else:
-        cores = args.cores
+
     d_model = load_pickle(dt)["model"]
     r_model = load_pickle(pt)["model"]
     move_stats = load_stats(stats)
     key = jax.random.key(seed)
-    E_R = []
-    E_L = []
-    D_1 = []
-    with Pool(cores) as p:
-        D_g = list(
-            p.map(
-                run_sim,
-                [
-                    (d_model, r_model, move_stats, i, target_return, horizon)
-                    for i in jax.random.split(key, episodes)
-                ],
+    D_g = []
+    for i in jax.random.split(key, episodes):
+        D_g.append(
+            bb_record_episode(
+                d_model, r_model, move_stats, i, 100, target_return, horizon
             )
         )
 
