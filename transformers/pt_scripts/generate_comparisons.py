@@ -130,7 +130,7 @@ def main(argv):
     with Pool(cores) as p:
         D_g = list(
             p.map(
-                run_sum,
+                run_sim,
                 [
                     (d_model, r_model, move_stats, i, target_return, horizon)
                     for i in jax.random.split(key, episodes)
