@@ -2,9 +2,47 @@ from collections import defaultdict
 
 import h5py
 import jax.numpy as jnp
+import jax
 import numpy as np
 import torch
 from torch.utils.data import Subset
+from typing import (
+    cast,
+    Dict,
+    Generic,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
+
+
+class JaxDataset(torch.utils.data.Dataset[Tuple[jax.Array, ...]]):
+    r"""Dataset wrapping tensors.
+
+    Each sample will be retrieved by indexing tensors along the first dimension.
+
+    Args:
+        *tensors (Tensor): tensors that have the same size of the first dimension.
+    """
+
+    arrays: Tuple[jax.Array, ...]
+
+    def __init__(self, *arrays: jax.Array) -> None:
+        assert all(
+            arrays[0].shape[0] == array.shape[0] for array in arrays
+        ), "Size mismatch between tensors"
+        self.arrays = arrays
+
+    def __getitem__(self, index):
+        #The dataloader cannot use jax.Array
+        return tuple(np.asarray(array[index]) for array in self.arrays)
+
+    def __len__(self):
+        return self.arrays[0].shape[0]
 
 
 class Pref_H5Dataset(torch.utils.data.Dataset):
