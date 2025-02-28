@@ -67,9 +67,11 @@ def dt_accuracy(logits, target):
     true_target = jnp.argmax(target, axis=2) * 1.0
     return jnp.nanmean(predicted_class == true_target)
 
+
 def mt_accuracy(logits, target):
     predicted_class = (logits > 0).astype(int)
     return jnp.nanmean(predicted_class == target)
+
 
 def value_and_multi_grad(fun, n_outputs, argnums=0, has_aux=False):
     def select_output(index):
@@ -142,6 +144,7 @@ def pref_loss_fn(state_fn, train_params, batch, training, rng):
 
     return cross_ent_loss(logits, labels), pref_accuracy(logits, labels)
 
+
 def mentor_loss_fn(state_fn, train_params, batch, training, rng):
     sts_1 = batch["states"]
     acts_1 = batch["actions"]
@@ -165,7 +168,10 @@ def mentor_loss_fn(state_fn, train_params, batch, training, rng):
 
     sum_pred_1 = jnp.nanmean(trans_pred_1.reshape(B, T), axis=1)
 
-    return jnp.nanmean(optax.sigmoid_binary_cross_entropy(logits=sum_pred_1,labels=labels)), mt_accuracy(sum_pred_1, labels)
+    return jnp.nanmean(
+        optax.sigmoid_binary_cross_entropy(logits=sum_pred_1, labels=labels)
+    ), mt_accuracy(sum_pred_1, labels)
+
 
 def q_loss_fn(state_fn, train_params, batch, training, rng):
     sts = batch["states"]
@@ -288,6 +294,35 @@ def af_loss_fn(state_fn, train_params, batch, training, rng):
         rngs={"dropout": rng},
     )
     return jnp.nanmean(optax.l2_loss(predictions=a_preds, targets=acts))
+
+
+def vgrad(f, x):
+    y, vjp_fn = jax.vjp(f, x)
+    return vjp_fn(jnp.ones(y.shape))[0]
+
+
+def wasserstein_inner_loss_fn(
+    model,
+    batch,
+    output_dim,
+    penalty_coeff,
+    use_lipschitz_constraint,
+    lipschitz_constraint_type,
+    rngs: nnx.Rngs,
+):
+    d = 0.0
+    if use_lipschitz_constraint:
+        penalty = 0.0
+        if lipschitz_constraint_type == "gp":
+            for dim in range(self.output_dim):
+                f_samples = model(batch["nnet_samples"][:, :, dim].T)
+                f_gp = model(batch["gp_samples"][:, :, dim].T)
+                d += jnp.mean(jnp.mean(f_samples, axis=0) - jnp.mean(f_gp, axis=0))
+        elif lipschitz_constraint_type == "lp":
+            for dim in range(self.output_dim):
+                f_samples = model(batch["nnet_samples"][:, :, dim].T)
+                f_gp = model(batch["gp_samples"][:, :, dim].T)
+                d += jnp.mean(jnp.mean(f_samples, axis=0) - jnp.mean(f_gp, axis=0))
 
 
 @jax.jit
