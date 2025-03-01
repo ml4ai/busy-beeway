@@ -244,7 +244,6 @@ def bb_run_episode(
 
     episode_return, episode_length = 0, 0
     for i, key in enumerate(jax.random.split(key10, max_horizon)):
-        jax.clear_caches()
         a = jnp.concat([a, jnp.zeros((1, 1, 3))], axis=1)
         a = a[-context_length:]
         _, _, action = d_model._train_state.apply_fn(

@@ -9,8 +9,6 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 
-jax.config.update("jax_platforms", "cpu")
-jax.clear_caches()
 
 sys.path.insert(0, os.path.abspath("../.."))
 
@@ -110,7 +108,6 @@ def main(argv):
     key = jax.random.key(seed)
     D_g = []
     for i in tqdm(jax.random.split(key, episodes)):
-        jax.clear_caches()
         D_g.append(
             bb_record_episode(
                 d_model, r_model, move_stats, i, 100, target_return, horizon
