@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 jax.config.update("jax_platforms", "cpu")
-jax.clear_backends()
+jax.clear_caches()
 
 sys.path.insert(0, os.path.abspath("../.."))
 
