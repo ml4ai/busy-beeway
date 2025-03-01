@@ -129,6 +129,8 @@ def main(argv):
         )
         frames_g.append(e_l + 1)
         rtns_g.append(e_r)
+        del d
+        jax.clear_caches()
 
     with h5py.File(real_returns) as f:
         rtns_r = f["ep_returns_2"][:]
