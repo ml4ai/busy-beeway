@@ -9,6 +9,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 
+jax.config.update("jax_platforms", "cpu")
 
 sys.path.insert(0, os.path.abspath("../.."))
 
@@ -107,10 +108,13 @@ def main(argv):
     move_stats = load_stats(stats)
     key = jax.random.key(seed)
     D_g = []
-    for i in tqdm(jax.random.split(key, episodes)):
+    keys = jax.random.split(key, episodes + 1)
+    key = keys[0]
+    data_keys = keys[1:]
+    for i in tqdm(range(episodes)):
         D_g.append(
             bb_record_episode(
-                d_model, r_model, move_stats, i, 100, target_return, horizon
+                d_model, r_model, move_stats, data_keys[i], 100, target_return, horizon
             )
         )
 

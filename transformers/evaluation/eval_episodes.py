@@ -243,7 +243,10 @@ def bb_run_episode(
     t = jnp.zeros((1, 1), dtype=jnp.int32)
 
     episode_return, episode_length = 0, 0
-    for i, key in enumerate(jax.random.split(key10, max_horizon)):
+    keys = jax.random.split(key10, max_horizon + 1)
+    key = keys[0]
+    data_keys = keys[1:]
+    for i in range(max_horizon):
         a = jnp.concat([a, jnp.zeros((1, 1, 3))], axis=1)
         a = a[-context_length:]
         _, _, action = d_model._train_state.apply_fn(
@@ -284,7 +287,7 @@ def bb_run_episode(
         )
 
         o_dists = (
-            move_stats[3] * jax.random.normal(key, shape=(n_obstacles,))
+            move_stats[3] * jax.random.normal(data_keys[i], shape=(n_obstacles,))
         ) + move_stats[2]
         old_O_posX = O_posX
         old_O_posY = O_posY
@@ -525,7 +528,10 @@ def bb_record_episode(
         )
     ]
     success = False
-    for i, key in enumerate(jax.random.split(key10, max_horizon)):
+    keys = jax.random.split(key10, max_horizon + 1)
+    key = keys[0]
+    data_keys = keys[1:]
+    for i in range(max_horizon):
         a = jnp.concat([a, jnp.zeros((1, 1, 3))], axis=1)
         a = a[-context_length:]
         _, _, action = d_model._train_state.apply_fn(
@@ -566,7 +572,7 @@ def bb_record_episode(
         )
 
         o_dists = (
-            move_stats[3] * jax.random.normal(key, shape=(n_obstacles,))
+            move_stats[3] * jax.random.normal(data_keys[i], shape=(n_obstacles,))
         ) + move_stats[2]
         old_O_posX = O_posX
         old_O_posY = O_posY
