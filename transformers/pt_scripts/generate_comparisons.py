@@ -107,16 +107,28 @@ def main(argv):
     r_model = load_pickle(pt)["model"]
     move_stats = load_stats(stats)
     key = jax.random.key(seed)
-    D_g = []
+
     keys = jax.random.split(key, episodes + 1)
     key = keys[0]
     data_keys = keys[1:]
+    successes_g = 0.0
+    end_goal_dist_g = []
+    frames_g = []
+    rtns_g = []
     for i in tqdm(range(episodes)):
-        D_g.append(
-            bb_record_episode(
-                d_model, r_model, move_stats, data_keys[i], 100, target_return, horizon
-            )
+        e_r, e_l, d = bb_record_episode(
+            d_model, r_model, move_stats, data_keys[i], 100, target_return, horizon
         )
+        if d["reached_goal"]:
+            successes_g += 1.0
+        posX = d["player"]["posX"].to_numpy()[-1]
+        posY = d["player"]["posY"].to_numpy()[-1]
+        goal = d["goal"]
+        end_goal_dist_g.append(
+            np.sqrt(((goal[0] - posX) ** 2) + ((goal[1] - posY) ** 2))
+        )
+        frames_g.append(e_l + 1)
+        rtns_g.append(e_r)
 
     with h5py.File(real_returns) as f:
         rtns_r = f["ep_returns_2"][:]
@@ -137,22 +149,6 @@ def main(argv):
         )
         frames_r.append(len(d["player"]))
 
-    successes_g = 0.0
-    end_goal_dist_g = []
-    frames_g = []
-    rtns_g = []
-    for e_r, e_l, d in D_g:
-        if d["reached_goal"]:
-            successes_g += 1.0
-        posX = d["player"]["posX"].to_numpy()[-1]
-        posY = d["player"]["posY"].to_numpy()[-1]
-        goal = d["goal"]
-        end_goal_dist_g.append(
-            np.sqrt(((goal[0] - posX) ** 2) + ((goal[1] - posY) ** 2))
-        )
-        frames_g.append(e_l + 1)
-        rtns_g.append(e_r)
-
     fig, ax = plt.subplots()
     vp = ax.violinplot([rtns_r, rtns_g], showmeans=True, showmedians=True)
     vp["cmeans"].set_color("orange")
@@ -171,14 +167,14 @@ def main(argv):
 
     fig, ax = plt.subplots()
     real_prop_r = successes_r / len(D_r)
-    real_prop_g = successes_g / len(D_g)
+    real_prop_g = successes_g / episodes
     real_var_r = np.sqrt((real_prop_r * (1.0 - real_prop_r)) / len(D_r))
-    real_var_g = np.sqrt((real_prop_g * (1.0 - real_prop_g)) / len(D_g))
+    real_var_g = np.sqrt((real_prop_g * (1.0 - real_prop_g)) / episodes)
     ax.bar(
         ["Real", "Generated"], [real_prop_r, real_prop_g], yerr=[real_var_r, real_var_g]
     )
     ax.text(0, real_prop_r / 2, f"N={len(D_r)}", ha="center", va="bottom")
-    ax.text(1, real_prop_g / 2, f"N={len(D_g)}", ha="center", va="bottom")
+    ax.text(1, real_prop_g / 2, f"N={episodes}", ha="center", va="bottom")
     fig.savefig(output_dir + "/successes.png")
 
     fig, ax = plt.subplots()
