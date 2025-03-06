@@ -23,6 +23,12 @@ def sin_plus(degrees):
 
 # Find closest point on line a-b to point p
 def closest_point_on_line(ax, ay, bx, by, px, py, thres):
+    ax = jnp.asarray(ax)
+    ay = jnp.asarray(ay)
+    bx = jnp.asarray(bx)
+    by = jnp.asarray(by)
+    px = jnp.asarray(px)
+    py = jnp.asarray(py)
     apx = px - ax
     apy = py - ay
     abx = bx - ax
@@ -512,7 +518,7 @@ def bb_record_episode(
     a = jnp.zeros((1, 0, 3))
     t = jnp.zeros((1, 1), dtype=jnp.int32)
 
-    episode_return, episode_length = 0, 0
+    episode_return, episode_length = 0.0, 0
 
     p_X_list = [p_posX]
     p_Y_list = [p_posY]
