@@ -1,13 +1,15 @@
 import jax
 import jax.numpy as jnp
-import flax.linen as nn
+from flax import nnx
+
 
 def get_attention_mask(attn_mask, batch_size):
-    assert batch_size > 0, 'batch_size should be > 0.'
-    attn_mask = jnp.reshape(attn_mask, newshape=(batch_size, -1))
+    assert batch_size > 0, "batch_size should be > 0."
+    attn_mask = jnp.reshape(attn_mask, (batch_size, -1))
     attn_mask = jnp.expand_dims(attn_mask, axis=(1, 2))
     attn_mask = (1.0 - attn_mask) * -10000.0
     return attn_mask
+
 
 def split_heads(x, num_heads, head_dim):
     """
@@ -30,9 +32,23 @@ def split_heads(x, num_heads, head_dim):
         # [batch, head, seq_len, head_dim]
         return jnp.transpose(x, axes=(0, 2, 1, 3))
     else:
-        raise ValueError(f'Input tensor should have rank 4 or 5, but has rank {x.ndim}.')
+        raise ValueError(
+            f"Input tensor should have rank 4 or 5, but has rank {x.ndim}."
+        )
 
-def attention(query, key, value, casual_mask, masked_bias, dropout, scale_attn_weights, training, attn_mask=None, feedback=None):
+
+def attention(
+    query,
+    key,
+    value,
+    casual_mask,
+    masked_bias,
+    dropout,
+    scale_attn_weights,
+    training,
+    attn_mask=None,
+    feedback=None,
+):
     """
     Computes Dot-Product Attention for the given query, key and value.
 
@@ -67,12 +83,13 @@ def attention(query, key, value, casual_mask, masked_bias, dropout, scale_attn_w
     if attn_mask is not None:
         attn_weights = attn_weights + attn_mask
 
-    _attn_weights = nn.softmax(attn_weights, axis=-1)
+    _attn_weights = nnx.softmax(attn_weights, axis=-1)
     attn_weights = _attn_weights.astype(value.dtype)
     attn_weights = dropout(attn_weights, deterministic=not training)
 
     out = jnp.matmul(attn_weights, value)
     return out, _attn_weights
+
 
 def merge_heads(x, num_heads, head_dim):
     """
@@ -91,28 +108,38 @@ def merge_heads(x, num_heads, head_dim):
     elif x.ndim == 4:
         x = jnp.transpose(x, axes=(0, 2, 1, 3))
     else:
-        raise ValueError(f'Input tensor should have rank 4 or 5, but has rank {x.ndim}.')
+        raise ValueError(
+            f"Input tensor should have rank 4 or 5, but has rank {x.ndim}."
+        )
 
     newshape = x.shape[:-2] + (num_heads * head_dim,)
     x = jnp.reshape(x, newshape)
     return x
 
-def apply_activation(x, activation='linear'):
-    if activation == 'linear':
+
+def apply_activation(x, activation="linear"):
+    if activation == "linear":
         return x
-    elif activation == 'gelu_new':
-        return 0.5 * x * (1.0 + nn.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * jnp.power(x, 3.0))))
-    elif activation == 'gelu_fast':
-        return 0.5 * x * (1.0 + nn.tanh(x * 0.7978845608 * (1.0 + 0.044715 * x * x)))
-    elif activation == 'gelu':
-        return jax.nn.gelu(x)
-    elif activation == 'relu':
-        return jax.nn.relu(x)
-    elif activation == 'leaky_relu':
-        return jax.nn.leaky_relu(x)
-    elif activation == 'sigmoid':
-        return jax.nn.sigmoid(x)
-    elif activation == 'tanh':
-        return nn.tanh(x)
+    elif activation == "gelu_new":
+        return (
+            0.5
+            * x
+            * (
+                1.0
+                + nnx.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * jnp.power(x, 3.0)))
+            )
+        )
+    elif activation == "gelu_fast":
+        return 0.5 * x * (1.0 + nnx.tanh(x * 0.7978845608 * (1.0 + 0.044715 * x * x)))
+    elif activation == "gelu":
+        return nnx.gelu(x)
+    elif activation == "relu":
+        return nnx.relu(x)
+    elif activation == "leaky_relu":
+        return nnx.leaky_relu(x)
+    elif activation == "sigmoid":
+        return nnx.sigmoid(x)
+    elif activation == "tanh":
+        return nnx.tanh(x)
     else:
-        raise ValueError(f'Unknown activation function: {activation}.')
+        raise ValueError(f"Unknown activation function: {activation}.")
