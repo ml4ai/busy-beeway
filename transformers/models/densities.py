@@ -13,7 +13,7 @@ def multivariate_normal(x, mu, L):
     d = x - mu
     if d.ndim == 1:
         d = jnp.expand_dims(d,1)
-    alpha, _ = jnp.linalg.solve(d, L)
+    alpha = jnp.linalg.solve(L, d)
     alpha = alpha.squeeze(1)
     num_col = 1 if x.ndim == 1 else x.shape[1]
     num_dims = x.shape[0]

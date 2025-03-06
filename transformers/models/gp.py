@@ -105,7 +105,7 @@ class GPModel(nnx.Module):
             jitter = jnp.eye(mu.shape[0], dtype=mu.dtype) * self.jitter_level
             samples = []
             for i in range(self.num_latent):
-                L = jnp.linalg.cholesky(var+jitter, upper=False)
+                L = jnp.linalg.cholesky(var + jitter, upper=False)
                 rng = rngs()
                 V = jax.random.normal(rng, (L.shape[0], num_samples), dtype=L.dtype)
                 samples.append(mu + L @ V)
@@ -261,11 +261,11 @@ class GPR(GPModel):
         )
         L = jnp.linalg.cholesky(K, upper=False)
 
-        A, _ = jnp.linalg.solve(
-            Kx, L
+        A = jnp.linalg.solve(
+            L, Kx
         )  # could use triangular solve, note gesv has B first, then A in AX=B
-        V, _ = jnp.linalg.solve(
-            self.Y - self.mean_function(self.X), L
+        V = jnp.linalg.solve(
+            L, self.Y - self.mean_function(self.X)
         )  # could use triangular solve
 
         fmean = A.T @ V + self.mean_function(Xnew)
