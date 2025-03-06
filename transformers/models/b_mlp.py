@@ -76,14 +76,16 @@ class GaussianLinearReparameterization(nnx.Module):
             output: torch.tensor, [batch_size, output_dim], the output data.
         """
         rng = rngs()
-        W = self.W_mu + nnx.softplus(self.W_std) * jax.random.normal(
+        W_std = self.W_std.value
+        W = self.W_mu + nnx.softplus(W_std) * jax.random.normal(
             rng, (self.n_in, self.n_out)
         )
         if self.scaled_variance:
             W = W / jnp.sqrt(self.n_in)
 
         rng = rngs()
-        b = self.b_mu + nnx.softplus(self.b_std) * jax.random.normal(rng, (self.n_out,))
+        b_std = self.b_std.value
+        b = self.b_mu + nnx.softplus(b_std) * jax.random.normal(rng, (self.n_out,))
 
         return X @ W + b
 
@@ -100,7 +102,8 @@ class GaussianLinearReparameterization(nnx.Module):
             torch.tensor, [n_samples, batch_size, output_dim], the output data.
         """
         rng = rngs()
-        Ws = self.W_mu + nnx.softplus(self.W_std) * jax.random.normal(
+        W_std = self.W_std.value
+        Ws = self.W_mu + nnx.softplus(W_std) * jax.random.normal(
             rng,
             (n_samples, self.n_in, self.n_out),
         )
@@ -109,7 +112,8 @@ class GaussianLinearReparameterization(nnx.Module):
             Ws = Ws / jnp.sqrt(self.n_in)
 
         rng = rngs()
-        bs = self.b_mu + nnx.softplus(self.b_std) * jax.random.normal(
+        b_std = self.b_std.value
+        bs = self.b_mu + nnx.softplus(b_std) * jax.random.normal(
             rng,
             (n_samples, 1, self.n_out),
         )
@@ -255,6 +259,6 @@ class GaussianMLPReparameterization(nnx.Module):
                 X = self.activation_fn(out)
 
         X = self.output_layer.sample_predict(X, n_samples, rngs)
-        X = X.transpose(1, 0,2)
+        X = X.transpose(1, 0, 2)
 
         return X
