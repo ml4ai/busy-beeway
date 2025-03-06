@@ -27,22 +27,10 @@ def main(argv):
         formatter_class=StructuredFormatter,
     )
     parser.add_argument(
-        "dt",
-        metavar="D",
-        type=str,
-        help="File with Decision Transformer model",
-    )
-    parser.add_argument(
-        "pt",
-        metavar="P",
-        type=str,
-        help="File with Preference Transformer model",
-    )
-    parser.add_argument(
-        "stats",
+        "sim_stats",
         metavar="S",
         type=str,
-        help="File with Obstacle Stats",
+        help="File with simulated stats",
     )
     parser.add_argument(
         "real_returns",
@@ -57,86 +45,29 @@ def main(argv):
         help="Participant Auto-ID",
     )
     parser.add_argument(
-        "-s",
-        "--seed",
-        type=int,
-        default=25102,
-        help="Random seed",
-    )
-    parser.add_argument(
-        "-e",
-        "--episodes",
-        type=int,
-        default=1000,
-        help="Number of Episodes",
-    )
-    parser.add_argument(
-        "-t",
-        "--target_return",
-        type=float,
-        default=8000.0,
-        help="Target return",
-    )
-    parser.add_argument(
-        "-m",
-        "--horizon",
-        type=int,
-        default=400,
-        help="Horizon",
-    )
-    parser.add_argument(
         "-o",
         "--output_dir",
         type=str,
-        default="~/busy-beeway/transformers",
-        help="Horizon",
+        default="~/busy-beeway/transformers/comparison_plots",
+        help="Output directory",
     )
     args = parser.parse_args(argv)
-    dt = os.path.expanduser(args.dt)
-    pt = os.path.expanduser(args.pt)
-    stats = os.path.expanduser(args.stats)
+    sim_stats = os.path.expanduser(args.sim_stats)
     real_returns = os.path.expanduser(args.real_returns)
     auto_id = args.auto_id
-    seed = args.seed
-    episodes = args.episodes
-    target_return = args.target_return
-    horizon = args.horizon
     output_dir = os.path.expanduser(args.output_dir)
 
-    d_model = load_pickle(dt)["model"]
-    r_model = load_pickle(pt)["model"]
-    move_stats = load_stats(stats)
-    key = jax.random.key(seed)
-
-    keys = jax.random.split(key, episodes + 1)
-    key = keys[0]
-    data_keys = keys[1:]
-    successes_g = 0.0
-    end_goal_dist_g = []
-    frames_g = []
-    rtns_g = []
-    for i in tqdm(range(episodes)):
-        e_r, e_l, d = bb_record_episode(
-            d_model, r_model, move_stats, data_keys[i], 100, target_return, horizon
-        )
-        if d["reached_goal"]:
-            successes_g += 1.0
-        posX = d["player"]["posX"].to_numpy()[-1]
-        posY = d["player"]["posY"].to_numpy()[-1]
-        goal = d["goal"]
-        end_goal_dist_g.append(
-            np.sqrt(((goal[0] - posX) ** 2) + ((goal[1] - posY) ** 2))
-        )
-        frames_g.append(e_l + 1)
-        rtns_g.append(e_r)
-        del d
-        jax.clear_caches()
+    with h5py.File(sim_stats) as f:
+        successes_g = f["successes"][()]
+        end_goal_dist_g = f["end_goal_distance"][:]
+        frames_g = f["frames"][:]
+        rtns_g = f["returns"][:]
 
     with h5py.File(real_returns) as f:
         rtns_r = f["ep_returns_2"][:]
 
     # Assumes data is in certain place
-    D_r = load_participant_data_p(auto_id, cores)
+    D_r = load_participant_data_p(auto_id)
     successes_r = 0.0
     end_goal_dist_r = []
     frames_r = []
@@ -169,14 +100,14 @@ def main(argv):
 
     fig, ax = plt.subplots()
     real_prop_r = successes_r / len(D_r)
-    real_prop_g = successes_g / episodes
+    real_prop_g = successes_g / rtns_g.shape[0]
     real_var_r = np.sqrt((real_prop_r * (1.0 - real_prop_r)) / len(D_r))
-    real_var_g = np.sqrt((real_prop_g * (1.0 - real_prop_g)) / episodes)
+    real_var_g = np.sqrt((real_prop_g * (1.0 - real_prop_g)) / rtns_g.shape[0])
     ax.bar(
         ["Real", "Generated"], [real_prop_r, real_prop_g], yerr=[real_var_r, real_var_g]
     )
     ax.text(0, real_prop_r / 2, f"N={len(D_r)}", ha="center", va="bottom")
-    ax.text(1, real_prop_g / 2, f"N={episodes}", ha="center", va="bottom")
+    ax.text(1, real_prop_g / 2, f"N={rtns_g.shape[0]}", ha="center", va="bottom")
     fig.savefig(output_dir + "/successes.png")
 
     fig, ax = plt.subplots()
