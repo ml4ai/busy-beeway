@@ -302,28 +302,84 @@ def vgrad(f, x):
     return vjp_fn(jnp.ones(y.shape))[0]
 
 
-def wasserstein_inner_loss_fn(
+@nnx.vmap(in_axes=(None, 2, 2), out_axes=0)
+def calculate_w_loss(model, x_1, x_2):
+    x_1_s = model(x_1.T)
+    x_2_s = model(x_2.T)
+    return jnp.mean(jnp.mean(x_1_s, axis=0) - jnp.mean(x_2_s, axis=0))
+
+
+def wasserstein_inner_loss_fn_gp(
     model,
     batch,
     output_dim,
     penalty_coeff,
-    use_lipschitz_constraint,
-    lipschitz_constraint_type,
     rngs: nnx.Rngs,
 ):
-    d = 0.0
-    if use_lipschitz_constraint:
-        penalty = 0.0
-        if lipschitz_constraint_type == "gp":
-            for dim in range(self.output_dim):
-                f_samples = model(batch["nnet_samples"][:, :, dim].T)
-                f_gp = model(batch["gp_samples"][:, :, dim].T)
-                d += jnp.mean(jnp.mean(f_samples, axis=0) - jnp.mean(f_gp, axis=0))
-        elif lipschitz_constraint_type == "lp":
-            for dim in range(self.output_dim):
-                f_samples = model(batch["nnet_samples"][:, :, dim].T)
-                f_gp = model(batch["gp_samples"][:, :, dim].T)
-                d += jnp.mean(jnp.mean(f_samples, axis=0) - jnp.mean(f_gp, axis=0))
+    @nnx.split_rngs(splits=output_dim)
+    @nnx.vmap(in_axes=(None, 2, 2, 0), out_axes=0)
+    def compute_gradient_penalty(model, samples_p, samples_q, rngs: nnx.Rngs):
+        rng = rngs()
+        eps = jax.random.uniform(rng, (samples_p.shape[1], 1))
+        X = eps * samples_p.T + (1 - eps) * samples_q.T
+
+        return ((jnp.linalg.norm(vgrad(model, X), 2, 1) - 1) ** 2).mean()
+
+    objective = -(
+        calculate_w_loss(model, batch["nnet_samples"], batch["gp_samples"]).sum()
+    ) + (
+        penalty_coeff
+        * compute_gradient_penalty(
+            model, batch["nnet_samples"], batch["gp_samples"], rngs
+        ).sum()
+    )
+    return objective
+
+
+def wasserstein_inner_loss_fn_lp(
+    model,
+    batch,
+    output_dim,
+    penalty_coeff,
+    rngs: nnx.Rngs,
+):
+    @nnx.split_rngs(splits=output_dim)
+    @nnx.vmap(in_axes=(None, 2, 2, 0), out_axes=0)
+    def compute_gradient_penalty(model, samples_p, samples_q, rngs: nnx.Rngs):
+        rng = rngs()
+        eps = jax.random.uniform(rng, (samples_p.shape[1], 1))
+        X = eps * samples_p.T + (1 - eps) * samples_q.T
+
+        return (
+            (
+                jnp.clip(
+                    jnp.linalg.norm(vgrad(model, X), 2, 1) - 1,
+                    0.0,
+                    jnp.inf,
+                )
+            )
+            ** 2
+        ).mean()
+
+    objective = -(
+        calculate_w_loss(model, batch["nnet_samples"], batch["gp_samples"]).sum()
+    ) + (
+        penalty_coeff
+        * compute_gradient_penalty(
+            model, batch["nnet_samples"], batch["gp_samples"], rngs
+        ).sum()
+    )
+    return objective
+
+
+def wasserstein_inner_loss_fn_nc(
+    model,
+    batch,
+):
+    objective = -(
+        calculate_w_loss(model, batch["nnet_samples"], batch["gp_samples"]).sum()
+    )
+    return objective
 
 
 @jax.jit
