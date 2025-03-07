@@ -28,6 +28,7 @@ class GPT2MLP(nnx.Module):
 
 class GPT2SelfAttention(nnx.Module):
     def __init__(
+        self,
         embd_dim: int = 64,
         num_heads: int = 4,
         attn_dropout: float = 0.1,
@@ -81,6 +82,7 @@ class GPT2SelfAttention(nnx.Module):
 
 class GPT2Block(nnx.Module):
     def __init__(
+        self,
         embd_dim: int = 64,
         num_heads: int = 4,
         attn_dropout: float = 0.1,
@@ -121,6 +123,7 @@ class GPT2Block(nnx.Module):
 
 class GPT2Model(nnx.Module):
     def __init__(
+        self,
         embd_dim: int = 64,
         num_heads: int = 4,
         attn_dropout: float = 0.1,
@@ -165,6 +168,7 @@ class GPT2Model(nnx.Module):
 
 class PT(nnx.Module):
     def __init__(
+        self,
         state_dim: int = 16,
         action_dim: int = 3,
         max_episode_steps: int = 1219,
