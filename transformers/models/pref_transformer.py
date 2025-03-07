@@ -94,11 +94,11 @@ class GPT2Block(nnx.Module):
     ):
         self.layer_norm_0 = nnx.LayerNorm(embd_dim, epsilon=eps, rngs=rngs)
         self.attention = GPT2SelfAttention(
-            embd_dim=self.embd_dim,
-            num_heads=self.num_heads,
-            attn_dropout=self.attn_dropout,
-            resid_dropout=self.resid_dropout,
-            max_pos=self.max_pos,
+            embd_dim=embd_dim,
+            num_heads=num_heads,
+            attn_dropout=attn_dropout,
+            resid_dropout=resid_dropout,
+            max_pos=max_pos,
             rngs=rngs,
         )
         self.layer_norm_1 = nnx.LayerNorm(embd_dim, epsilon=eps, rngs=rngs)
