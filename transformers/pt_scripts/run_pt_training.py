@@ -11,7 +11,6 @@ from argformat import StructuredFormatter
 
 from transformers.data_utils.data_loader import Pref_H5Dataset
 from transformers.training.train_model import train_pt
-from transformers.training.utils import load_pickle
 import torch.multiprocessing as multiprocessing
 
 
@@ -86,13 +85,7 @@ def main(argv):
         default="~/busy-beeway/transformers/logs",
         help="Output directory for training logs and pickled models",
     )
-    parser.add_argument(
-        "-p",
-        "--pretrained_model",
-        type=str,
-        default=None,
-        help="File with pickled pretrained model",
-    )
+
     multiprocessing.set_start_method("forkserver")
     args = parser.parse_args(argv)
     data = os.path.expanduser(args.data)
@@ -108,11 +101,7 @@ def main(argv):
     end_value = learning_rate[2]
     dim = args.dim
     workers = args.workers
-    pm = args.pretrained_model
-    if pm is not None:
-        pm = os.path.expanduser(pm)
-        pm = load_pickle(pm)["model"]
-        pm = pm._train_state.params
+
     try:
         data = Pref_H5Dataset(data)
         train_pt(
@@ -128,7 +117,6 @@ def main(argv):
             peak_value=peak_value,
             end_value=end_value,
             embd_dim=dim,
-            pretrained_params=pm,
         )
     except FileNotFoundError:
         raise FileNotFoundError(
