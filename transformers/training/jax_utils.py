@@ -103,7 +103,7 @@ def value_and_multi_grad(fun, n_outputs, argnums=0, has_aux=False):
     return multi_grad_fn
 
 
-def pref_loss_fn(state_fn, train_params, batch, training, rng):
+def pref_loss_fn(model, batch, training):
     sts_1 = batch["states"]
     sts_2 = batch["states_2"]
     acts_1 = batch["actions"]
@@ -116,23 +116,19 @@ def pref_loss_fn(state_fn, train_params, batch, training, rng):
 
     B, T, _ = batch["states"].shape
 
-    trans_pred_1, _ = state_fn(
-        train_params,
+    trans_pred_1, _ = model(
         sts_1,
         acts_1,
         timestep_1,
         training=training,
         attn_mask=am_1,
-        rngs={"dropout": rng},
     )
-    trans_pred_2, _ = state_fn(
-        train_params,
+    trans_pred_2, _ = model(
         sts_2,
         acts_2,
         timestep_2,
         training=training,
         attn_mask=am_2,
-        rngs={"dropout": rng},
     )
 
     trans_pred_1 = trans_pred_1["weighted_sum"]

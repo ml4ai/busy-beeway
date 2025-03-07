@@ -1,11 +1,13 @@
+import os
 import random
 import time
-import cloudpickle as pickle
-import os
-import jax.numpy as jnp
-import jax
-import numpy
 from pathlib import Path
+
+import jax
+import jax.numpy as jnp
+import numpy
+from flax import nnx
+
 
 def set_random_seed(seed):
     np.random.seed(seed)
@@ -32,14 +34,27 @@ def prefix_metrics(metrics, prefix):
     return {"{}/{}".format(prefix, key): value for key, value in metrics.items()}
 
 
-def save_pickle(obj, filename, output_dir):
-    with open(os.path.join(output_dir, filename), "wb") as fout:
-        pickle.dump(obj, fout)
+def save_model(model, model_args, file_tag, save_dir, chkptr):
+    _, state = nnx.split(model)
+    chkptr.save(
+        save_dir + "/" + file_tag + ".ckpt",
+        state,
+        force=True,
+        custom_metadata=model_args,
+    )
 
 
-def load_pickle(filename):
-    with open(os.path.expanduser(filename), "rb") as fin:
-        return pickle.load(fin)
+def load_args(model_dir, chkptr):
+    return chkptr.metadata(model_dir)
+
+
+# This is called by a load method defined in the model script for a specific model (e.g., load_PT found in pref_transformer.py)
+# model_dir is a .ckpt directory. 
+def load_model(abstract_model, model_dir, chkptr):
+    graphdef, abstract_state = nnx.split(abstract_model)
+    state_restored = chkptr.restore(model_dir, abstract_state)
+    return nnx.merge(graphdef, state_restored)
+
 
 def ensure_dir(dirname):
     """Check whether a given directory was created; if not, create a new one.
@@ -50,6 +65,7 @@ def ensure_dir(dirname):
     dirname = Path(dirname)
     if not dirname.is_dir():
         dirname.mkdir(parents=True, exist_ok=False)
+
 
 class Timer(object):
 

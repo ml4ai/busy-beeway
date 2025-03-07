@@ -1,7 +1,9 @@
 import jax.numpy as jnp
+import jax
 import transformers.models.ops as ops
 from flax import nnx
 from jax import lax
+from transformers.training.utils import load_args, load_model
 
 
 class GPT2MLP(nnx.Module):
@@ -24,7 +26,7 @@ class GPT2MLP(nnx.Module):
         return x
 
 
-class GPT2SelfAttention(nn.Module):
+class GPT2SelfAttention(nnx.Module):
     def __init__(
         embd_dim: int = 64,
         num_heads: int = 4,
@@ -77,7 +79,7 @@ class GPT2SelfAttention(nn.Module):
         return out, _attn_weights
 
 
-class GPT2Block(nn.Module):
+class GPT2Block(nnx.Module):
     def __init__(
         embd_dim: int = 64,
         num_heads: int = 4,
@@ -145,6 +147,7 @@ class GPT2Model(nnx.Module):
                 )
             )
         self.layer_norm = nnx.LayerNorm(embd_dim, epsilon=eps, rngs=rngs)
+
     def __call__(self, input_embds, attn_mask, training=False):
         x = self.dropout(input_embds, deterministic=not training)
 
@@ -179,7 +182,7 @@ class PT(nnx.Module):
     ):
         self.embd_dim = embd_dim
         self.pref_attn_embd_dim = pref_attn_embd_dim
-        
+
         self.state_linear = nnx.Linear(state_dim, embd_dim, rngs=rngs)
         self.action_linear = nnx.Linear(action_dim, embd_dim, rngs=rngs)
         self.timestep_embed = nnx.Embed(max_episode_steps + 1, embd_dim, rngs=rngs)
@@ -198,6 +201,7 @@ class PT(nnx.Module):
         )
         self.pref_linear = nnx.Linear(embd_dim, 2 * pref_attn_embd_dim + 1, rngs=rngs)
         self.attn_dropout = nnx.Dropout(0.0, rngs=rngs)
+
     def __call__(self, states, actions, timesteps, attn_mask, training=False):
         batch_size, seq_length = states.shape[0], states.shape[1]
 
@@ -223,7 +227,9 @@ class PT(nnx.Module):
             .reshape(batch_size, 2 * seq_length)
         )
 
-        transformer_outputs = self.gpt(input_embds=stacked_inputs, attn_mask=stacked_attn_mask, training=training)
+        transformer_outputs = self.gpt(
+            input_embds=stacked_inputs, attn_mask=stacked_attn_mask, training=training
+        )
 
         x = transformer_outputs["last_hidden_state"]
         attn_weights_list = transformer_outputs["attn_weights_list"]
@@ -264,3 +270,28 @@ class PT(nnx.Module):
         output = ops.merge_heads(out, num_heads, 1)
 
         return {"weighted_sum": output, "value": value}, attn_weights_list
+
+
+def load_PT(model_dir, chkptr):
+    rng_key = jax.random.key(seed)
+    rng_key, _ = jax.random.split(rng_key, 2)
+    rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
+    rngs = nnx.Rngs(rng_subkey1, params=rng_subkey2, dropout=rng_subkey3)
+    model_args = load_args(model_dir, chkptr)
+    abstract_model = PT(
+        state_dim=model_args["state_dim"],
+        action_dim=model_args["action_dim"],
+        max_episode_steps=model_args["max_episode_steps"],
+        embd_dim=model_args["embd_dim"],
+        pref_attn_embd_dim=model_args["pref_attn_embd_dim"],
+        num_heads=model_args["num_heads"],
+        attn_dropout=model_args["attn_dropout"],
+        resid_dropout=model_args["resid_dropout"],
+        intermediate_dim=model_args["intermediate_dim"],
+        num_layers=model_args["num_layers"],
+        embd_dropout=model_args["embd_dropout"],
+        max_pos=model_args["max_pos"],
+        eps=model_args["eps"],
+        rngs=rngs,
+    )
+    return load_model(abstract_model, model_dir, chkptr)
