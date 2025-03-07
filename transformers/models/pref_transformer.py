@@ -109,7 +109,7 @@ class GPT2Block(nnx.Module):
             rngs=rngs,
         )
 
-    def __call__(self, x, attn_mask=None, training=False):
+    def __call__(self, x, attn_mask, training=False):
         residual = x
         x = self.layer_norm_0(x)
         x, _attn_weights = self.attention(x, attn_mask, training)
@@ -155,7 +155,7 @@ class GPT2Model(nnx.Module):
         x = self.dropout(input_embds, deterministic=not training)
 
         attn_weights_list = []
-
+        attn_mask = ops.get_attention_mask(attn_mask, batch_size)
         for m in self.layers:
             x, attn_weights = m(x, attn_mask, training)
             attn_weights_list.append(attn_weights)
