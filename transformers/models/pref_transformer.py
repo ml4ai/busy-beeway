@@ -72,7 +72,7 @@ class GPT2SelfAttention(nnx.Module):
             training,
             attn_mask,
         )
-        out = ops.merge_heads(out, self.num_heads, head_dim)
+        out = ops.merge_heads(out, self.num_heads, self.head_dim)
 
         out = self.out_linear(out)
 
