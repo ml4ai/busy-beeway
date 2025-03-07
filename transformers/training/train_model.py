@@ -215,7 +215,7 @@ def train_pt(
         logger.record_dict(metrics)
         logger.dump_tabular(with_prefix=False, with_timestamp=False)
     if save:
-        save_model(save_data, model_args, "model", save_dir, checkpointer)
+        save_model(trans, model_args, "model", save_dir, checkpointer)
 
 
 # def train_mt(
