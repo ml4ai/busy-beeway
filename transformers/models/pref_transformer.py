@@ -156,7 +156,7 @@ class GPT2Model(nnx.Module):
 
         attn_weights_list = []
 
-        for m in layers:
+        for m in self.layers:
             x, attn_weights = m(x, attn_mask, training)
             attn_weights_list.append(attn_weights)
         x = self.layer_norm(x)
