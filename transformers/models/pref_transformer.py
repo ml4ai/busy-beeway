@@ -111,7 +111,7 @@ class GPT2Block(nnx.Module):
 
     def __call__(self, x, attn_mask=None, training=False):
         residual = x
-        x = self.layer_norm(x)
+        x = self.layer_norm_0(x)
         x, _attn_weights = self.attention(x, attn_mask, training)
         x += residual
         residual = x
