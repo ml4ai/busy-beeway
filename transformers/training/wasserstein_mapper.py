@@ -71,7 +71,6 @@ class WassersteinDistance:
         if lipschitz_constraint_type == "gp":
             self.train_step = nnx.cached_partial(
                 _train_w_step_gp,
-                self.lipschitz_f,
                 nnx.Optimizer(self.lipschitz_f, optax.adagrad(wasserstein_lr)),
                 output_dim,
                 10,
@@ -81,7 +80,6 @@ class WassersteinDistance:
         elif lipschitz_constraint_type == "lp":
             self.train_step = nnx.cached_partial(
                 _train_w_step_lp,
-                self.lipschitz_f,
                 nnx.Optimizer(self.lipschitz_f, optax.adagrad(wasserstein_lr)),
                 output_dim,
                 10,
@@ -90,7 +88,6 @@ class WassersteinDistance:
         else:
             self.train_step = nnx.cached_partial(
                 _train_w_step_nc,
-                self.lipschitz_f,
                 nnx.Optimizer(self.lipschitz_f, optax.adagrad(wasserstein_lr)),
             )
 
@@ -136,28 +133,28 @@ class WassersteinDistance:
                 break
 
 
-@partial(nnx.jit, static_argnums=2)
-def _train_w_step_gp(model, optimizer, output_dim, penalty_coeff, rngs, batch):
+@partial(nnx.jit, static_argnums=1)
+def _train_w_step_gp(state, output_dim, penalty_coeff, rngs, batch):
     loss, grads = nnx.value_and_grad(wasserstein_inner_loss_fn_gp)(
-        model, batch, output_dim, penalty_coeff, rngs
+        state.model, batch, output_dim, penalty_coeff, rngs
     )
-    optimizer.update(grads)
+    state.update(grads)
     return loss, grads
 
 
-@partial(nnx.jit, static_argnums=2)
-def _train_w_step_lp(model, optimizer, output_dim, penalty_coeff, rngs, batch):
+@partial(nnx.jit, static_argnums=1)
+def _train_w_step_lp(state, output_dim, penalty_coeff, rngs, batch):
     loss, grads = nnx.value_and_grad(wasserstein_inner_loss_fn_lp)(
-        model, batch, output_dim, penalty_coeff, rngs
+        state.model, batch, output_dim, penalty_coeff, rngs
     )
-    optimizer.update(grads)
+    state.update(grads)
     return loss, grads
 
 
 @nnx.jit
-def _train_w_step_nc(model, optimizer, batch):
-    loss, grads = nnx.value_and_grad(wasserstein_inner_loss_fn_nc)(model, batch)
-    optimizer.update(grads)
+def _train_w_step_nc(state, batch):
+    loss, grads = nnx.value_and_grad(wasserstein_inner_loss_fn_nc)(state.model, batch)
+    state.update(grads)
     return loss, grads
 
 
@@ -228,7 +225,6 @@ class MapperWasserstein(object):
         if self.output_dim > 1:
             train_step = nnx.cached_partial(
                 _train_p_step_many,
-                self.bnn,
                 self.wasserstein.lipschitz_f,
                 nnx.Optimizer(self.bnn, optax.rmsprop(lr)),
                 rngs,
@@ -237,7 +233,6 @@ class MapperWasserstein(object):
         else:
             train_step = nnx.cached_partial(
                 _train_p_step_one,
-                self.bnn,
                 self.wasserstein.lipschitz_f,
                 nnx.Optimizer(self.bnn, optax.rmsprop(lr)),
                 rngs,
@@ -293,19 +288,19 @@ def calculate_w_loss_for_grad_many(bnn, lipschitz_f, rngs, n_samples, batch):
     ).sum()
 
 
-@partial(nnx.jit, static_argnums=4)
-def _train_p_step_one(bnn, lipschitz_f, optimizer, rngs, n_samples, batch):
+@partial(nnx.jit, static_argnums=3)
+def _train_p_step_one(lipschitz_f, state, rngs, n_samples, batch):
     loss, grads = nnx.value_and_grad(calculate_w_loss_for_grad_one)(
-        bnn, lipschitz_f, rngs, n_samples, batch
+        state.model, lipschitz_f, rngs, n_samples, batch
     )
-    optimizer.update(grads)
+    state.update(grads)
     return loss, grads
 
 
-@partial(nnx.jit, static_argnums=4)
-def _train_p_step_many(bnn, lipschitz_f, optimizer, rngs, n_samples, batch):
+@partial(nnx.jit, static_argnums=3)
+def _train_p_step_many(lipschitz_f, state, rngs, n_samples, batch):
     loss, grads = nnx.value_and_grad(calculate_w_loss_for_grad_many)(
-        bnn, lipschitz_f, rngs, n_samples, batch
+        state.model, lipschitz_f, rngs, n_samples, batch
     )
-    optimizer.update(grads)
+    state.update(grads)
     return loss, grads
