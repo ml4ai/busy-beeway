@@ -39,11 +39,8 @@ class PrefTransformerTrainer(object):
         return _eval_pref_step(self._train_state, batch)
 
     def train(self, batch):
-        self._train_state, metrics = _train_pref_step(
-            self._train_state, batch
-        )
-        return metrics
-
+        return _train_pref_step(
+            self._train_state, batch)
 
 @nnx.jit
 def _eval_pref_step(state, batch):
