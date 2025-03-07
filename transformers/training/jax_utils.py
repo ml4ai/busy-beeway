@@ -1,8 +1,9 @@
-import numpy as np
+from functools import partial
+
 import jax
 import jax.numpy as jnp
+import numpy as np
 import optax
-from functools import partial
 from flax import nnx
 
 
@@ -120,15 +121,15 @@ def pref_loss_fn(model, batch, training):
         sts_1,
         acts_1,
         timestep_1,
+        am_1,
         training=training,
-        attn_mask=am_1,
     )
     trans_pred_2, _ = model(
         sts_2,
         acts_2,
         timestep_2,
+        am_2,
         training=training,
-        attn_mask=am_2,
     )
 
     trans_pred_1 = trans_pred_1["weighted_sum"]

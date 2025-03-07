@@ -33,14 +33,16 @@ class PrefTransformerTrainer(object):
         )
         tx = optimizer_class(scheduler_class)
 
-        self._train_state = nnx.Optimizer(trans, tx)
+        self.evaluation = nnx.cached_partial(
+            _eval_pref_step,
+            nnx.Optimizer(trans, tx),
+        )
 
-    def evaluation(self, batch):
-        return _eval_pref_step(self._train_state, batch)
+        self.train = nnx.cached_partial(
+            _train_pref_step,
+            nnx.Optimizer(trans, tx),
+        )
 
-    def train(self, batch):
-        return _train_pref_step(
-            self._train_state, batch)
 
 @nnx.jit
 def _eval_pref_step(state, batch):
@@ -54,6 +56,92 @@ def _train_pref_step(state, batch):
     (loss, acc), grads = grad_fn(state.model, batch, True)
     state.update(grads)
     return dict(training_loss=loss, training_acc=acc)
+
+
+class DecTransformerTrainer(object):
+    # output_type (str) helps the trainer know which to loss function to use, == "Q" (state-action values),
+    # == "S_D" (discrete states), == "S_F" (feature-based states),
+    # == "A_D" (discete actions), == "A_F" (feature-based actions).
+    # S_F/A_F uses l2 loss regardless of whether features are continuous or discrete
+    def __init__(
+        self,
+        dec,
+        output_type="A_F",
+        **kwargs,
+    ):
+        self.dec = dec
+        optimizer_class = optax.adamw
+        # May need to reconfigure for our data
+        scheduler_class = optax.warmup_cosine_decay_schedule(
+            init_value=kwargs.get("init_value", 0),
+            peak_value=kwargs.get("peak_value", 1e-4),
+            warmup_steps=kwargs.get("warmup_steps", 65),
+            decay_steps=kwargs.get("decay_steps", 650),
+            end_value=kwargs.get("end_value", 0),
+        )
+        tx = optimizer_class(scheduler_class)
+        # Reconfigure for our data
+
+        match output_type:
+            case "Q":
+                self.train = nnx.cached_partial(
+                    _train_Qdec_step, nnx.Optimizer(dec, tx)
+                )
+            case "S_D":
+                self.train = nnx.cached_partial(
+                    _train_S_Ddec_step, nnx.Optimizer(dec, tx)
+                )
+            case "S_F":
+                self.train = nnx.cached_partial(
+                    _train_S_Fdec_step, nnx.Optimizer(dec, tx)
+                )
+            case "A_D":
+                self.train = nnx.cached_partial(
+                    _train_A_Ddec_step, nnx.Optimizer(dec, tx)
+                )
+            case _:
+                self.train = nnx.cached_partial(
+                    _train_A_Fdec_step, nnx.Optimizer(dec, tx)
+                )
+
+
+@nnx.jit
+def _train_Qdec_step(state, batch):
+    grad_fn = nnx.value_and_grad(q_loss_fn)
+    loss, grads = grad_fn(state.model, batch, True)
+    state.update(grads)
+    return dict(training_loss=loss)
+
+@nnx.jit
+def _train_S_Ddec_step(state, batch):
+    grad_fn = nnx.value_and_grad(sd_loss_fn, has_aux=True)
+    (loss, acc), grads = grad_fn(state.model, batch, True)
+    state.update(grads)
+    return dict(training_loss=loss, training_acc=acc)
+
+
+@nnx.jit
+def _train_S_Fdec_step(state, batch):
+    grad_fn = nnx.value_and_grad(sf_loss_fn)
+    loss, grads = grad_fn(state.model, batch, True)
+    state.update(grads)
+    return dict(training_loss=loss)
+
+
+@nnx.jit
+def _train_A_Ddec_step(state, batch):
+    grad_fn = nnx.value_and_grad(ad_loss_fn, has_aux=True)
+    (loss, acc), grads = grad_fn(state.model, batch, True)
+    state.update(grads)
+    return dict(training_loss=loss, training_acc=acc)
+
+
+@nnx.jit
+def _train_A_Fdec_step(state, batch):
+    grad_fn = nnx.value_and_grad(af_loss_fn)
+    loss, grads = grad_fn(state.model, batch, True)
+    state.update(grads)
+    return dict(training_loss=loss)
 
 
 # class MentorTransformerTrainer(object):
@@ -349,78 +437,6 @@ def _train_pref_step(state, batch):
 #     metrics = dict(training_loss=loss, training_acc=acc)
 #     return new_train_state, metrics
 
-
-# class DecTransformerTrainer(object):
-#     # output_type (str) helps the trainer know which to loss function to use, == "Q" (state-action values),
-#     # == "S_D" (discrete states), == "S_F" (feature-based states),
-#     # == "A_D" (discete actions), == "A_F" (feature-based actions).
-#     # S_F/A_F uses l2 loss regardless of whether features are continuous or discrete
-#     def __init__(
-#         self,
-#         dec,
-#         rng_key1,
-#         rng_key2,
-#         output_type="A_F",
-#         pretrained_params=None,
-#         **kwargs,
-#     ):
-#         self.dec = dec
-#         self.output_type = output_type
-#         optimizer_class = optax.adamw
-#         # May need to reconfigure for our data
-#         scheduler_class = optax.warmup_cosine_decay_schedule(
-#             init_value=kwargs.get("init_value", 0),
-#             peak_value=kwargs.get("peak_value", 1e-4),
-#             warmup_steps=kwargs.get("warmup_steps", 65),
-#             decay_steps=kwargs.get("decay_steps", 650),
-#             end_value=kwargs.get("end_value", 0),
-#         )
-#         tx = optimizer_class(scheduler_class)
-#         # Reconfigure for our data
-#         if pretrained_params is None:
-#             dec_params = self.dec.init(
-#                 {"params": rng_key1, "dropout": rng_key2},
-#                 jnp.zeros((10, 25, 1)),
-#                 jnp.zeros((10, 25, dec.state_dim)),
-#                 jnp.zeros((10, 25, dec.action_dim)),
-#                 jnp.ones((10, 25), dtype=jnp.int32),
-#             )
-#             self._train_state = TrainState.create(
-#                 params=dec_params, tx=tx, apply_fn=self.dec.apply
-#             )
-#         else:
-#             self._train_state = TrainState.create(
-#                 params=pretrained_params, tx=tx, apply_fn=self.dec.apply
-#             )
-
-#     def train(self, batch, rng_key):
-#         match self.output_type:
-#             case "Q":
-#                 self._train_state, metrics = _train_Qdec_step(
-#                     self._train_state, batch, rng_key
-#                 )
-#             case "S_D":
-#                 self._train_state, metrics = _train_S_Ddec_step(
-#                     self._train_state, batch, rng_key
-#                 )
-#             case "S_F":
-#                 self._train_state, metrics = _train_S_Fdec_step(
-#                     self._train_state, batch, rng_key
-#                 )
-#             case "A_D":
-#                 self._train_state, metrics = _train_A_Ddec_step(
-#                     self._train_state, batch, rng_key
-#                 )
-#             case _:
-#                 self._train_state, metrics = _train_A_Fdec_step(
-#                     self._train_state, batch, rng_key
-#                 )
-#         return metrics
-
-#     def get_params(self):
-#         return self._train_state.params
-
-
 # class ValTransformerTrainer(object):
 #     def __init__(
 #         self,
@@ -465,93 +481,3 @@ def _train_pref_step(state, batch):
 
 #     def get_params(self):
 #         return self._train_state.params
-
-
-# @jax.jit
-# def _eval_Qdec_step(state, batch, rng_key):
-#     loss = q_loss_fn(state.apply_fn, state.params, batch, False, rng_key)
-#     return dict(eval_loss=loss)
-
-
-# @jax.jit
-# def _eval_val_step(state, batch, rng_key):
-#     loss = v_loss_fn(state.apply_fn, state.params, batch, False, rng_key)
-#     return dict(eval_loss=loss)
-
-
-# @jax.jit
-# def _eval_S_Ddec_step(state, batch, rng_key):
-#     loss, acc = sd_loss_fn(state.apply_fn, state.params, batch, False, rng_key)
-#     return dict(eval_loss=loss, eval_acc=acc)
-
-
-# @jax.jit
-# def _eval_S_Fdec_step(state, batch, rng_key):
-#     loss = sf_loss_fn(state.apply_fn, state.params, batch, False, rng_key)
-#     return dict(eval_loss=loss)
-
-
-# @jax.jit
-# def _eval_A_Ddec_step(state, batch, rng_key):
-#     loss, acc = ad_loss_fn(state.apply_fn, state.params, batch, False, rng_key)
-#     return dict(eval_loss=loss, eval_acc=acc)
-
-
-# @jax.jit
-# def _eval_A_Fdec_step(state, batch, rng_key):
-#     loss = sf_loss_fn(state.apply_fn, state.params, batch, False, rng_key)
-#     return dict(eval_loss=loss)
-
-
-# @jax.jit
-# def _train_Qdec_step(state, batch, rng_key):
-#     grad_fn = jax.value_and_grad(q_loss_fn, argnums=1)
-#     loss, grads = grad_fn(state.apply_fn, state.params, batch, True, rng_key)
-#     new_train_state = state.apply_gradients(grads=grads)
-#     metrics = dict(training_loss=loss)
-#     return new_train_state, metrics
-
-
-# @jax.jit
-# def _train_val_step(state, batch, rng_key):
-#     grad_fn = jax.value_and_grad(v_loss_fn, argnums=1)
-#     loss, grads = grad_fn(state.apply_fn, state.params, batch, True, rng_key)
-#     new_train_state = state.apply_gradients(grads=grads)
-#     metrics = dict(training_loss=loss)
-#     return new_train_state, metrics
-
-
-# @jax.jit
-# def _train_S_Ddec_step(state, batch, rng_key):
-#     grad_fn = jax.value_and_grad(sd_loss_fn, argnums=1, has_aux=True)
-#     (loss, acc), grads = grad_fn(state.apply_fn, state.params, batch, True, rng_key)
-#     new_train_state = state.apply_gradients(grads=grads)
-#     metrics = dict(training_loss=loss, training_acc=acc)
-#     return new_train_state, metrics
-
-
-# @jax.jit
-# def _train_S_Fdec_step(state, batch, rng_key):
-#     grad_fn = jax.value_and_grad(sf_loss_fn, argnums=1)
-#     loss, grads = grad_fn(state.apply_fn, state.params, batch, True, rng_key)
-#     new_train_state = state.apply_gradients(grads=grads)
-#     metrics = dict(training_loss=loss)
-#     return new_train_state, metrics
-
-
-# @jax.jit
-# def _train_A_Ddec_step(state, batch, rng_key):
-#     grad_fn = jax.value_and_grad(ad_loss_fn, argnums=1, has_aux=True)
-#     (loss, acc), grads = grad_fn(state.apply_fn, state.params, batch, True, rng_key)
-#     new_train_state = state.apply_gradients(grads=grads)
-#     metrics = dict(training_loss=loss, training_acc=acc)
-#     return new_train_state, metrics
-
-
-# @jax.jit
-# def _train_A_Fdec_step(state, batch, rng_key):
-#     grad_fn = jax.value_and_grad(af_loss_fn, argnums=1)
-#     loss, grads = grad_fn(state.apply_fn, state.params, batch, True, rng_key)
-#     new_train_state = state.apply_gradients(grads=grads)
-#     metrics = dict(training_loss=loss)
-#     return new_train_state, metrics

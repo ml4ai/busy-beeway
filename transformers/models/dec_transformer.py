@@ -1,40 +1,59 @@
-from flax import linen as nn
+import jax
 import jax.numpy as jnp
-from jax import lax
 import transformers.models.ops as ops
+from flax import nnx
+from jax import lax
+from transformers.training.utils import load_args, load_model
 
 
-class GPT2MLP(nn.Module):
-    embd_dim: int = 64
-    intermediate_dim: int = 256
-    resid_dropout: float = 0.1
+class GPT2MLP(nnx.Module):
+    def __init__(
+        self,
+        embd_dim: int = 64,
+        intermediate_dim: int = 256,
+        resid_dropout: float = 0.1,
+        rngs: nnx.Rngs = nnx.Rngs(0, params=1, dropout=2),
+    ):
+        self.in_linear = nnx.Linear(embd_dim, intermediate_dim, rngs=rngs)
+        self.out_linear = nnx.Linear(intermediate_dim, embd_dim, rngs=rngs)
+        self.resid_dropout = nnx.Dropout(resid_dropout, rngs=rngs)
 
-    @nn.compact
     def __call__(self, x, training=False):
-        x = nn.Dense(features=self.intermediate_dim)(x)
-        x = ops.apply_activation(x, activation="relu")
-        x = nn.Dense(features=self.embd_dim)(x)
-        x = nn.Dropout(rate=self.resid_dropout)(x, deterministic=not training)
+        x = self.in_linear(x)
+        x = nnx.relu(x)
+        x = self.out_linear(x)
+        x = self.resid_dropout(x, deterministic=not training)
         return x
 
 
-class GPT2SelfAttention(nn.Module):
-    embd_dim: int = 64
-    num_heads: int = 4
-    attn_dropout: float = 0.1
-    resid_dropout: float = 0.1
-    max_pos: int = 1024
+class GPT2SelfAttention(nnx.Module):
+    def __init__(
+        self,
+        embd_dim: int = 64,
+        num_heads: int = 4,
+        attn_dropout: float = 0.1,
+        resid_dropout: float = 0.1,
+        max_pos: int = 1024,
+        rngs: nnx.Rngs = nnx.Rngs(0, params=1, dropout=2),
+    ):
+        self.num_heads = num_heads
+        self.head_dim = embd_dim // num_heads
+        self.max_pos = max_pos
 
-    @nn.compact
-    def __call__(self, x, attn_mask=None, training=False):
-        head_dim = self.embd_dim // self.num_heads
-        x = nn.Dense(features=3 * self.embd_dim)(x)
+        self.in_linear = nnx.Linear(embd_dim, 3 * embd_dim, rngs=rngs)
+        self.attn_dropout = nnx.Dropout(attn_dropout, rngs=rngs)
+
+        self.out_linear = nnx.Linear(embd_dim, embd_dim, rngs=rngs)
+        self.resid_dropout = nnx.Dropout(resid_dropout, rngs=rngs)
+
+    def __call__(self, x, attn_mask, training=False):
+        x = self.in_linear(x)
 
         query, key, value = jnp.split(x, 3, axis=2)
 
-        query = ops.split_heads(query, self.num_heads, head_dim)
-        value = ops.split_heads(value, self.num_heads, head_dim)
-        key = ops.split_heads(key, self.num_heads, head_dim)
+        query = ops.split_heads(query, self.num_heads, self.head_dim)
+        value = ops.split_heads(value, self.num_heads, self.head_dim)
+        key = ops.split_heads(key, self.num_heads, self.head_dim)
 
         query_len, key_len = query.shape[-2], key.shape[-2]
         casual_mask = jnp.tril(jnp.ones((1, 1, self.max_pos, self.max_pos)))[
@@ -42,133 +61,163 @@ class GPT2SelfAttention(nn.Module):
         ]
         casual_mask = casual_mask.astype(bool)
 
-        attn_dropout = nn.Dropout(rate=self.attn_dropout)
         out, _attn_weights = ops.attention(
             query,
             key,
             value,
             casual_mask,
             -1e4,
-            attn_dropout,
+            self.attn_dropout,
             True,
             training,
             attn_mask,
         )
-        out = ops.merge_heads(out, self.num_heads, head_dim)
+        out = ops.merge_heads(out, self.num_heads, self.head_dim)
 
-        out = nn.Dense(features=self.embd_dim)(out)
+        out = self.out_linear(out)
 
-        out = nn.Dropout(rate=self.resid_dropout)(out, deterministic=not training)
+        out = self.resid_dropout(out, deterministic=not training)
         return out, _attn_weights
 
 
-class GPT2Block(nn.Module):
-    embd_dim: int = 64
-    num_heads: int = 4
-    attn_dropout: float = 0.1
-    resid_dropout: float = 0.1
-    intermediate_dim: int = 256
-    max_pos: int = 1024
-    eps: float = 1e-05
+class GPT2Block(nnx.Module):
+    def __init__(
+        self,
+        embd_dim: int = 64,
+        num_heads: int = 4,
+        attn_dropout: float = 0.1,
+        resid_dropout: float = 0.1,
+        intermediate_dim: int = 256,
+        max_pos: int = 1024,
+        eps: float = 1e-05,
+        rngs: nnx.Rngs = nnx.Rngs(0, params=1, dropout=2),
+    ):
+        self.layer_norm_0 = nnx.LayerNorm(embd_dim, epsilon=eps, rngs=rngs)
+        self.attention = GPT2SelfAttention(
+            embd_dim=embd_dim,
+            num_heads=num_heads,
+            attn_dropout=attn_dropout,
+            resid_dropout=resid_dropout,
+            max_pos=max_pos,
+            rngs=rngs,
+        )
+        self.layer_norm_1 = nnx.LayerNorm(embd_dim, epsilon=eps, rngs=rngs)
+        self.mlp = GPT2MLP(
+            embd_dim=embd_dim,
+            intermediate_dim=intermediate_dim,
+            resid_dropout=resid_dropout,
+            rngs=rngs,
+        )
 
-    @nn.compact
-    def __call__(self, x, attn_mask=None, training=False):
+    def __call__(self, x, attn_mask, training=False):
         residual = x
-        x = nn.LayerNorm(epsilon=self.eps)(x)
-        x, _attn_weights = GPT2SelfAttention(
-            embd_dim=self.embd_dim,
-            num_heads=self.num_heads,
-            attn_dropout=self.attn_dropout,
-            resid_dropout=self.resid_dropout,
-            max_pos=self.max_pos,
-        )(x, attn_mask, training)
+        x = self.layer_norm_0(x)
+        x, _attn_weights = self.attention(x, attn_mask, training)
         x += residual
         residual = x
-        x = nn.LayerNorm(epsilon=self.eps)(x)
-        x = GPT2MLP(
-            embd_dim=self.embd_dim,
-            intermediate_dim=self.intermediate_dim,
-            resid_dropout=self.resid_dropout,
-        )(x, training)
+        x = self.layer_norm_1(x)
+        x = self.mlp(x, training)
         x += residual
         return x, _attn_weights
 
 
-class GPT2Model(nn.Module):
-    embd_dim: int = 64
-    num_heads: int = 4
-    attn_dropout: float = 0.1
-    resid_dropout: float = 0.1
-    intermediate_dim: int = 256
-    num_layers: int = 1
-    embd_dropout: float = 0.1
-    max_pos: int = 1024
-    eps: float = 1e-05
+class GPT2Model(nnx.Module):
+    def __init__(
+        self,
+        embd_dim: int = 64,
+        num_heads: int = 4,
+        attn_dropout: float = 0.1,
+        resid_dropout: float = 0.1,
+        intermediate_dim: int = 256,
+        num_layers: int = 1,
+        embd_dropout: float = 0.1,
+        max_pos: int = 1024,
+        eps: float = 1e-05,
+        rngs: nnx.Rngs = nnx.Rngs(0, params=1, dropout=2),
+    ):
+        self.dropout = nnx.Dropout(embd_dropout, rngs=rngs)
+        self.layers = []
+        for i in range(num_layers):
+            self.layers.append(
+                GPT2Block(
+                    embd_dim=embd_dim,
+                    num_heads=num_heads,
+                    attn_dropout=attn_dropout,
+                    intermediate_dim=intermediate_dim,
+                    max_pos=max_pos,
+                    eps=eps,
+                    rngs=rngs,
+                )
+            )
+        self.layer_norm = nnx.LayerNorm(embd_dim, epsilon=eps, rngs=rngs)
 
-    @nn.compact
-    def __call__(self, input_embds, attn_mask=None, training=False):
-        input_shape = input_embds.shape[:-1]
+    def __call__(self, input_embds, attn_mask, training=False):
+        x = self.dropout(input_embds, deterministic=not training)
         batch_size = input_embds.shape[0]
-
-        if attn_mask is not None:
-            attn_mask = ops.get_attention_mask(attn_mask, batch_size)
-
-        x = input_embds
-
-        x = nn.Dropout(rate=self.embd_dropout)(x, deterministic=not training)
-        output_shape = input_shape + (x.shape[-1],)
-
         attn_weights_list = []
-
-        for i in range(self.num_layers):
-            x, attn_weights = GPT2Block(
-                embd_dim=self.embd_dim,
-                num_heads=self.num_heads,
-                attn_dropout=self.attn_dropout,
-                intermediate_dim=self.intermediate_dim,
-                max_pos=self.max_pos,
-                eps=self.eps,
-            )(x, attn_mask, training)
-
+        attn_mask = ops.get_attention_mask(attn_mask, batch_size)
+        for m in self.layers:
+            x, attn_weights = m(x, attn_mask, training)
             attn_weights_list.append(attn_weights)
-        x = nn.LayerNorm(epsilon=self.eps)(x)
+        x = self.layer_norm(x)
         return {
             "last_hidden_state": x,
             "attn_weights_list": attn_weights_list,
         }
 
+
 # state_dim/action_dim is either number of states/actions or the number of features
-class DT(nn.Module):
-    state_dim: int = 15
-    action_dim: int = 3
-    max_episode_steps: int = 1219
-    embd_dim: int = 64
-    pref_attn_embd_dim: int = 64
-    num_heads: int = 4
-    attn_dropout: float = 0.1
-    resid_dropout: float = 0.1
-    intermediate_dim: int = 256
-    num_layers: int = 1
-    embd_dropout: float = 0.1
-    max_pos: int = 1024
-    eps: float = 1e-05
-
-    @nn.compact
-    def __call__(
-        self, returns, states, actions, timesteps, training=False, attn_mask=None
+class DT(nnx.Module):
+    def __init__(
+        self,
+        state_dim: int = 16,
+        action_dim: int = 3,
+        max_episode_steps: int = 1219,
+        embd_dim: int = 64,
+        pref_attn_embd_dim: int = 64,
+        num_heads: int = 4,
+        attn_dropout: float = 0.1,
+        resid_dropout: float = 0.1,
+        intermediate_dim: int = 256,
+        num_layers: int = 1,
+        embd_dropout: float = 0.1,
+        max_pos: int = 1024,
+        eps: float = 1e-05,
+        rngs: nnx.Rngs = nnx.Rngs(0, params=1, dropout=2),
     ):
+        self.embd_dim = embd_dim
+        self.pref_attn_embd_dim = pref_attn_embd_dim
+
+        self.state_linear = nnx.Linear(state_dim, embd_dim, rngs=rngs)
+        self.action_linear = nnx.Linear(action_dim, embd_dim, rngs=rngs)
+        self.return_linear = nnx.Linear(1, embd_dim, rngs=rngs)
+        self.timestep_embed = nnx.Embed(max_episode_steps + 1, embd_dim, rngs=rngs)
+        self.stacked_layer_norm = nnx.LayerNorm(embd_dim, epsilon=eps, rngs=rngs)
+        self.gpt = GPT2Model(
+            embd_dim=embd_dim,
+            num_heads=num_heads,
+            attn_dropout=attn_dropout,
+            resid_dropout=resid_dropout,
+            intermediate_dim=intermediate_dim,
+            num_layers=num_layers,
+            embd_dropout=embd_dropout,
+            max_pos=max_pos,
+            eps=eps,
+            rngs=rngs,
+        )
+
+        self.qpred_linear = nnx.Linear(embd_dim, 1, rngs=rngs)
+        self.spred_linear = nnx.Linear(embd_dim, state_dim, rngs=rngs)
+        self.apred_linear = nnx.Linear(embd_dim, action_dim, rngs=rngs)
+
+    def __call__(self, returns, states, actions, timesteps, attn_mask, training=False):
         batch_size, seq_length = states.shape[0], states.shape[1]
-        if attn_mask is None:
-            attn_mask = jnp.ones((batch_size, seq_length), dtype=jnp.float32)
 
-        embd_states = nn.Dense(features=self.embd_dim)(states)
-        embd_actions = nn.Dense(features=self.embd_dim)(actions)
-        embd_returns = nn.Dense(features=self.embd_dim)(returns)
+        embd_states = self.state_linear(states)
+        embd_actions = self.action_linear(actions)
+        embd_returns = self.return_linear(returns)
 
-        embd_timesteps = nn.Embed(
-            num_embeddings=self.max_episode_steps + 1,
-            features=self.embd_dim,
-        )(timesteps)
+        embd_timesteps = self.timestep_embed(timesteps)
 
         embd_states = embd_states + embd_timesteps
         embd_actions = embd_actions + embd_timesteps
@@ -180,7 +229,7 @@ class DT(nn.Module):
             .reshape(batch_size, 3 * seq_length, self.embd_dim)
         )
 
-        stacked_inputs = nn.LayerNorm(epsilon=self.eps)(stacked_inputs)
+        stacked_inputs = self.stacked_layer_norm(stacked_inputs)
 
         stacked_attn_mask = (
             jnp.stack([attn_mask, attn_mask, attn_mask], axis=1)
@@ -188,23 +237,15 @@ class DT(nn.Module):
             .reshape(batch_size, 3 * seq_length)
         )
 
-        transformer_outputs = GPT2Model(
-            embd_dim=self.embd_dim,
-            num_heads=self.num_heads,
-            attn_dropout=self.attn_dropout,
-            resid_dropout=self.resid_dropout,
-            intermediate_dim=self.intermediate_dim,
-            num_layers=self.num_layers,
-            embd_dropout=self.embd_dropout,
-            max_pos=self.max_pos,
-            eps=self.eps,
-        )(input_embds=stacked_inputs, attn_mask=stacked_attn_mask, training=training)
+        transformer_outputs = self.gpt(
+            input_embds=stacked_inputs, attn_mask=stacked_attn_mask, training=training
+        )
 
         x = transformer_outputs["last_hidden_state"]
         x = x.reshape(batch_size, seq_length, 3, self.embd_dim).transpose(0, 2, 1, 3)
 
-        Q_preds = nn.Dense(features=1)(x[:, 2])
-        state_preds = nn.Dense(features=self.state_dim)(x[:, 2])
-        action_preds = nn.Dense(features=self.action_dim)(x[:, 1])
+        Q_preds = self.qpred_linear(x[:, 2])
+        state_preds = self.spred_linear(x[:, 2])
+        action_preds = self.apred_linear(x[:, 1])
 
         return Q_preds, state_preds, action_preds
