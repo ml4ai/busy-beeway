@@ -48,7 +48,7 @@ def train_pt(
     state_shape, action_shape = data.shapes()
     _, query_len, state_dim = state_shape
     action_dim = action_shape[2]
-
+    max_episode_length = data.max_episode_length()
     rng_key = jax.random.key(seed)
     rng_key, rng_subkey = jax.random.split(rng_key, 2)
     t_keys = jax.random.randint(rng_subkey, 2, 0, 10000)
