@@ -84,7 +84,7 @@ def train_pt(
     model_args = {
         "state_dim": state_dim,
         "action_dim": action_dim,
-        "max_episode_steps": kwargs.get("max_episode_steps", max_episode_length),
+        "max_episode_steps": kwargs.get("max_episode_steps", int(max_episode_length)),
         "embd_dim": embd_dim,
         "pref_attn_embd_dim": kwargs.get("pref_attn_embd_dim", embd_dim),
         "num_heads": kwargs.get("num_heads", 4),
