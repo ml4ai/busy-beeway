@@ -153,7 +153,7 @@ class GPT2Model(nnx.Module):
 
     def __call__(self, input_embds, attn_mask, training=False):
         x = self.dropout(input_embds, deterministic=not training)
-
+        batch_size = input_embds.shape[0]
         attn_weights_list = []
         attn_mask = ops.get_attention_mask(attn_mask, batch_size)
         for m in self.layers:
