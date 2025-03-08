@@ -174,7 +174,6 @@ class DT(nnx.Module):
         action_dim: int = 3,
         max_episode_steps: int = 1219,
         embd_dim: int = 64,
-        pref_attn_embd_dim: int = 64,
         num_heads: int = 4,
         attn_dropout: float = 0.1,
         resid_dropout: float = 0.1,
@@ -249,3 +248,26 @@ class DT(nnx.Module):
         action_preds = self.apred_linear(x[:, 1])
 
         return Q_preds, state_preds, action_preds
+
+def load_DT(model_dir, chkptr):
+    rng_key = jax.random.key(seed)
+    rng_key, _ = jax.random.split(rng_key, 2)
+    rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
+    rngs = nnx.Rngs(rng_subkey1, params=rng_subkey2, dropout=rng_subkey3)
+    model_args = load_args(model_dir, chkptr)
+    abstract_model = DT(
+        state_dim=model_args["state_dim"],
+        action_dim=model_args["action_dim"],
+        max_episode_steps=model_args["max_episode_steps"],
+        embd_dim=model_args["embd_dim"],
+        num_heads=model_args["num_heads"],
+        attn_dropout=model_args["attn_dropout"],
+        resid_dropout=model_args["resid_dropout"],
+        intermediate_dim=model_args["intermediate_dim"],
+        num_layers=model_args["num_layers"],
+        embd_dropout=model_args["embd_dropout"],
+        max_pos=model_args["max_pos"],
+        eps=model_args["eps"],
+        rngs=rngs,
+    )
+    return load_model(abstract_model, model_dir, chkptr)

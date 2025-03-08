@@ -86,20 +86,21 @@ def bb_run_episode(
     d_model,
     r_model,
     move_stats,
-    rng_key,
+    rngs,
     context_length=100,
     target_return=100.0,
     max_horizon=500,
     days=153,
 ):
-    key1, key2, key3, key4, key5, key6, key7, key8, key9, key10, key11 = (
-        jax.random.split(rng_key, 11)
-    )
-    n_obstacles = jax.random.choice(key1, jnp.asarray([50, 100, 150]))
-    ai = jax.random.choice(key2, 4)
-    p_attempt = jax.random.choice(key3, 4)
+    key = rngs()
+    n_obstacles = jax.random.choice(key, jnp.asarray([50, 100, 150]))
+    key = rngs()
+    ai = jax.random.choice(key, 4)
+    key = rngs()
+    p_attempt = jax.random.choice(key, 4)
     if days is not None:
-        day = jax.random.choice(key11, days)
+        key = rngs()
+        day = jax.random.choice(key, days)
     match ai:
         case 0:
             sig = 55
@@ -113,34 +114,36 @@ def bb_run_episode(
         case 3:
             sig = 100
             repel = 75
-
-    O_samps = jax.random.ball(key4, 2, shape=(n_obstacles,)) * 50
+    key = rngs()
+    O_samps = jax.random.ball(key, 2, shape=(n_obstacles,)) * 50
 
     O_posX = O_samps[:, 0]
     O_posY = O_samps[:, 1]
-    O_angle = jax.random.uniform(key5, shape=(n_obstacles,), maxval=360.0)
+    key = rngs()
+    O_angle = jax.random.uniform(key, shape=(n_obstacles,), maxval=360.0)
 
     while True:
-        p_samp = jax.random.ball(key6, 2) * 50
+        key = rngs()
+        p_samp = jax.random.ball(key, 2) * 50
         if jnp.all(((p_samp[0] - O_posX[0]) ** 2) + ((p_samp[1] - O_posY[0]) ** 2) > 1):
             break
-        _, key6 = jax.random.split(key6)
 
     p_posX = p_samp[0]
     p_posY = p_samp[1]
-    p_angle = jax.random.uniform(key7, maxval=360.0)
+    key = rngs()
+    p_angle = jax.random.uniform(key, maxval=360.0)
 
     while True:
-        g_h = jax.random.uniform(key8, maxval=360.0)
-        g_r = jax.random.normal(key9) + 30
+        key = rngs()
+        g_h = jax.random.uniform(key, maxval=360.0)
+        key = rngs()
+        g_r = jax.random.normal(key) + 30
         g = (
             float(p_posX + g_r * cos_plus(g_h)),
             float(p_posY + g_r * sin_plus(g_h)),
         )
         if ((g[0] ** 2) + (g[1] ** 2)) <= 2500:
             break
-        _, key8 = jax.random.split(key8)
-        _, key9 = jax.random.split(key9)
 
     def create_new_state():
         goal_distances = point_dist(g[0], g[1], p_posX, p_posY)
@@ -249,32 +252,27 @@ def bb_run_episode(
     t = jnp.zeros((1, 1), dtype=jnp.int32)
 
     episode_return, episode_length = 0, 0
-    keys = jax.random.split(key10, max_horizon + 1)
-    key = keys[0]
-    data_keys = keys[1:]
     for i in range(max_horizon):
         a = jnp.concat([a, jnp.zeros((1, 1, 3))], axis=1)
         a = a[-context_length:]
-        _, _, action = d_model._train_state.apply_fn(
-            d_model._train_state.params,
+        _, _, action = d_model(
             R,
             s,
             a,
             t,
+            jnp.ones((1, R.shape[1]), dtype=jnp.float32),
             training=False,
-            attn_mask=jnp.ones((1, R.shape[1]), dtype=jnp.float32),
         )
 
         action = action[-1][-1]
         a = a.at[-1, -1].set(action)
 
-        preds, _ = r_model._train_state.apply_fn(
-            r_model._train_state.params,
+        preds, _ = r_model(
             s,
             a,
             t,
+            jnp.ones((1, R.shape[1]), dtype=jnp.float32),
             training=False,
-            attn_mask=jnp.ones((1, R.shape[1]), dtype=jnp.float32),
         )
         reward = preds["value"][:, 0, -1]
 
@@ -291,9 +289,9 @@ def bb_run_episode(
             O_posX,
             O_posY,
         )
-
+        key = rngs()
         o_dists = (
-            move_stats[3] * jax.random.normal(data_keys[i], shape=(n_obstacles,))
+            move_stats[3] * jax.random.normal(key, shape=(n_obstacles,))
         ) + move_stats[2]
         old_O_posX = O_posX
         old_O_posY = O_posY
@@ -346,7 +344,7 @@ def bb_record_episode(
     d_model,
     r_model,
     move_stats,
-    rng_key,
+    rngs,
     context_length=100,
     target_return=100.0,
     max_horizon=500,
@@ -356,20 +354,21 @@ def bb_record_episode(
     p_attempt=None,
     day=None,
 ):
-    key1, key2, key3, key4, key5, key6, key7, key8, key9, key10, key11 = (
-        jax.random.split(rng_key, 11)
-    )
-
+    
     if n_obstacles is None:
-        n_obstacles = jax.random.choice(key1, jnp.asarray([50, 100, 150]))
+        key = rngs()
+        n_obstacles = jax.random.choice(key, jnp.asarray([50, 100, 150]))
 
     if ai is None:
-        ai = jax.random.choice(key2, 4)
+        key = rngs()
+        ai = jax.random.choice(key, 4)
     if p_attempt is None:
-        p_attempt = jax.random.choice(key3, 4)
+        key = rngs()
+        p_attempt = jax.random.choice(key, 4)
     if days is not None:
         if day is None:
-            day = jax.random.choice(key11, days)
+            key = rngs()
+            day = jax.random.choice(key, days)
     match ai:
         case 0:
             sig = 55
@@ -383,34 +382,36 @@ def bb_record_episode(
         case 3:
             sig = 100
             repel = 75
-
-    O_samps = jax.random.ball(key4, 2, shape=(n_obstacles,)) * 50
+    key = rngs()
+    O_samps = jax.random.ball(key, 2, shape=(n_obstacles,)) * 50
 
     O_posX = O_samps[:, 0]
     O_posY = O_samps[:, 1]
-    O_angle = jax.random.uniform(key5, shape=(n_obstacles,), maxval=360.0)
+    key = rngs()
+    O_angle = jax.random.uniform(key, shape=(n_obstacles,), maxval=360.0)
 
     while True:
-        p_samp = jax.random.ball(key6, 2) * 50
+        key = rngs()
+        p_samp = jax.random.ball(key, 2) * 50
         if jnp.all(((p_samp[0] - O_posX[0]) ** 2) + ((p_samp[1] - O_posY[0]) ** 2) > 1):
             break
-        _, key6 = jax.random.split(key6)
 
     p_posX = p_samp[0]
     p_posY = p_samp[1]
-    p_angle = jax.random.uniform(key7, maxval=360.0)
+    key = rngs()
+    p_angle = jax.random.uniform(key, maxval=360.0)
 
     while True:
-        g_h = jax.random.uniform(key8, maxval=360.0)
-        g_r = jax.random.normal(key9) + 30
+        key = rngs()
+        g_h = jax.random.uniform(key, maxval=360.0)
+        key = rngs()
+        g_r = jax.random.normal(key) + 30
         g = (
             float(p_posX + g_r * cos_plus(g_h)),
             float(p_posY + g_r * sin_plus(g_h)),
         )
         if ((g[0] ** 2) + (g[1] ** 2)) <= 2500:
             break
-        _, key8 = jax.random.split(key8)
-        _, key9 = jax.random.split(key9)
 
     def create_new_state():
         goal_distances = point_dist(g[0], g[1], p_posX, p_posY)
@@ -534,32 +535,27 @@ def bb_record_episode(
         )
     ]
     success = False
-    keys = jax.random.split(key10, max_horizon + 1)
-    key = keys[0]
-    data_keys = keys[1:]
     for i in range(max_horizon):
         a = jnp.concat([a, jnp.zeros((1, 1, 3))], axis=1)
         a = a[-context_length:]
-        _, _, action = d_model._train_state.apply_fn(
-            d_model._train_state.params,
+        _, _, action = d_model(
             R,
             s,
             a,
             t,
+            jnp.ones((1, R.shape[1]), dtype=jnp.float32),
             training=False,
-            attn_mask=jnp.ones((1, R.shape[1]), dtype=jnp.float32),
         )
 
         action = action[-1][-1]
         a = a.at[-1, -1].set(action)
 
-        preds, _ = r_model._train_state.apply_fn(
-            r_model._train_state.params,
+        preds, _ = r_model(
             s,
             a,
             t,
+            jnp.ones((1, R.shape[1]), dtype=jnp.float32),
             training=False,
-            attn_mask=jnp.ones((1, R.shape[1]), dtype=jnp.float32),
         )
         reward = preds["value"][:, 0, -1]
 
@@ -576,9 +572,9 @@ def bb_record_episode(
             O_posX,
             O_posY,
         )
-
+        key = rngs()
         o_dists = (
-            move_stats[3] * jax.random.normal(data_keys[i], shape=(n_obstacles,))
+            move_stats[3] * jax.random.normal(key, shape=(n_obstacles,))
         ) + move_stats[2]
         old_O_posX = O_posX
         old_O_posY = O_posY

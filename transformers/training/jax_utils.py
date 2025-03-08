@@ -143,35 +143,35 @@ def pref_loss_fn(model, batch, training):
     return cross_ent_loss(logits, labels), pref_accuracy(logits, labels)
 
 
-def mentor_loss_fn(state_fn, train_params, batch, training, rng):
-    sts_1 = batch["states"]
-    acts_1 = batch["actions"]
-    timestep_1 = batch["timesteps"]
-    am_1 = batch["attn_mask"]
-    labels = batch["labels"]
+# def mentor_loss_fn(model, batch, training):
+#     sts_1 = batch["states"]
+#     acts_1 = batch["actions"]
+#     timestep_1 = batch["timesteps"]
+#     am_1 = batch["attn_mask"]
+#     labels = batch["labels"]
 
-    B, T, _ = batch["states"].shape
+#     B, T, _ = batch["states"].shape
 
-    trans_pred_1, _ = state_fn(
-        train_params,
-        sts_1,
-        acts_1,
-        timestep_1,
-        training=training,
-        attn_mask=am_1,
-        rngs={"dropout": rng},
-    )
+#     trans_pred_1, _ = model(
+#         train_params,
+#         sts_1,
+#         acts_1,
+#         timestep_1,
+#         training=training,
+#         attn_mask=am_1,
+#         rngs={"dropout": rng},
+#     )
 
-    trans_pred_1 = trans_pred_1["weighted_sum"]
+#     trans_pred_1 = trans_pred_1["weighted_sum"]
 
-    sum_pred_1 = jnp.nanmean(trans_pred_1.reshape(B, T), axis=1)
+#     sum_pred_1 = jnp.nanmean(trans_pred_1.reshape(B, T), axis=1)
 
-    return jnp.nanmean(
-        optax.sigmoid_binary_cross_entropy(logits=sum_pred_1, labels=labels)
-    ), mt_accuracy(sum_pred_1, labels)
+#     return jnp.nanmean(
+#         optax.sigmoid_binary_cross_entropy(logits=sum_pred_1, labels=labels)
+#     ), mt_accuracy(sum_pred_1, labels)
 
 
-def q_loss_fn(state_fn, train_params, batch, training, rng):
+def q_loss_fn(model, batch, training):
     sts = batch["states"]
     acts = batch["actions"]
     timestep = batch["timesteps"]
@@ -179,38 +179,36 @@ def q_loss_fn(state_fn, train_params, batch, training, rng):
     B, T, _ = sts.shape
     rtns = batch["returns"].reshape(B, T, 1)
 
-    Q_preds, _, _, _ = state_fn(
-        train_params,
+    Q_preds, _, _ = model(
         rtns,
         sts,
         acts,
         timestep,
+        am,
         training=training,
-        attn_mask=am,
-        rngs={"dropout": rng},
     )
     return jnp.nanmean(optax.l2_loss(predictions=Q_preds, targets=rtns))
 
 
-def v_loss_fn(state_fn, train_params, batch, training, rng):
-    sts = batch["states"]
-    timestep = batch["timesteps"]
-    am = batch["attn_mask"]
-    B, T, _ = sts.shape
-    rtns = batch["returns"].reshape(B, T, 1)
+# def v_loss_fn(state_fn, train_params, batch, training, rng):
+#     sts = batch["states"]
+#     timestep = batch["timesteps"]
+#     am = batch["attn_mask"]
+#     B, T, _ = sts.shape
+#     rtns = batch["returns"].reshape(B, T, 1)
 
-    V_preds = state_fn(
-        train_params,
-        sts,
-        timestep,
-        training=training,
-        attn_mask=am,
-        rngs={"dropout": rng},
-    )
-    return jnp.nanmean(optax.l2_loss(predictions=V_preds, targets=rtns))
+#     V_preds = state_fn(
+#         train_params,
+#         sts,
+#         timestep,
+#         training=training,
+#         attn_mask=am,
+#         rngs={"dropout": rng},
+#     )
+#     return jnp.nanmean(optax.l2_loss(predictions=V_preds, targets=rtns))
 
 
-def sd_loss_fn(state_fn, train_params, batch, training, rng):
+def sd_loss_fn(model, batch, training):
     sts = batch["states"]
     acts = batch["actions"]
     timestep = batch["timesteps"]
@@ -218,20 +216,18 @@ def sd_loss_fn(state_fn, train_params, batch, training, rng):
     B, T, _ = sts.shape
     rtns = batch["returns"].reshape(B, T, 1)
 
-    _, s_preds, _ = state_fn(
-        train_params,
+    _, s_preds, _ = model(
         rtns,
         sts,
         acts,
         timestep,
+        am,
         training=training,
-        attn_mask=am,
-        rngs={"dropout": rng},
     )
     return cross_ent_loss(s_preds, sts), dt_accuracy(s_preds, sts)
 
 
-def sf_loss_fn(state_fn, train_params, batch, training, rng):
+def sf_loss_fn(model, batch, training):
     sts = batch["states"]
     acts = batch["actions"]
     timestep = batch["timesteps"]
@@ -239,20 +235,18 @@ def sf_loss_fn(state_fn, train_params, batch, training, rng):
     B, T, _ = sts.shape
     rtns = batch["returns"].reshape(B, T, 1)
 
-    _, s_preds, _ = state_fn(
-        train_params,
+    _, s_preds, _ = model(
         rtns,
         sts,
         acts,
         timestep,
+        am,
         training=training,
-        attn_mask=am,
-        rngs={"dropout": rng},
     )
     return jnp.nanmean(optax.l2_loss(predictions=s_preds, targets=sts))
 
 
-def ad_loss_fn(state_fn, train_params, batch, training, rng):
+def ad_loss_fn(model, batch, training):
     sts = batch["states"]
     acts = batch["actions"]
     timestep = batch["timesteps"]
@@ -260,20 +254,18 @@ def ad_loss_fn(state_fn, train_params, batch, training, rng):
     B, T, _ = sts.shape
     rtns = batch["returns"].reshape(B, T, 1)
 
-    _, _, a_preds = state_fn(
-        train_params,
+    _, _, a_preds = model(
         rtns,
         sts,
         acts,
         timestep,
+        am,
         training=training,
-        attn_mask=am,
-        rngs={"dropout": rng},
     )
     return cross_ent_loss(a_preds, acts), dt_accuracy(a_preds, acts)
 
 
-def af_loss_fn(state_fn, train_params, batch, training, rng):
+def af_loss_fn(model, batch, training):
     sts = batch["states"]
     acts = batch["actions"]
     timestep = batch["timesteps"]
@@ -281,15 +273,13 @@ def af_loss_fn(state_fn, train_params, batch, training, rng):
     B, T, _ = sts.shape
     rtns = batch["returns"].reshape(B, T, 1)
 
-    _, _, a_preds = state_fn(
-        train_params,
+    _, _, a_preds = model(
         rtns,
         sts,
         acts,
         timestep,
+        am,
         training=training,
-        attn_mask=am,
-        rngs={"dropout": rng},
     )
     return jnp.nanmean(optax.l2_loss(predictions=a_preds, targets=acts))
 

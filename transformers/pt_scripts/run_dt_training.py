@@ -7,10 +7,11 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import torch.multiprocessing as multiprocessing
+import orbax.checkpoint as ocp
 from argformat import StructuredFormatter
 from transformers.data_utils.data_loader import Dec_H5Dataset
 from transformers.training.train_model import train_dt
-from transformers.training.utils import load_pickle
+from transformers.models.pref_transformer import load_PT
 from transformers.replayer.replayer import load_stats
 
 
@@ -29,7 +30,7 @@ def main(argv):
         "reward",
         metavar="R",
         type=str,
-        help="File containing reward model",
+        help="A .ckpt directory containing reward model",
     )
     parser.add_argument(
         "output_type",
@@ -92,13 +93,6 @@ def main(argv):
         help="Output directory for training logs and pickled models",
     )
     parser.add_argument(
-        "-p",
-        "--pretrained_model",
-        type=str,
-        default=None,
-        help="File with pickled pretrained model",
-    )
-    parser.add_argument(
         "-m",
         "--move_stats",
         type=str,
@@ -108,7 +102,10 @@ def main(argv):
     multiprocessing.set_start_method("forkserver")
     args = parser.parse_args(argv)
     data = os.path.expanduser(args.data)
-    r_model = load_pickle(os.path.expanduser(args.reward))["model"]
+    checkpointer = ocp.StandardCheckpointer()
+    r_model = load_PT(os.path.expanduser(args.reward),checkpointer)
+    checkpointer.wait_until_finished()
+    checkpointer.close()
     move_stats = load_stats(args.move_stats)
     batch_size = args.batch_size
     eval_settings = args.eval_settings
@@ -121,11 +118,7 @@ def main(argv):
     end_value = learning_rate[2]
     dim = args.dim
     workers = args.workers
-    pm = args.pretrained_model
-    if pm is not None:
-        pm = os.path.expanduser(pm)
-        pm = load_pickle(pm)["model"]
-        pm = pm._train_state.params
+
     try:
         data = Dec_H5Dataset(data)
         train_dt(
@@ -143,7 +136,6 @@ def main(argv):
             peak_value=peak_value,
             end_value=end_value,
             embd_dim=dim,
-            pretrained_params=pm,
         )
     except FileNotFoundError:
         raise FileNotFoundError(
