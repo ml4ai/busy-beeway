@@ -3,8 +3,6 @@ import jax
 import transformers.models.ops as ops
 from flax import nnx
 from jax import lax
-from transformers.training.utils import load_args, load_model
-
 
 class GPT2MLP(nnx.Module):
     def __init__(
