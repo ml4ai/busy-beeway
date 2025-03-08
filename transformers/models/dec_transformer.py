@@ -3,7 +3,8 @@ import jax.numpy as jnp
 import transformers.models.ops as ops
 from flax import nnx
 from jax import lax
-
+import orbax.checkpoint as ocp
+from transformers.training.utils import raw_to_prng
 
 class GPT2MLP(nnx.Module):
     def __init__(
@@ -256,24 +257,27 @@ def load_DT(model_dir, chkptr):
             model_args=ocp.args.ArrayRestore(),
         ),
     )
+    model_args = model_args["model_args"]
     rng_key = jax.random.key(int(model_args[12]))
     rng_key, _ = jax.random.split(rng_key, 2)
     rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
     rngs = nnx.Rngs(rng_subkey1, params=rng_subkey2, dropout=rng_subkey3)
-    abstract_model = DT(
-        state_dim=int(model_args[0]),
-        action_dim=int(model_args[1]),
-        max_episode_steps=int(model_args[2]),
-        embd_dim=int(model_args[3]),
-        num_heads=int(model_args[4]),
-        attn_dropout=float(model_args[5]),
-        resid_dropout=float(model_args[6]),
-        intermediate_dim=int(model_args[7]),
-        num_layers=int(model_args[8]),
-        embd_dropout=float(model_args[9]),
-        max_pos=int(model_args[10]),
-        eps=float(model_args[11]),
-        rngs=rngs,
+    abstract_model = nnx.eval_shape(
+        lambda: DT(
+            state_dim=int(model_args[0]),
+            action_dim=int(model_args[1]),
+            max_episode_steps=int(model_args[2]),
+            embd_dim=int(model_args[3]),
+            num_heads=int(model_args[4]),
+            attn_dropout=float(model_args[5]),
+            resid_dropout=float(model_args[6]),
+            intermediate_dim=int(model_args[7]),
+            num_layers=int(model_args[8]),
+            embd_dropout=float(model_args[9]),
+            max_pos=int(model_args[10]),
+            eps=float(model_args[11]),
+            rngs=rngs,
+        )
     )
     graphdef, abstract_state = nnx.split(abstract_model)
     model_state = chkptr.restore(
@@ -282,4 +286,6 @@ def load_DT(model_dir, chkptr):
             model_state=ocp.args.StandardRestore(abstract_state),
         ),
     )
-    return nnx.merge(graphdef, model_state)
+    model = nnx.merge(graphdef, model_state)
+    raw_to_prng(model)
+    return model
