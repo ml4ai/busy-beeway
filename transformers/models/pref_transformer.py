@@ -275,27 +275,38 @@ class PT(nnx.Module):
 
         return {"weighted_sum": output, "value": value}, attn_weights_list
 
-
 def load_PT(model_dir, chkptr):
-    rng_key = jax.random.key(seed)
+    model_args = chkptr.restore(
+        model_dir,
+        args=ocp.args.Composite(
+            model_args=ocp.args.ArrayRestore(),
+        ),
+    )
+    rng_key = jax.random.key(model_args[13])
     rng_key, _ = jax.random.split(rng_key, 2)
     rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
     rngs = nnx.Rngs(rng_subkey1, params=rng_subkey2, dropout=rng_subkey3)
-    model_args = load_args(model_dir, chkptr)
     abstract_model = PT(
-        state_dim=model_args["state_dim"],
-        action_dim=model_args["action_dim"],
-        max_episode_steps=model_args["max_episode_steps"],
-        embd_dim=model_args["embd_dim"],
-        pref_attn_embd_dim=model_args["pref_attn_embd_dim"],
-        num_heads=model_args["num_heads"],
-        attn_dropout=model_args["attn_dropout"],
-        resid_dropout=model_args["resid_dropout"],
-        intermediate_dim=model_args["intermediate_dim"],
-        num_layers=model_args["num_layers"],
-        embd_dropout=model_args["embd_dropout"],
-        max_pos=model_args["max_pos"],
-        eps=model_args["eps"],
+        state_dim=model_args[0],
+        action_dim=model_args[1],
+        max_episode_steps=model_args[2],
+        embd_dim=model_args[3],
+        pref_attn_embd_dim=model_args[4],
+        num_heads=model_args[5],
+        attn_dropout=model_args[6],
+        resid_dropout=model_args[7],
+        intermediate_dim=model_args[8],
+        num_layers=model_args[9],
+        embd_dropout=model_args[10],
+        max_pos=model_args[11],
+        eps=model_args[12],
         rngs=rngs,
     )
-    return load_model(abstract_model, model_dir, chkptr)
+    graphdef, abstract_state = nnx.split(abstract_model)
+    model_state = chkptr.restore(
+        model_dir,
+        args=ocp.args.Composite(
+            model_state=ocp.args.StandardRestore(abstract_state),
+        ),
+    )
+    return nnx.merge(graphdef, model_state)

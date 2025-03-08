@@ -102,7 +102,7 @@ def main(argv):
     multiprocessing.set_start_method("forkserver")
     args = parser.parse_args(argv)
     data = os.path.expanduser(args.data)
-    checkpointer = ocp.StandardCheckpointer()
+    checkpointer = ocp.Checkpointer(ocp.CompositeCheckpointHandler())
     r_model = load_PT(os.path.expanduser(args.reward),checkpointer)
     checkpointer.wait_until_finished()
     checkpointer.close()

@@ -33,7 +33,7 @@ def train_pt(
 ):
 
     save_dir = osp.expanduser(save_dir)
-    checkpointer = ocp.StandardCheckpointer()
+    checkpointer = ocp.Checkpointer(ocp.CompositeCheckpointHandler())
     setup_logger(
         variant=None,
         seed=seed,
@@ -77,36 +77,37 @@ def train_pt(
     while query_len > max_pos:
         max_pos *= 2
     embd_dim = kwargs.get("embd_dim", min(batch_size, 256))
-    model_args = {
-        "state_dim": state_dim,
-        "action_dim": action_dim,
-        "max_episode_steps": kwargs.get("max_episode_steps", int(max_episode_length)),
-        "embd_dim": embd_dim,
-        "pref_attn_embd_dim": kwargs.get("pref_attn_embd_dim", embd_dim),
-        "num_heads": kwargs.get("num_heads", 4),
-        "attn_dropout": kwargs.get("attn_dropout", 0.1),
-        "resid_dropout": kwargs.get("resid_dropout", 0.1),
-        "intermediate_dim": kwargs.get("intermediate_dim", 4 * embd_dim),
-        "num_layers": kwargs.get("num_layers", 1),
-        "embd_dropout": kwargs.get("embd_dropout", 0.1),
-        "max_pos": kwargs.get("max_pos", max_pos),
-        "eps": kwargs.get("eps", 0.1),
-        "seed": seed,
-    }
+    model_args = np.array([
+        state_dim,
+        action_dim,
+        kwargs.get("max_episode_steps", int(max_episode_length)),
+        embd_dim,
+        kwargs.get("pref_attn_embd_dim", embd_dim),
+        kwargs.get("num_heads", 4),
+        kwargs.get("attn_dropout", 0.1),
+        kwargs.get("resid_dropout", 0.1),
+        kwargs.get("intermediate_dim", 4 * embd_dim),
+        kwargs.get("num_layers", 1),
+        kwargs.get("embd_dropout", 0.1),
+        kwargs.get("max_pos", max_pos),
+        kwargs.get("eps", 0.1),
+        seed,
+    ])
+
     trans = PT(
-        state_dim=model_args["state_dim"],
-        action_dim=model_args["action_dim"],
-        max_episode_steps=model_args["max_episode_steps"],
-        embd_dim=model_args["embd_dim"],
-        pref_attn_embd_dim=model_args["pref_attn_embd_dim"],
-        num_heads=model_args["num_heads"],
-        attn_dropout=model_args["attn_dropout"],
-        resid_dropout=model_args["resid_dropout"],
-        intermediate_dim=model_args["intermediate_dim"],
-        num_layers=model_args["num_layers"],
-        embd_dropout=model_args["embd_dropout"],
-        max_pos=model_args["max_pos"],
-        eps=model_args["eps"],
+        state_dim=model_args[0],
+        action_dim=model_args[1],
+        max_episode_steps=model_args[2],
+        embd_dim=model_args[3],
+        pref_attn_embd_dim=model_args[4],
+        num_heads=model_args[5],
+        attn_dropout=model_args[6],
+        resid_dropout=model_args[7],
+        intermediate_dim=model_args[8],
+        num_layers=model_args[9],
+        embd_dropout=model_args[10],
+        max_pos=model_args[11],
+        eps=model_args[12],
         rngs=rngs,
     )
     model = PrefTransformerTrainer(
@@ -234,7 +235,7 @@ def train_dt(
 ):
 
     save_dir = osp.expanduser(save_dir)
-    checkpointer = ocp.StandardCheckpointer()
+    checkpointer = ocp.Checkpointer(ocp.CompositeCheckpointHandler())
     setup_logger(
         variant=None,
         seed=seed,
@@ -270,34 +271,34 @@ def train_dt(
     while query_len > max_pos:
         max_pos *= 2
     embd_dim = kwargs.get("embd_dim", min(batch_size, 256))
-    model_args = {
-        "state_dim": state_dim,
-        "action_dim": action_dim,
-        "max_episode_steps": kwargs.get("max_episode_steps", int(max_episode_length)),
-        "embd_dim": embd_dim,
-        "num_heads": kwargs.get("num_heads", 8),
-        "attn_dropout": kwargs.get("attn_dropout", 0.1),
-        "resid_dropout": kwargs.get("resid_dropout", 0.1),
-        "intermediate_dim": kwargs.get("intermediate_dim", 4 * embd_dim),
-        "num_layers": kwargs.get("num_layers", 6),
-        "embd_dropout": kwargs.get("embd_dropout", 0.1),
-        "max_pos": kwargs.get("max_pos", max_pos),
-        "eps": kwargs.get("eps", 0.1),
-        "seed": seed,
-    }
+    model_args = np.array([
+        state_dim,
+        action_dim,
+        kwargs.get("max_episode_steps", int(max_episode_length)),
+        embd_dim,
+        kwargs.get("num_heads", 8),
+        kwargs.get("attn_dropout", 0.1),
+        kwargs.get("resid_dropout", 0.1),
+        kwargs.get("intermediate_dim", 4 * embd_dim),
+        kwargs.get("num_layers", 6),
+        kwargs.get("embd_dropout", 0.1),
+        kwargs.get("max_pos", max_pos),
+        kwargs.get("eps", 0.1),
+        seed,
+    ])
     dec = DT(
-        state_dim=model_args["state_dim"],
-        action_dim=model_args["action_dim"],
-        max_episode_steps=model_args["max_episode_steps"],
-        embd_dim=model_args["embd_dim"],
-        num_heads=model_args["num_heads"],
-        attn_dropout=model_args["attn_dropout"],
-        resid_dropout=model_args["resid_dropout"],
-        intermediate_dim=model_args["intermediate_dim"],
-        num_layers=model_args["num_layers"],
-        embd_dropout=model_args["embd_dropout"],
-        max_pos=model_args["max_pos"],
-        eps=model_args["eps"],
+        state_dim=model_args[0],
+        action_dim=model_args[1],
+        max_episode_steps=model_args[2],
+        embd_dim=model_args[3],
+        num_heads=model_args[4],
+        attn_dropout=model_args[5],
+        resid_dropout=model_args[6],
+        intermediate_dim=model_args[7],
+        num_layers=model_args[8],
+        embd_dropout=model_args[9],
+        max_pos=model_args[10],
+        eps=model_args[11],
         rngs=rngs,
     )
     # TODO: Control statement for different environments

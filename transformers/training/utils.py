@@ -2,7 +2,7 @@ import os
 import random
 import time
 from pathlib import Path
-
+import orbax.checkpoint as ocp
 import jax
 import jax.numpy as jnp
 import numpy
@@ -38,22 +38,12 @@ def save_model(model, model_args, file_tag, save_dir, chkptr):
     _, state = nnx.split(model)
     chkptr.save(
         save_dir + "/" + file_tag + ".ckpt",
-        state,
+        args=ocp.args.Composite(
+            model_state=ocp.args.StandardSave(state),
+            model_args=ocp.args.ArraySave(model_args),
+        ),
         force=True,
-        custom_metadata=model_args,
     )
-
-
-def load_args(model_dir, chkptr):
-    return chkptr.metadata(model_dir)
-
-
-# This is called by a load method defined in the model script for a specific model (e.g., load_PT found in pref_transformer.py)
-# model_dir is a .ckpt directory. 
-def load_model(abstract_model, model_dir, chkptr):
-    graphdef, abstract_state = nnx.split(abstract_model)
-    state_restored = chkptr.restore(model_dir, abstract_state)
-    return nnx.merge(graphdef, state_restored)
 
 
 def ensure_dir(dirname):
