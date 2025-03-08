@@ -103,8 +103,7 @@ def main(argv):
     args = parser.parse_args(argv)
     data = os.path.expanduser(args.data)
     checkpointer = ocp.Checkpointer(ocp.CompositeCheckpointHandler())
-    r_model = load_PT(os.path.expanduser(args.reward),checkpointer)
-    checkpointer.wait_until_finished()
+    r_model = load_PT(os.path.expanduser(args.reward), checkpointer)
     checkpointer.close()
     move_stats = load_stats(args.move_stats)
     batch_size = args.batch_size

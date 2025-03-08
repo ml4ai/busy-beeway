@@ -216,7 +216,6 @@ def train_pt(
         logger.dump_tabular(with_prefix=False, with_timestamp=False)
     if save:
         save_model(trans, model_args, "model", save_dir, checkpointer)
-    checkpointer.wait_until_finished()
     checkpointer.close()
 
 
@@ -275,20 +274,20 @@ def train_dt(
         max_pos *= 2
     embd_dim = kwargs.get("embd_dim", min(batch_size, 256))
     model_args = [
-            state_dim,
-            action_dim,
-            kwargs.get("max_episode_steps", int(max_episode_length)),
-            embd_dim,
-            kwargs.get("num_heads", 8),
-            kwargs.get("attn_dropout", 0.1),
-            kwargs.get("resid_dropout", 0.1),
-            kwargs.get("intermediate_dim", 4 * embd_dim),
-            kwargs.get("num_layers", 6),
-            kwargs.get("embd_dropout", 0.1),
-            kwargs.get("max_pos", max_pos),
-            kwargs.get("eps", 0.1),
-            seed,
-        ]
+        state_dim,
+        action_dim,
+        kwargs.get("max_episode_steps", int(max_episode_length)),
+        embd_dim,
+        kwargs.get("num_heads", 8),
+        kwargs.get("attn_dropout", 0.1),
+        kwargs.get("resid_dropout", 0.1),
+        kwargs.get("intermediate_dim", 4 * embd_dim),
+        kwargs.get("num_layers", 6),
+        kwargs.get("embd_dropout", 0.1),
+        kwargs.get("max_pos", max_pos),
+        kwargs.get("eps", 0.1),
+        seed,
+    ]
     dec = DT(
         state_dim=model_args[0],
         action_dim=model_args[1],
@@ -308,7 +307,7 @@ def train_dt(
     eval_sim = bb_run_episode
 
     model_args = np.array(model_args)
-    
+
     model = DecTransformerTrainer(
         dec,
         output_type,
@@ -493,7 +492,6 @@ def train_dt(
             logger.dump_tabular(with_prefix=False, with_timestamp=False)
         if save:
             save_model(dec, model_args, "model", save_dir, checkpointer)
-    checkpointer.wait_until_finished()
     checkpointer.close()
 
 
