@@ -6,6 +6,7 @@ from jax import lax
 import orbax.checkpoint as ocp
 from transformers.training.utils import raw_to_prng
 
+
 class GPT2MLP(nnx.Module):
     def __init__(
         self,
@@ -279,6 +280,7 @@ def load_DT(model_dir, chkptr):
             rngs=rngs,
         )
     )
+    prng_to_raw(abstract_model)
     graphdef, abstract_state = nnx.split(abstract_model)
     model_state = chkptr.restore(
         model_dir,
