@@ -77,7 +77,7 @@ def train_pt(
     while query_len > max_pos:
         max_pos *= 2
     embd_dim = kwargs.get("embd_dim", min(batch_size, 256))
-    model_args = np.array([
+    model_args = [
         state_dim,
         action_dim,
         kwargs.get("max_episode_steps", int(max_episode_length)),
@@ -92,7 +92,7 @@ def train_pt(
         kwargs.get("max_pos", max_pos),
         kwargs.get("eps", 0.1),
         seed,
-    ])
+    ]
 
     trans = PT(
         state_dim=model_args[0],
@@ -110,6 +110,9 @@ def train_pt(
         eps=model_args[12],
         rngs=rngs,
     )
+
+    model_args = np.array(model_args)
+
     model = PrefTransformerTrainer(
         trans,
         init_value=kwargs.get("init_value", 0),
@@ -271,21 +274,21 @@ def train_dt(
     while query_len > max_pos:
         max_pos *= 2
     embd_dim = kwargs.get("embd_dim", min(batch_size, 256))
-    model_args = np.array([
-        state_dim,
-        action_dim,
-        kwargs.get("max_episode_steps", int(max_episode_length)),
-        embd_dim,
-        kwargs.get("num_heads", 8),
-        kwargs.get("attn_dropout", 0.1),
-        kwargs.get("resid_dropout", 0.1),
-        kwargs.get("intermediate_dim", 4 * embd_dim),
-        kwargs.get("num_layers", 6),
-        kwargs.get("embd_dropout", 0.1),
-        kwargs.get("max_pos", max_pos),
-        kwargs.get("eps", 0.1),
-        seed,
-    ])
+    model_args = [
+            state_dim,
+            action_dim,
+            kwargs.get("max_episode_steps", int(max_episode_length)),
+            embd_dim,
+            kwargs.get("num_heads", 8),
+            kwargs.get("attn_dropout", 0.1),
+            kwargs.get("resid_dropout", 0.1),
+            kwargs.get("intermediate_dim", 4 * embd_dim),
+            kwargs.get("num_layers", 6),
+            kwargs.get("embd_dropout", 0.1),
+            kwargs.get("max_pos", max_pos),
+            kwargs.get("eps", 0.1),
+            seed,
+        ]
     dec = DT(
         state_dim=model_args[0],
         action_dim=model_args[1],
@@ -303,6 +306,9 @@ def train_dt(
     )
     # TODO: Control statement for different environments
     eval_sim = bb_run_episode
+
+    model_args = np.array(model_args)
+    
     model = DecTransformerTrainer(
         dec,
         output_type,

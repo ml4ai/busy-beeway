@@ -4,6 +4,7 @@ import transformers.models.ops as ops
 from flax import nnx
 from jax import lax
 
+
 class GPT2MLP(nnx.Module):
     def __init__(
         self,
@@ -273,6 +274,7 @@ class PT(nnx.Module):
 
         return {"weighted_sum": output, "value": value}, attn_weights_list
 
+
 def load_PT(model_dir, chkptr):
     model_args = chkptr.restore(
         model_dir,
@@ -280,24 +282,24 @@ def load_PT(model_dir, chkptr):
             model_args=ocp.args.ArrayRestore(),
         ),
     )
-    rng_key = jax.random.key(model_args[13])
+    rng_key = jax.random.key(int(model_args[13]))
     rng_key, _ = jax.random.split(rng_key, 2)
     rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
     rngs = nnx.Rngs(rng_subkey1, params=rng_subkey2, dropout=rng_subkey3)
     abstract_model = PT(
-        state_dim=model_args[0],
-        action_dim=model_args[1],
-        max_episode_steps=model_args[2],
-        embd_dim=model_args[3],
-        pref_attn_embd_dim=model_args[4],
-        num_heads=model_args[5],
-        attn_dropout=model_args[6],
-        resid_dropout=model_args[7],
-        intermediate_dim=model_args[8],
-        num_layers=model_args[9],
-        embd_dropout=model_args[10],
-        max_pos=model_args[11],
-        eps=model_args[12],
+        state_dim=int(model_args[0]),
+        action_dim=int(model_args[1]),
+        max_episode_steps=int(model_args[2]),
+        embd_dim=int(model_args[3]),
+        pref_attn_embd_dim=int(model_args[4]),
+        num_heads=int(model_args[5]),
+        attn_dropout=float(model_args[6]),
+        resid_dropout=float(model_args[7]),
+        intermediate_dim=int(model_args[8]),
+        num_layers=int(model_args[9]),
+        embd_dropout=float(model_args[10]),
+        max_pos=int(model_args[11]),
+        eps=float(model_args[12]),
         rngs=rngs,
     )
     graphdef, abstract_state = nnx.split(abstract_model)
