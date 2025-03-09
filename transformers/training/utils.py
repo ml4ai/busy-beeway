@@ -33,20 +33,22 @@ def index_batch(batch, indices, rng_key=None):
 def prefix_metrics(metrics, prefix):
     return {"{}/{}".format(prefix, key): value for key, value in metrics.items()}
 
+
 def prng_to_raw(model):
     key_state = nnx.state(model, nnx.RngKey)
     new_key_state = jax.tree.map(lambda var: jax.random.key_data(var), key_state)
-    nnx.update(model,new_key_state)
+    nnx.update(model, new_key_state)
+
 
 def raw_to_prng(model):
     key_state = nnx.state(model, nnx.RngKey)
     new_key_state = jax.tree.map(lambda var: jax.random.wrap_key_data(var), key_state)
-    nnx.update(model,new_key_state)
+    nnx.update(model, new_key_state)
 
 
 def save_model(model, model_args, file_tag, save_dir, chkptr):
     prng_to_raw(model)
-    _,state = nnx.split(model)
+    _, state = nnx.split(model)
 
     chkptr.save(
         save_dir + "/" + file_tag + ".ckpt",
@@ -56,8 +58,9 @@ def save_model(model, model_args, file_tag, save_dir, chkptr):
         ),
         force=True,
     )
-    
+
     raw_to_prng(model)
+
 
 def ensure_dir(dirname):
     """Check whether a given directory was created; if not, create a new one.

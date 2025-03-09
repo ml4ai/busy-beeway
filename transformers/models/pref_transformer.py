@@ -1,10 +1,10 @@
-import jax.numpy as jnp
 import jax
+import jax.numpy as jnp
+import orbax.checkpoint as ocp
 import transformers.models.ops as ops
 from flax import nnx
 from jax import lax
-import orbax.checkpoint as ocp
-from transformers.training.utils import raw_to_prng, prng_to_raw
+from transformers.training.utils import prng_to_raw, raw_to_prng
 
 
 class GPT2MLP(nnx.Module):
@@ -277,7 +277,7 @@ class PT(nnx.Module):
         return {"weighted_sum": output, "value": value}, attn_weights_list
 
 
-def load_PT(model_dir, chkptr):
+def load_PT(model_dir, chkptr, on_cpu=False):
     model_args = chkptr.restore(
         model_dir,
         args=ocp.args.Composite(
@@ -289,32 +289,39 @@ def load_PT(model_dir, chkptr):
     rng_key, _ = jax.random.split(rng_key, 2)
     rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
     rngs = nnx.Rngs(rng_subkey1, params=rng_subkey2, dropout=rng_subkey3)
-    abstract_model = nnx.eval_shape(
-        lambda: PT(
-            state_dim=int(model_args[0]),
-            action_dim=int(model_args[1]),
-            max_episode_steps=int(model_args[2]),
-            embd_dim=int(model_args[3]),
-            pref_attn_embd_dim=int(model_args[4]),
-            num_heads=int(model_args[5]),
-            attn_dropout=float(model_args[6]),
-            resid_dropout=float(model_args[7]),
-            intermediate_dim=int(model_args[8]),
-            num_layers=int(model_args[9]),
-            embd_dropout=float(model_args[10]),
-            max_pos=int(model_args[11]),
-            eps=float(model_args[12]),
-            rngs=rngs,
-        )
+    model = PT(
+        state_dim=int(model_args[0]),
+        action_dim=int(model_args[1]),
+        max_episode_steps=int(model_args[2]),
+        embd_dim=int(model_args[3]),
+        pref_attn_embd_dim=int(model_args[4]),
+        num_heads=int(model_args[5]),
+        attn_dropout=float(model_args[6]),
+        resid_dropout=float(model_args[7]),
+        intermediate_dim=int(model_args[8]),
+        num_layers=int(model_args[9]),
+        embd_dropout=float(model_args[10]),
+        max_pos=int(model_args[11]),
+        eps=float(model_args[12]),
+        rngs=rngs,
     )
-    prng_to_raw(abstract_model)
+    prng_to_raw(model)
+    abstract_model = nnx.eval_shape(lambda: model)
     graphdef, abstract_state = nnx.split(abstract_model)
+    # Loads onto first cpu found
+    if on_cpu:
+
+        def set_sharding(var):
+            var.sharding = jax.sharding.SingleDeviceSharding(jax.devices("cpu")[0])
+            return var
+
+        abstract_state = jax.tree.map(set_sharding, abstract_state)
     model_state = chkptr.restore(
         model_dir,
         args=ocp.args.Composite(
             model_state=ocp.args.StandardRestore(abstract_state),
         ),
     )
-    model = nnx.merge(graphdef, model_state)
+    model = nnx.merge(graphdef, model_state["model_state"])
     raw_to_prng(model)
     return model
