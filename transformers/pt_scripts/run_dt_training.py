@@ -8,6 +8,7 @@ import jax.numpy as jnp
 import numpy as np
 import torch.multiprocessing as multiprocessing
 import orbax.checkpoint as ocp
+from flax import nnx
 from argformat import StructuredFormatter
 from transformers.data_utils.data_loader import Dec_H5Dataset
 from transformers.training.train_model import train_dt
@@ -104,6 +105,7 @@ def main(argv):
     data = os.path.expanduser(args.data)
     checkpointer = ocp.Checkpointer(ocp.CompositeCheckpointHandler())
     r_model = load_PT(os.path.expanduser(args.reward), checkpointer)
+    r_model = nnx.jit(r_model, static_argnums=4)
     checkpointer.close()
     move_stats = load_stats(args.move_stats)
     batch_size = args.batch_size

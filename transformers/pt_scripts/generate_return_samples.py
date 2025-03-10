@@ -2,10 +2,14 @@ import argparse
 import os
 import sys
 
-import h5py
 import jax
 import jax.numpy as jnp
+import orbax.checkpoint as ocp
+from flax import nnx
+from functools import partial
 from tqdm import tqdm
+
+import h5py
 
 jax.config.update("jax_platforms", "cpu")
 jax.config.update("jax_enable_x64", True)
@@ -13,8 +17,7 @@ jax.config.update("jax_enable_x64", True)
 sys.path.insert(0, os.path.abspath("../.."))
 
 from argformat import StructuredFormatter
-
-from transformers.training.utils import load_pickle
+from transformers.models.pref_transformer import load_PT
 
 
 def main(argv):
@@ -26,7 +29,7 @@ def main(argv):
         "reward",
         metavar="R",
         type=str,
-        help="File with Reward function (as pickled dictionary)",
+        help="A .ckpt directory of PT model (must be absolute)",
     )
     parser.add_argument(
         "data",
@@ -36,45 +39,37 @@ def main(argv):
     )
     parser.add_argument(
         "-o",
-        "--output_dir",
+        "--output",
         type=str,
-        default="~/busy-beeway/transformers",
+        default="~/busy-beeway/transformers/data.hdf5",
         help="Output directory",
-    )
-    parser.add_argument(
-        "-t",
-        "--data_tag",
-        type=str,
-        default=None,
-        help="adds identifier to return_to_go dataset",
     )
     args = parser.parse_args(argv)
     reward = os.path.expanduser(args.reward)
     data = os.path.expanduser(args.data)
-    output_dir = os.path.expanduser(args.output_dir)
-    if args.data_tag is not None:
-        data_tag = args.data_tag
-    else:
-        data_tag = "data"
-    r_model = load_pickle(reward)["model"]
+    output = os.path.expanduser(args.output)
+    checkpointer = ocp.Checkpointer(ocp.CompositeCheckpointHandler())
+    r_model = load_PT(reward, checkpointer, on_cpu=True)
+    r_model = nnx.jit(r_model, static_argnums=4)
+    checkpointer.close()
     with h5py.File(data, "r") as f:
         sts = f["states"][:]
         acts = f["actions"][:]
         ts = f["timesteps"][:]
         am = f["attn_mask"][:]
+        preds, _ = r_model(
+            sts,
+            acts,
+            ts,
+            am,
+            training=False,
+        )
         seq_length = sts.shape[1]
         rewards = []
-        for i in tqdm(range(seq_length), desc="Rewards"):
-            preds, _ = r_model._train_state.apply_fn(
-                r_model._train_state.params,
-                sts[:, : (i + 1), :],
-                acts[:, : (i + 1), :],
-                ts[:, : (i + 1)],
-                training=False,
-                attn_mask=am[:, : (i + 1)],
-            )
-            rewards.append(preds["value"][:, 0, -1])
+        for i in range(seq_length):
+            rewards.append(preds["value"][:, 0, i])
         rewards = jnp.concatenate(rewards, axis=1)
+        del preds
         if jnp.any(jnp.isnan(rewards)):
             sts = jnp.delete(
                 sts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
@@ -115,19 +110,19 @@ def main(argv):
         acts_2 = f["actions_2"][:]
         ts_2 = f["timesteps_2"][:]
         am_2 = f["attn_mask_2"][:]
+        preds_2, _ = r_model(
+            sts_2,
+            acts_2,
+            ts_2,
+            am_2,
+            training=False,
+        )
         seq_length_2 = sts_2.shape[1]
         rewards_2 = []
-        for i in tqdm(range(seq_length_2), desc="Rewards_2"):
-            preds_2, _ = r_model._train_state.apply_fn(
-                r_model._train_state.params,
-                sts_2[:, : (i + 1), :],
-                acts_2[:, : (i + 1), :],
-                ts_2[:, : (i + 1)],
-                training=False,
-                attn_mask=am_2[:, : (i + 1)],
-            )
-            rewards_2.append(preds_2["value"][:, 0, -1])
+        for i in range(seq_length_2):
+            rewards_2.append(preds_2["value"][:, 0, i])
         rewards_2 = jnp.concatenate(rewards_2, axis=1)
+        del preds_2
         if jnp.any(jnp.isnan(rewards_2)):
             sts_2 = jnp.delete(
                 sts_2, jnp.unique(jnp.argwhere(jnp.isnan(rewards_2))[:, 0]), axis=0
@@ -173,7 +168,7 @@ def main(argv):
         c_am = jnp.concatenate([am, am_2])
         c_returns = jnp.concatenate([returns, returns_2])
 
-        with h5py.File(f"{output_dir}/{data_tag}.hdf5", "a") as g:
+        with h5py.File(output, "a") as g:
             g.create_dataset("states", data=c_sts, chunks=True)
             g.create_dataset("actions", data=c_acts, chunks=True)
             g.create_dataset("timesteps", data=c_ts, chunks=True)

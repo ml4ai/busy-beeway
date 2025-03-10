@@ -366,7 +366,7 @@ def train_dt(
                     desc=f"Evaluation Epoch {epoch}",
                 ):
                     ep_return, ep_length = eval_sim(
-                        model,
+                        dec,
                         r_model,
                         move_stats,
                         rngs,
@@ -451,7 +451,7 @@ def train_dt(
                     desc=f"Evaluation Epoch {epoch}",
                 ):
                     ep_return, ep_length = eval_sim(
-                        model,
+                        dec,
                         r_model,
                         move_stats,
                         rngs,

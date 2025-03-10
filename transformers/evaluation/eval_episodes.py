@@ -2,6 +2,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
+from flax import nnx
+from tqdm import tqdm
 
 
 def rand_circle(R, N, C=(0, 0), rng=np.random.default_rng()):
@@ -247,9 +249,9 @@ def bb_run_episode(
         s = create_new_state().reshape(1, 1, 15)
     a = jnp.zeros((1, 0, 3))
     t = jnp.zeros((1, 1), dtype=jnp.int32)
-
+    d_model = nnx.jit(d_model, static_argnums=5)
     episode_return, episode_length = 0, 0
-    for i in range(max_horizon):
+    for i in tqdm(range(max_horizon), desc="Timesteps"):
         a = jnp.concat([a, jnp.zeros((1, 1, 3))], axis=1)
         a = a[-context_length:]
         _, _, action = d_model(
@@ -519,7 +521,8 @@ def bb_record_episode(
         )
     ]
     success = False
-    for i in range(max_horizon):
+    d_model = nnx.jit(d_model, static_argnums=5)
+    for i in tqdm(range(max_horizon), desc="Timesteps"):
         a = jnp.concat([a, jnp.zeros((1, 1, 3))], axis=1)
         a = a[-context_length:]
         _, _, action = d_model(
