@@ -186,7 +186,6 @@ class DT(nnx.Module):
         rngs: nnx.Rngs = nnx.Rngs(0, params=1, dropout=2),
     ):
         self.embd_dim = embd_dim
-        self.pref_attn_embd_dim = pref_attn_embd_dim
 
         self.state_linear = nnx.Linear(state_dim, embd_dim, rngs=rngs)
         self.action_linear = nnx.Linear(action_dim, embd_dim, rngs=rngs)
