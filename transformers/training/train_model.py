@@ -254,7 +254,7 @@ def train_dt(
     rng_key = jax.random.key(seed)
     rng_key, rng_subkey = jax.random.split(rng_key, 2)
     t_keys = jax.random.randint(rng_subkey, 1, 0, 10000)
-    gen1 = torch.Generator().manual_seed(int(t_keys))
+    gen1 = torch.Generator().manual_seed(int(t_keys[0]))
 
     training_data_loader = DataLoader(
         data,
