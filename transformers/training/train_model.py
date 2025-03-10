@@ -253,9 +253,9 @@ def train_dt(
 
     rng_key = jax.random.key(seed)
     rng_key, rng_subkey = jax.random.split(rng_key, 2)
-    t_keys = jax.random.randint(rng_subkey, 1, 0, 10000)
+    t_keys = jax.random.randint(rng_subkey, 2, 0, 10000)
     gen1 = torch.Generator().manual_seed(int(t_keys[0]))
-
+    np_rng = np.random.default_rng(int(t_keys[1]))
     training_data_loader = DataLoader(
         data,
         batch_size=batch_size,
@@ -369,10 +369,10 @@ def train_dt(
                         dec,
                         r_model,
                         move_stats,
-                        rngs,
                         query_len,
                         eval_settings[2],
                         max_episode_length,
+                        np_rng,
                     )
                     metrics["eval_loss"].append(
                         ((eval_settings[2] - ep_return) ** 2) / ep_length
@@ -454,10 +454,10 @@ def train_dt(
                         dec,
                         r_model,
                         move_stats,
-                        rngs,
                         query_len,
                         eval_settings[2],
                         max_episode_length,
+                        np_rng,
                     )
                     metrics["eval_loss"].append(
                         ((eval_settings[2] - ep_return) ** 2) / ep_length

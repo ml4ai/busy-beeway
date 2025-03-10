@@ -8,6 +8,7 @@ import jax.numpy as jnp
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
+import orbax.checkpoint as ocp
 
 jax.config.update("jax_platforms", "cpu")
 
@@ -17,7 +18,8 @@ from argformat import StructuredFormatter
 
 from transformers.evaluation.eval_episodes import bb_record_episode
 from transformers.replayer.replayer import animate_run, load_stats
-from transformers.training.utils import load_pickle
+from transformers.models.pref_transformer import load_PT
+from transformers.models.dec_transformer import load_DT
 from transformers.data_utils.bb_data_loading import load_participant_data_p
 
 
@@ -88,22 +90,20 @@ def main(argv):
     target_return = args.target_return
     horizon = args.horizon
     output = os.path.expanduser(args.output)
-
-    d_model = load_pickle(dt)["model"]
-    r_model = load_pickle(pt)["model"]
+    checkpointer = ocp.Checkpointer(ocp.CompositeCheckpointHandler())
+    d_model = load_DT(os.path.expanduser(dt), checkpointer, on_cpu=True)
+    r_model = load_PT(os.path.expanduser(pt), checkpointer, on_cpu=True)
+    r_model = nnx.jit(r_model, static_argnums=4)
+    checkpointer.close()
     move_stats = load_stats(stats)
-    key = jax.random.key(seed)
-
-    keys = jax.random.split(key, episodes + 1)
-    key = keys[0]
-    data_keys = keys[1:]
+    rng = np.random.default_rng(seed)
     successes = 0.0
     end_goal_dist = []
     frames = []
     returns = []
     for i in tqdm(range(episodes)):
         e_r, e_l, d = bb_record_episode(
-            d_model, r_model, move_stats, data_keys[i], 100, target_return, horizon
+            d_model, r_model, move_stats, 100, target_return, horizon, rng
         )
         if d["reached_goal"]:
             successes += 1.0
