@@ -372,7 +372,7 @@ def train_dt(
                         query_len,
                         eval_settings[2],
                         max_episode_length,
-                        np_rng,
+                        rng=np_rng,
                     )
                     metrics["eval_loss"].append(
                         ((eval_settings[2] - ep_return) ** 2) / ep_length
@@ -457,7 +457,7 @@ def train_dt(
                         query_len,
                         eval_settings[2],
                         max_episode_length,
-                        np_rng,
+                        rng=np_rng,
                     )
                     metrics["eval_loss"].append(
                         ((eval_settings[2] - ep_return) ** 2) / ep_length

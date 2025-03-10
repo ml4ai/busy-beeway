@@ -103,7 +103,7 @@ def main(argv):
     returns = []
     for i in tqdm(range(episodes)):
         e_r, e_l, d = bb_record_episode(
-            d_model, r_model, move_stats, 100, target_return, horizon, rng
+            d_model, r_model, move_stats, 100, target_return, horizon, rng=rng
         )
         if d["reached_goal"]:
             successes += 1.0
