@@ -4,10 +4,13 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, os.path.abspath("../.."))
+
 import pandas as pd
 from argformat import StructuredFormatter
 from tqdm import tqdm
 
+from transformers.data_utils.bb_data_loading import load_list
 
 def atoi(text):
     return int(text) if text.isdigit() else text
