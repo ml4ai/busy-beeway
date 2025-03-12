@@ -153,7 +153,12 @@ def main(argv):
                 D = load_participant_data_by_day(
                     p_id=p_id, path=path, exclusion_list=L, study=study
                 )
-                F = itertools.chain.from_iterable([compute_features_p(D[key], day=i) for i, key in enumerate(day_list)])
+                F = itertools.chain.from_iterable(
+                    [
+                        compute_features_p(D[key], day=i)
+                        for i, key in enumerate(day_list)
+                    ]
+                )
                 save_d_pref = save_pref + f"{key}.hdf5"
                 create_state_data(
                     F,
@@ -182,7 +187,12 @@ def main(argv):
                     p_id=p_id, path=path, exclusion_list=L, study=study
                 )
 
-                F = itertools.chain.from_iterable([compute_features_p(D[key], day=i) for i, key in enumerate(day_list)])
+                F = itertools.chain.from_iterable(
+                    [
+                        compute_features_p(D[key], day=i)
+                        for i, key in enumerate(day_list)
+                    ]
+                )
 
                 save_d_pref = save_pref + f"{key}.hdf5"
                 create_state_data(
@@ -213,7 +223,9 @@ def main(argv):
                 p_id=p_id, path=path, exclusion_list=L, study=study
             )
 
-            F = itertools.chain.from_iterable([compute_features_p(D[key], day=i) for i, key in enumerate(day_list)])
+            F = itertools.chain.from_iterable(
+                [compute_features_p(D[key], day=i) for i, key in enumerate(day_list)]
+            )
 
             save_d_pref = save_pref + f"{key}.hdf5"
             create_state_data(
@@ -244,7 +256,9 @@ def main(argv):
             p_id=p_id, path=path, exclusion_list=L, study=study
         )
 
-        F = itertools.chain.from_iterable([compute_features_p(D[key], day=i) for i, key in enumerate(day_list)])
+        F = itertools.chain.from_iterable(
+            [compute_features_p(D[key], day=i) for i, key in enumerate(day_list)]
+        )
 
         save_d_pref = save_pref + f"{key}.hdf5"
         create_state_data(
