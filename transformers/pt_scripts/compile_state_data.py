@@ -153,7 +153,7 @@ def main(argv):
                 D = load_participant_data_by_day(
                     p_id=p_id, path=path, exclusion_list=L, study=study
                 )
-                
+
                 F = itertools.chain.from_iterable(
                     [
                         compute_features_p(D[key], day=i)
@@ -161,7 +161,7 @@ def main(argv):
                         if key in D
                     ]
                 )
-                save_d_pref = save_pref + f"{key}.hdf5"
+                save_d_pref = save_pref + f"{p_id}.hdf5"
                 create_state_data(
                     F,
                     state_features=16,
@@ -188,7 +188,7 @@ def main(argv):
                 D = load_participant_data_by_day(
                     p_id=p_id, path=path, exclusion_list=L, study=study
                 )
-                
+
                 F = itertools.chain.from_iterable(
                     [
                         compute_features_p(D[key], day=i)
@@ -197,7 +197,7 @@ def main(argv):
                     ]
                 )
 
-                save_d_pref = save_pref + f"{key}.hdf5"
+                save_d_pref = save_pref + f"{p_id}.hdf5"
                 create_state_data(
                     F,
                     state_features=16,
@@ -225,12 +225,16 @@ def main(argv):
             D = load_participant_data_by_day(
                 p_id=p_id, path=path, exclusion_list=L, study=study
             )
-            
+
             F = itertools.chain.from_iterable(
-                [compute_features_p(D[key], day=i) for i, key in enumerate(day_list) if key in D]
+                [
+                    compute_features_p(D[key], day=i)
+                    for i, key in enumerate(day_list)
+                    if key in D
+                ]
             )
 
-            save_d_pref = save_pref + f"{key}.hdf5"
+            save_d_pref = save_pref + f"{p_id}.hdf5"
             create_state_data(
                 F,
                 state_features=16,
@@ -260,10 +264,14 @@ def main(argv):
         )
 
         F = itertools.chain.from_iterable(
-            [compute_features_p(D[key], day=i) for i, key in enumerate(day_list) if key in D]
+            [
+                compute_features_p(D[key], day=i)
+                for i, key in enumerate(day_list)
+                if key in D
+            ]
         )
 
-        save_d_pref = save_pref + f"{key}.hdf5"
+        save_d_pref = save_pref + f"{p_id}.hdf5"
         create_state_data(
             F,
             state_features=16,
