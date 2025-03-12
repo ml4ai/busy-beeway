@@ -9,6 +9,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 import orbax.checkpoint as ocp
+from flax import nnx
 
 jax.config.update("jax_platforms", "cpu")
 

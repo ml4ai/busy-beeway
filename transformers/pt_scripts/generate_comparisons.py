@@ -17,7 +17,6 @@ from argformat import StructuredFormatter
 
 from transformers.evaluation.eval_episodes import bb_record_episode
 from transformers.replayer.replayer import animate_run, load_stats
-from transformers.training.utils import load_pickle
 from transformers.data_utils.bb_data_loading import load_participant_data_p
 
 
