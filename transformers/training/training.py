@@ -77,7 +77,7 @@ class DecTransformerTrainer(object):
             decay_steps=kwargs.get("decay_steps", 650),
             end_value=kwargs.get("end_value", 0),
         )
-        tx = optimizer_class(scheduler_class)
+        tx = optax.chain(optax.clip_by_global_norm(0.25),optimizer_class(scheduler_class)) 
         # Reconfigure for our data
 
         match output_type:
