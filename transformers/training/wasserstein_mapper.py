@@ -12,7 +12,7 @@ from transformers.training.jax_utils import (
     wasserstein_inner_loss_fn_lp,
     wasserstein_inner_loss_fn_nc,
 )
-from transformers.training.utils import ensure_dir
+from transformers.training.utils import ensure_dir, prng_to_raw, raw_to_prng
 
 
 class LipschitzFunction(nnx.Module):
@@ -97,21 +97,18 @@ class WassersteinDistance:
         n_samples,
         n_steps=10,
         threshold=None,
-        rngs=nnx.Rngs(0, params=1, dropout=2),
     ):
         n_samples_bag = n_samples * 1
 
         # Draw functions from GP
         gp_samples_bag = jnp.float32(
-            self.gp.sample_functions(jnp.float64(X), n_samples_bag, rngs)
+            self.gp.sample_functions(jnp.float64(X), n_samples_bag)
         )
         if self.output_dim > 1:
             gp_samples_bag = gp_samples_bag.squeeze()
 
         # Draw functions from Bayesian Neural network
-        nnet_samples_bag = jnp.float32(
-            self.bnn.sample_functions(X, n_samples_bag, rngs)
-        )
+        nnet_samples_bag = jnp.float32(self.bnn.sample_functions(X, n_samples_bag))
         if self.output_dim > 1:
             nnet_samples_bag = nnet_samples_bag.squeeze()
 
@@ -182,7 +179,6 @@ class MapperWasserstein(object):
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.out_dir = out_dir
-
         assert lipschitz_constraint_type in ["gp", "lp", None]
         self.lipschitz_constraint_type = lipschitz_constraint_type
 
@@ -216,7 +212,6 @@ class MapperWasserstein(object):
         lr=1e-2,
         save_ckpt_every=50,
         print_every=10,
-        rngs=nnx.Rngs(0, params=1, dropout=2),
     ):
         wdist_hist = []
 
@@ -227,7 +222,6 @@ class MapperWasserstein(object):
                 _train_p_step_many,
                 self.wasserstein.lipschitz_f,
                 nnx.Optimizer(self.bnn, optax.rmsprop(lr)),
-                rngs,
                 n_samples,
             )
         else:
@@ -235,7 +229,6 @@ class MapperWasserstein(object):
                 _train_p_step_one,
                 self.wasserstein.lipschitz_f,
                 nnx.Optimizer(self.bnn, optax.rmsprop(lr)),
-                rngs,
                 n_samples,
             )
         # Prior loop
@@ -244,7 +237,7 @@ class MapperWasserstein(object):
             X = self.data_generator.get(self.n_data)
 
             gp_samples = jnp.float32(
-                self.gp.sample_functions(jnp.float64(X), n_samples, rngs)
+                self.gp.sample_functions(jnp.float64(X), n_samples)
             )
             if self.output_dim > 1:
                 gp_samples = gp_samples.squeeze()
@@ -254,7 +247,6 @@ class MapperWasserstein(object):
                 n_samples,
                 n_steps=wasserstein_steps[1],
                 threshold=self.wasserstein_threshold,
-                rngs=rngs,
             )
             batch = {"gp_samples": gp_samples, "X": X}
             wdist, grads = train_step(batch)
@@ -268,39 +260,43 @@ class MapperWasserstein(object):
             # Save checkpoint
             if ((it) % save_ckpt_every == 0) or (it == num_iters):
                 path = os.path.join(self.ckpt_dir, "it-{}.ckpt".format(it))
+                prng_to_raw(self.bnn)
                 _, state = nnx.split(self.bnn)
                 checkpointer.save(path, state)
-
+                raw_to_prng(self.bnn)
+                
+        checkpointer.wait_until_finished()
+        checkpointer.close()
         return wdist_hist
 
 
-def calculate_w_loss_for_grad_one(bnn, lipschitz_f, rngs, n_samples, batch):
-    nnet_samples = jnp.float32(bnn.sample_functions(batch["X"], n_samples, rngs))
+def calculate_w_loss_for_grad_one(bnn, lipschitz_f, n_samples, batch):
+    nnet_samples = jnp.float32(bnn.sample_functions(batch["X"], n_samples))
 
     return calculate_w_loss(lipschitz_f, nnet_samples, batch["gp_samples"]).sum()
 
 
-def calculate_w_loss_for_grad_many(bnn, lipschitz_f, rngs, n_samples, batch):
-    nnet_samples = jnp.float32(bnn.sample_functions(batch["X"], n_samples, rngs))
+def calculate_w_loss_for_grad_many(bnn, lipschitz_f, n_samples, batch):
+    nnet_samples = jnp.float32(bnn.sample_functions(batch["X"], n_samples))
 
     return calculate_w_loss(
         lipschitz_f, nnet_samples.squeeze(), batch["gp_samples"].squeeze()
     ).sum()
 
 
-@partial(nnx.jit, static_argnums=3)
-def _train_p_step_one(lipschitz_f, state, rngs, n_samples, batch):
+@partial(nnx.jit, static_argnums=2)
+def _train_p_step_one(lipschitz_f, state, n_samples, batch):
     loss, grads = nnx.value_and_grad(calculate_w_loss_for_grad_one)(
-        state.model, lipschitz_f, rngs, n_samples, batch
+        state.model, lipschitz_f, n_samples, batch
     )
     state.update(grads)
     return loss, grads
 
 
-@partial(nnx.jit, static_argnums=3)
-def _train_p_step_many(lipschitz_f, state, rngs, n_samples, batch):
+@partial(nnx.jit, static_argnums=2)
+def _train_p_step_many(lipschitz_f, state, n_samples, batch):
     loss, grads = nnx.value_and_grad(calculate_w_loss_for_grad_many)(
-        state.model, lipschitz_f, rngs, n_samples, batch
+        state.model, lipschitz_f, n_samples, batch
     )
     state.update(grads)
     return loss, grads

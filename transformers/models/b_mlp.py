@@ -23,6 +23,7 @@ class GaussianLinearReparameterization(nnx.Module):
         b_std: Optional[float] = None,
         scaled_variance: bool = True,
         prior_per: str = "layer",
+        rngs: nnx.Rngs = nnx.Rngs(0, params=1, dropout=2),
     ):
         """Initialization.
 
@@ -40,6 +41,7 @@ class GaussianLinearReparameterization(nnx.Module):
         self.n_in = n_in
         self.n_out = n_out
         self.scaled_variance = scaled_variance
+        self.rngs = rngs
 
         if W_std is None:
             if self.scaled_variance:
@@ -65,7 +67,6 @@ class GaussianLinearReparameterization(nnx.Module):
     def __call__(
         self,
         X: jax.Array,
-        rngs: nnx.Rngs,
     ):
         """Performs forward pass given input data.
 
@@ -75,7 +76,7 @@ class GaussianLinearReparameterization(nnx.Module):
         Returns:
             output: torch.tensor, [batch_size, output_dim], the output data.
         """
-        rng = rngs()
+        rng = self.rngs()
         W_std = self.W_std.value
         W = self.W_mu + nnx.softplus(W_std) * jax.random.normal(
             rng, (self.n_in, self.n_out)
@@ -83,13 +84,13 @@ class GaussianLinearReparameterization(nnx.Module):
         if self.scaled_variance:
             W = W / jnp.sqrt(self.n_in)
 
-        rng = rngs()
+        rng = self.rngs()
         b_std = self.b_std.value
         b = self.b_mu + nnx.softplus(b_std) * jax.random.normal(rng, (self.n_out,))
 
         return X @ W + b
 
-    def sample_predict(self, X, n_samples, rngs: nnx.Rngs):
+    def sample_predict(self, X, n_samples):
         """Makes predictions using a set of sampled weights.
 
         Args:
@@ -101,7 +102,7 @@ class GaussianLinearReparameterization(nnx.Module):
         Returns:
             torch.tensor, [n_samples, batch_size, output_dim], the output data.
         """
-        rng = rngs()
+        rng = self.rngs()
         W_std = self.W_std.value
         Ws = self.W_mu + nnx.softplus(W_std) * jax.random.normal(
             rng,
@@ -111,7 +112,7 @@ class GaussianLinearReparameterization(nnx.Module):
         if self.scaled_variance:
             Ws = Ws / jnp.sqrt(self.n_in)
 
-        rng = rngs()
+        rng = self.rngs()
         b_std = self.b_std.value
         bs = self.b_mu + nnx.softplus(b_std) * jax.random.normal(
             rng,
@@ -143,6 +144,7 @@ class GaussianMLPReparameterization(nnx.Module):
         b_std=None,
         scaled_variance=True,
         norm_layer=None,
+        rngs: nnx.Rngs = nnx.Rngs(0, params=1, dropout=2),
     ):
         """Initialization.
 
@@ -158,13 +160,11 @@ class GaussianMLPReparameterization(nnx.Module):
             b_std: float, the initial value of the logarithm of
                 the standard deviation of the biases.
         """
-        super(GaussianMLPReparameterization, self).__init__()
-
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.hidden_dims = hidden_dims
         self.norm_layer = norm_layer
-
+        self.rngs = rngs
         # Setup activation function
         options = {
             "cos": jnp.cos,
@@ -193,6 +193,7 @@ class GaussianMLPReparameterization(nnx.Module):
                 W_std,
                 b_std,
                 scaled_variance=scaled_variance,
+                rngs=rngs,
             )
         ]
 
@@ -206,15 +207,21 @@ class GaussianMLPReparameterization(nnx.Module):
                     W_std,
                     b_std,
                     scaled_variance=scaled_variance,
+                    rngs=rngs,
                 )
             )
             self.norm_layers.append(init_norm_layer(hidden_dims[i], self.norm_layer))
 
         self.output_layer = GaussianLinearReparameterization(
-            hidden_dims[-1], output_dim, W_std, b_std, scaled_variance=scaled_variance
+            hidden_dims[-1],
+            output_dim,
+            W_std,
+            b_std,
+            scaled_variance=scaled_variance,
+            rngs=rngs,
         )
 
-    def __call__(self, X, rngs: nnx.Rngs):
+    def __call__(self, X):
         """Performs forward pass given input data.
 
         Args:
@@ -228,13 +235,13 @@ class GaussianMLPReparameterization(nnx.Module):
         X = X.reshape(-1, self.input_dim)
 
         for linear_layer, norm_layer in zip(list(self.layers), list(self.norm_layers)):
-            X = self.activation_fn(norm_layer(linear_layer(X, rngs)))
+            X = self.activation_fn(norm_layer(linear_layer(X)))
 
-        X = self.output_layer(X, rngs)
+        X = self.output_layer(X)
 
         return X
 
-    def sample_functions(self, X, n_samples, rngs: nnx.Rngs):
+    def sample_functions(self, X, n_samples):
         """Performs predictions using `n_samples` set of weights.
 
         Args:
@@ -250,15 +257,15 @@ class GaussianMLPReparameterization(nnx.Module):
         X = jnp.tile(jnp.expand_dims(X, 0), [n_samples, 1, 1])
         for linear_layer, norm_layer in zip(list(self.layers), list(self.norm_layers)):
             if self.norm_layer is None:
-                X = self.activation_fn(linear_layer.sample_predict(X, n_samples, rngs))
+                X = self.activation_fn(linear_layer.sample_predict(X, n_samples))
             else:
-                X = linear_layer.sample_predict(X, n_samples, rngs)
+                X = linear_layer.sample_predict(X, n_samples)
                 out = jnp.zeros_like(X, dtype=X.dtype)
                 for i in range(n_samples):
                     out[i, :, :] = norm_layer(X[i, :, :])
                 X = self.activation_fn(out)
 
-        X = self.output_layer.sample_predict(X, n_samples, rngs)
+        X = self.output_layer.sample_predict(X, n_samples)
         X = X.transpose(1, 0, 2)
 
         return X

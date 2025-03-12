@@ -6,6 +6,7 @@ import numpy as np
 import transformers.models.densities as densities
 import transformers.models.likelihoods as likelihoods
 import transformers.models.mean_functions as mean_functions
+import transformers.models.parameter as parameter
 from flax import nnx
 
 
@@ -35,14 +36,22 @@ class GPModel(nnx.Module):
     """
 
     def __init__(
-        self, X, Y, kern, likelihood, mean_function, name=None, jitter_level=1e-6
+        self,
+        X,
+        Y,
+        kern,
+        likelihood,
+        mean_function,
+        name=None,
+        jitter_level=1e-6,
+        rngs=nnx.Rngs(0, params=1, dropout=2),
     ):
-        super(GPModel, self).__init__()
         self.name = name
         self.mean_function = mean_function or mean_functions.Zero()
         self.kern = kern
         self.likelihood = likelihood
         self.jitter_level = jitter_level
+        self.rngs = rngs
 
         if isinstance(X, np.ndarray):
             # X is a data matrix; each row represents one instance
@@ -58,14 +67,15 @@ class GPModel(nnx.Module):
     #     """Compute the log prior of the model."""
     #     pass
 
-    # @abc.abstractmethod
-    # def compute_log_likelihood(self, X=None, Y=None):
-    #     """Compute the log likelihood of the model."""
-    #     pass
+    @abc.abstractmethod
+    def compute_log_likelihood(self, X=None, Y=None):
+        """Compute the log likelihood of the model."""
+        pass
 
     def objective(self, X=None, Y=None):
         pos_objective = self.compute_log_likelihood(X, Y)
-        for param in self.parameters():
+        params = nnx.variables(self, nnx.Param)
+        for param in jax.tree.flatten(params)[0]:
             if isinstance(param, parameter.ParamWithPrior):
                 pos_objective = pos_objective + param.get_prior()
         return -pos_objective
@@ -88,16 +98,15 @@ class GPModel(nnx.Module):
         """
         return self.predict_f(Xnew, full_cov=True)
 
-    def sample_functions(self, X, num_samples, rngs: nnx.Rngs):
+    def sample_functions(self, X, num_samples):
         """
         Produce samples from the prior latent functions at the points X.
         """
         X = X.reshape((-1, self.kern.input_dim))
         mu = self.mean_function(X)
         prior_params = []
-        _, params = nnx.split(self.kern, nnx.Param)
-        for name in dict(params).keys():
-            param = getattr(self.kern, name)
+        params = nnx.variables(self.kern, nnx.Param)
+        for param in jax.tree.flatten(params)[0]:
             if param.prior is not None:
                 prior_params.append(param)
         if len(prior_params) == 0:
@@ -106,7 +115,7 @@ class GPModel(nnx.Module):
             samples = []
             for i in range(self.num_latent):
                 L = jnp.linalg.cholesky(var + jitter, upper=False)
-                rng = rngs()
+                rng = self.rngs()
                 V = jax.random.normal(rng, (L.shape[0], num_samples), dtype=L.dtype)
                 samples.append(mu + L @ V)
             return jnp.stack(samples, axis=0).transpose(1, 2, 0)
@@ -128,13 +137,13 @@ class GPModel(nnx.Module):
                             break
                         except RuntimeError as err:
                             multiplier *= 2
-                    rng = rngs()
+                    rng = self.rngs()
                     V = jax.random.normal(rng, (L.shape[0], 1), dtype=L.dtype)
                     s.append(mu + L @ V)
                 samples.append(jnp.stack(s, axis=0).transpose(1, 2, 0))
             return jnp.concatenate(samples, axis=1)
 
-    def predict_f_samples(self, Xnew, num_samples, rngs: nnx.Rngs):
+    def predict_f_samples(self, Xnew, num_samples):
         """
         Produce samples from the posterior latent function(s) at the points
         Xnew.
@@ -144,7 +153,7 @@ class GPModel(nnx.Module):
         samples = []
         for i in range(self.num_latent):  # TV-Todo: batch??
             L = jnp.linalg.cholesky(var[:, :, i] + jitter, upper=False)
-            rng = rngs()
+            rng = self.rngs()
             V = jax.random.normal(rng, (L.shape[0], num_samples), dtype=L.dtype)
             samples.append(mu[:, i : i + 1] + L @ V)
         return jnp.stack(samples, axis=0)  # TV-Todo: transpose?
@@ -194,7 +203,15 @@ class GPR(GPModel):
     \log p(\mathbf y \,|\, \mathbf f) = \mathcal N\left(\mathbf y\,|\, 0, \mathbf K + \sigma_n \mathbf I\right)
     """
 
-    def __init__(self, X, Y, kern, mean_function=None, **kwargs):
+    def __init__(
+        self,
+        X,
+        Y,
+        kern,
+        mean_function=None,
+        rngs=nnx.Rngs(0, params=1, dropout=2),
+        **kwargs
+    ):
         """Initialization
 
         Args:
@@ -202,7 +219,9 @@ class GPR(GPModel):
             Y is a data matrix, size N x R
         """
         likelihood = likelihoods.Gaussian(dtype=X.dtype)
-        super(GPR, self).__init__(X, Y, kern, likelihood, mean_function, **kwargs)
+        super(GPR, self).__init__(
+            X, Y, kern, likelihood, mean_function, rngs=rngs, **kwargs
+        )
         self.num_latent = Y.shape[1]
 
     def compute_log_likelihood(self, X=None, Y=None):
