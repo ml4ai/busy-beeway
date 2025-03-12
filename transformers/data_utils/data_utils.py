@@ -579,6 +579,104 @@ def create_preference_data(
                     f.create_dataset(k, data=data[k], chunks=True)
         return data
 
+def create_state_data(
+    F,
+    split_size=100,
+    state_features=16,
+    labels=("states", "actions", "timesteps", "attn_mask"),
+    with_attn_mask=True,
+    save_data=None,
+):
+
+    if with_attn_mask:
+        sts = []
+        acts = []
+        ts = []
+        ams = []
+        lbs = []
+        for f in F:
+            fill_size = f.shape[0] + (split_size - (f.shape[0] % split_size))
+            n_splits = int(fill_size / split_size)
+            s, a, t, am = run_to_np(f, state_features, fill_size, with_attn_mask)
+            s = s.reshape((n_splits, split_size, s.shape[1]))
+            a = a.reshape((n_splits, split_size, a.shape[1]))
+            t = t.reshape((n_splits, split_size))
+            am = am.reshape((n_splits, split_size))
+
+            sts.append(s)
+            acts.append(a)
+            ts.append(t)
+            ams.append(am)
+
+            lbs.append(np.ones(s.shape[0]))
+        if save_data is None:
+            return {
+                labels[0]: np.concatenate(sts),
+                labels[1]: np.concatenate(acts),
+                labels[2]: np.concatenate(ts),
+                labels[3]: np.concatenate(ams),
+                "labels": np.concatenate(lbs),
+            }
+        else:
+            data = {
+                labels[0]: np.concatenate(sts),
+                labels[1]: np.concatenate(acts),
+                labels[2]: np.concatenate(ts),
+                labels[3]: np.concatenate(ams),
+                "labels": np.concatenate(lbs),
+            }
+            with h5py.File(save_data, "a") as f:
+                # WARNING if this file already exists, datasets of the same name of "observations","timesteps","attn_mask", etc.
+                # will be overwritten with new datasets.
+                for k in data:
+                    if k in f:
+                        del f[k]
+                        f.create_dataset(k, data=data[k], chunks=True)
+                    else:
+                        f.create_dataset(k, data=data[k], chunks=True)
+            return data
+    sts = []
+    acts = []
+    ts = []
+    lbs = []
+    for f in F:
+        fill_size = f.shape[0] + (split_size - (f.shape[0] % split_size))
+        n_splits = int(fill_size / split_size)
+        s, a, t = run_to_np(f, state_features, fill_size, with_attn_mask)
+        s = s.reshape((n_splits, split_size, s.shape[1]))
+        a = a.reshape((n_splits, split_size, a.shape[1]))
+        t = t.reshape((n_splits, split_size))
+
+        sts.append(s)
+        acts.append(a)
+        ts.append(t)
+
+        lbs.append(np.ones(s.shape[0]))
+
+    if save_data is None:
+        return {
+            labels[0]: np.concatenate(sts),
+            labels[1]: np.concatenate(acts),
+            labels[2]: np.concatenate(ts),
+            "labels": np.concatenate(lbs),
+        }
+    else:
+        data = {
+            labels[0]: np.concatenate(sts),
+            labels[1]: np.concatenate(acts),
+            labels[2]: np.concatenate(ts),
+            "labels": np.concatenate(lbs),
+        }
+        with h5py.File(save_data, "a") as f:
+            # WARNING if this group already exists, datasets of the same name of "observations","timesteps","attn_mask", etc.
+            # will be overwritten with this new datasets.
+            for k in data:
+                if k in f:
+                    del f[k]
+                    f.create_dataset(k, data=data[k], chunks=True)
+                else:
+                    f.create_dataset(k, data=data[k], chunks=True)
+        return data
 
 # 0 for loss, otherwise accuracy
 def plot_training_validation_stats(
