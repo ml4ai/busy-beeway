@@ -8,7 +8,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from tqdm import tqdm
-from transformers.training.utils import load_pickle
 
 
 # Finds distance between a set of coordinates and a single coordinate. vecX and vecY are numpy arrays, px and py are scalars (floats/ints/etc.)
@@ -579,6 +578,7 @@ def create_preference_data(
                     f.create_dataset(k, data=data[k], chunks=True)
         return data
 
+
 def create_state_data(
     F,
     split_size=100,
@@ -677,6 +677,7 @@ def create_state_data(
                 else:
                     f.create_dataset(k, data=data[k], chunks=True)
         return data
+
 
 # 0 for loss, otherwise accuracy
 def plot_training_validation_stats(
