@@ -18,7 +18,7 @@ from transformers.data_utils.bb_data_loading import (
 from transformers.data_utils.data_utils import (
     compute_features,
     compute_features_p,
-    create_preference_data,
+    create_state_data,
 )
 from transformers.replayer.replayer import (
     generate_stats,
@@ -30,7 +30,7 @@ from transformers.replayer.replayer import (
 
 def main(argv):
     parser = argparse.ArgumentParser(
-        description="Compiles preference feature data by day into a digestible form for Preference Transformer",
+        description="Compiles state feature data by day into a digestible form for Preference Transformer",
         formatter_class=StructuredFormatter,
     )
     parser.add_argument(
@@ -121,7 +121,7 @@ def main(argv):
     else:
         L = []
 
-    Path(f"{o_path}/preference_data_{study}").mkdir(parents=True, exist_ok=True)
+    Path(f"{o_path}/state_data_{study}").mkdir(parents=True, exist_ok=True)
     if args.cache_stats:
         Path(f"{o_path}/cache").mkdir(parents=True, exist_ok=True)
         save_p_stats = f"{o_path}/cache/p_stats.npy"
@@ -132,7 +132,7 @@ def main(argv):
         S = load_list(p_id)
         for p_id in tqdm(S):
             day_list = load_list(day_lists + "/" + p_id + "/day_list.txt")
-            save_pref = f"{o_path}/preference_data_{study}/"
+            save_pref = f"{o_path}/state_data_{study}/"
 
             if parallel:
                 try:
@@ -195,7 +195,7 @@ def main(argv):
         sys.exit(0)
     else:
         day_list = load_list(day_lists + "/" + p_id + "/day_list.txt")
-        save_pref = f"{o_path}/preference_data_{study}/"
+        save_pref = f"{o_path}/state_data_{study}/"
 
         if parallel:
             try:
@@ -244,13 +244,10 @@ def main(argv):
             p_id=p_id, path=path, exclusion_list=L, study=study
         )
 
-        for i, key in enumerate(day_list):
-
-            F = compute_features_p(D[key], day=i)
+        F = itertools.chain.from_iterable([compute_features_p(D[key], day=i) for i, key in enumerate(day_list)])
 
         save_d_pref = save_pref + f"{key}.hdf5"
-        create_preference_data(
-            RF,
+        create_state_data(
             F,
             state_features=16,
             split_size=split_size,
