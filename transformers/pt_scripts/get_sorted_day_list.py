@@ -12,6 +12,7 @@ from tqdm import tqdm
 
 from transformers.data_utils.bb_data_loading import load_list
 
+
 def atoi(text):
     return int(text) if text.isdigit() else text
 
@@ -79,7 +80,8 @@ def main(argv):
                         for j in os.scandir(e_path):
                             if j.is_dir():
                                 alist.append(j.name)
-
+            if len(alist) == 0:
+                print("Test")
             alist.sort(key=natural_keys)
 
             with open(f"{save_dir}/{p_id}/day_list.txt", "w") as f:
