@@ -70,10 +70,6 @@ def main(argv):
                         acts.append(f["actions"][:])
                         ts.append(f["timesteps"][:])
                         am.append(f["attn_mask"][:])
-                        sts2.append(f["states_2"][:])
-                        acts2.append(f["actions_2"][:])
-                        ts2.append(f["timesteps_2"][:])
-                        am2.append(f["attn_mask_2"][:])
                         lab.append(f["labels"][:])
                     os.remove(f"{data_dir}/{p}.hdf5")
                 except FileNotFoundError:
@@ -83,10 +79,6 @@ def main(argv):
                 f.create_dataset("actions", data=np.concatenate(acts), chunks=True)
                 f.create_dataset("timesteps", data=np.concatenate(ts), chunks=True)
                 f.create_dataset("attn_mask", data=np.concatenate(am), chunks=True)
-                f.create_dataset("states_2", data=np.concatenate(sts2), chunks=True)
-                f.create_dataset("actions_2", data=np.concatenate(acts2), chunks=True)
-                f.create_dataset("timesteps_2", data=np.concatenate(ts2), chunks=True)
-                f.create_dataset("attn_mask_2", data=np.concatenate(am2), chunks=True)
                 f.create_dataset("labels", data=np.concatenate(lab), chunks=True)
     sys.exit(0)
 
