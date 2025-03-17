@@ -70,8 +70,8 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
             m_size = f["states"].shape[0]
             self.m_idxs = rng.choice(m_size, self._sts_shape[0], False)
             for m in range(m_size):
-                self._max_episode_length = np.max(
-                    np.max(f["timesteps"][m, ...]), self._max_episode_length
+                self._max_episode_length = max(
+                    np.max(f["timesteps"][m, :]), self._max_episode_length
                 )
             # if combined:
             #     self._c_idx = {}
