@@ -26,7 +26,7 @@ def main(argv):
         "-e",
         "--exclude",
         type=str,
-        default="t0012",
+        default=None,
         help="Exclude participant (or filename) from p_id",
     )
     parser.add_argument(
@@ -47,20 +47,20 @@ def main(argv):
     p_id = load_list(args.p_id)
     data_dir = os.path.expanduser(args.data_dir)
     save_file = os.path.expanduser(args.save_file)
-    p_exclude = args.exclude
+    if args.exclude is not None:
+        p_id.remove(args.exclude)
     data_sizes = []
     segment_sizes = []
     state_sizes = []
     action_sizes = []
     for p in p_id:
-        if p != p_exclude:
-            with h5py.File(f"{data_dir}/{p}.hdf5") as f:
-                d, s, st = f["states"].shape
-                act = f["actions"].shape[2]
-                data_sizes.append(d)
-                segment_sizes.append(s)
-                state_sizes.append(st)
-                action_sizes.append(act)
+        with h5py.File(f"{data_dir}/{p}.hdf5") as f:
+            d, s, st = f["states"].shape
+            act = f["actions"].shape[2]
+            data_sizes.append(d)
+            segment_sizes.append(s)
+            state_sizes.append(st)
+            action_sizes.append(act)
     if not np.all(np.array(segment_sizes) == segment_sizes[0]):
         raise ValueError("All segment lengths must be the same!")
     if not np.all(np.array(state_sizes) == state_sizes[0]):
@@ -86,40 +86,39 @@ def main(argv):
     prev_size = 0
     p_idx = []
     for i, p in enumerate(p_id):
-        if p != p_exclude:
-            st_vsource = h5py.VirtualSource(
-                f"{data_dir}/{p}.hdf5",
-                "states",
-                shape=(data_sizes[i], segment_sizes[i], state_sizes[i]),
-            )
-    
-            act_vsource = h5py.VirtualSource(
-                f"{data_dir}/{p}.hdf5",
-                "actions",
-                shape=(data_sizes[i], segment_sizes[i], action_sizes[i]),
-            )
-    
-            t_vsource = h5py.VirtualSource(
-                f"{data_dir}/{p}.hdf5", "timesteps", shape=(data_sizes[i], segment_sizes[i])
-            )
-    
-            am_vsource = h5py.VirtualSource(
-                f"{data_dir}/{p}.hdf5", "attn_mask", shape=(data_sizes[i], segment_sizes[i])
-            )
-    
-            l_vsource = h5py.VirtualSource(
-                f"{data_dir}/{p}.hdf5", "labels", shape=(data_sizes[i],)
-            )
-    
-            st_layout[prev_size : (prev_size + data_sizes[i]), :, :] = st_vsource
-            act_layout[prev_size : (prev_size + data_sizes[i]), :, :] = act_vsource
-            t_layout[prev_size : (prev_size + data_sizes[i]), :] = t_vsource
-            am_layout[prev_size : (prev_size + data_sizes[i]), :] = am_vsource
-    
-            l_layout[prev_size : (prev_size + data_sizes[i])] = l_vsource
-            # end of range is exclusive. So 0,100 is really 0 to 99 inclusive.
-            p_idx.append(np.array([prev_size, (prev_size + data_sizes[i])]))
-            prev_size += data_sizes[i]
+        st_vsource = h5py.VirtualSource(
+            f"{data_dir}/{p}.hdf5",
+            "states",
+            shape=(data_sizes[i], segment_sizes[i], state_sizes[i]),
+        )
+
+        act_vsource = h5py.VirtualSource(
+            f"{data_dir}/{p}.hdf5",
+            "actions",
+            shape=(data_sizes[i], segment_sizes[i], action_sizes[i]),
+        )
+
+        t_vsource = h5py.VirtualSource(
+            f"{data_dir}/{p}.hdf5", "timesteps", shape=(data_sizes[i], segment_sizes[i])
+        )
+
+        am_vsource = h5py.VirtualSource(
+            f"{data_dir}/{p}.hdf5", "attn_mask", shape=(data_sizes[i], segment_sizes[i])
+        )
+
+        l_vsource = h5py.VirtualSource(
+            f"{data_dir}/{p}.hdf5", "labels", shape=(data_sizes[i],)
+        )
+
+        st_layout[prev_size : (prev_size + data_sizes[i]), :, :] = st_vsource
+        act_layout[prev_size : (prev_size + data_sizes[i]), :, :] = act_vsource
+        t_layout[prev_size : (prev_size + data_sizes[i]), :] = t_vsource
+        am_layout[prev_size : (prev_size + data_sizes[i]), :] = am_vsource
+
+        l_layout[prev_size : (prev_size + data_sizes[i])] = l_vsource
+        # end of range is exclusive. So 0,100 is really 0 to 99 inclusive.
+        p_idx.append(np.array([prev_size, (prev_size + data_sizes[i])]))
+        prev_size += data_sizes[i]
 
     with h5py.File(save_file, "a") as f:
         f.create_virtual_dataset("states", st_layout)
