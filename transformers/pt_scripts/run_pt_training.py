@@ -20,8 +20,14 @@ def main(argv):
         formatter_class=StructuredFormatter,
     )
     parser.add_argument(
-        "data",
+        "data_1",
         metavar="D",
+        type=str,
+        help="HDF5 file containing data. \nThe file must have the datasets \n'Observations',timesteps',etc.",
+    )
+    parser.add_argument(
+        "data_2",
+        metavar="A",
         type=str,
         help="HDF5 file containing data. \nThe file must have the datasets \n'Observations',timesteps',etc.",
     )
@@ -88,7 +94,8 @@ def main(argv):
 
     multiprocessing.set_start_method("forkserver")
     args = parser.parse_args(argv)
-    data = os.path.expanduser(args.data)
+    data_1 = os.path.expanduser(args.data_1)
+    data_2 = os.path.expanduser(args.data_2)
     train_split = args.training_split
     batch_size = args.batch_size
     eval_period = args.eval_period
@@ -103,7 +110,7 @@ def main(argv):
     workers = args.workers
 
     try:
-        data = Pref_H5Dataset(data)
+        data = Pref_H5Dataset(data_1,data_2)
         train_pt(
             data,
             seed,
