@@ -1,4 +1,5 @@
 from collections import defaultdict
+from itertools import chain
 
 import h5py
 import jax.numpy as jnp
@@ -38,7 +39,7 @@ class JaxDataset(torch.utils.data.Dataset[Tuple[jax.Array, ...]]):
         self.arrays = arrays
 
     def __getitem__(self, index):
-        #The dataloader cannot use jax.Array
+        # The dataloader cannot use jax.Array
         return tuple(np.asarray(array[index]) for array in self.arrays)
 
     def __len__(self):
@@ -47,42 +48,66 @@ class JaxDataset(torch.utils.data.Dataset[Tuple[jax.Array, ...]]):
 
 class Pref_H5Dataset(torch.utils.data.Dataset):
     # combined = true means this is a virtual dataset of combined data files
-    def __init__(self, file_path, combined=True):
+    # batch size is set my target participant data
+    # Randomly matches indexes of mixed participants to target participant
+    def __init__(self, target_p_file, mixed_p_file, rng=np.random.default_rng()):
         super(Pref_H5Dataset, self).__init__()
-        self.file_path = file_path
-        with h5py.File(self.file_path, "r") as f:
+        self.target_p_file = target_p_file
+        self.mixed_p_file = mixed_p_file
+        with h5py.File(self.target_p_file, "r") as f:
             self._sts_shape = f["states"].shape
             self._acts_shape = f["actions"].shape
             self._max_episode_length = np.max(f["timesteps"][:])
-            if combined:
-                self._c_idx = {}
-                for key, val in f.attrs.items():
-                    self._c_idx[key] = val
-                self._c_n = len(self._c_idx)
-            else:
-                self._c_idx = None
-                self._c_n = 1
+            # if combined:
+            #     self._c_idx = {}
+            #     for key, val in f.attrs.items():
+            #         self._c_idx[key] = val
+            #     self._c_n = len(self._c_idx)
+            # else:
+            #     self._c_idx = None
+            #     self._c_n = 1
 
+        with h5py.File(self.mixed_p_file, "r") as f:
+            m_size = f["states"].shape[0]
+            self.m_idxs = list(
+                chain.from_iterable(rng.choice(m_size, self._sts_shape[0], False))
+            )
+            for m in range(m_size):
+                self._max_episode_length = np.max(
+                    f["timesteps"][m, ...], self._max_episode_length
+                )
+            # if combined:
+            #     self._c_idx = {}
+            #     for key, val in f.attrs.items():
+            #         self._c_idx[key] = val
+            #     self._c_n = len(self._c_idx)
+            # else:
+            #     self._c_idx = None
+            #     self._c_n = 1
+
+    # Target data is denoted with a 2, since the labels are all 1 for the target
     def open_hdf5(self):
-        self.h5_file = h5py.File(self.file_path, "r")
+        self.h5_file = h5py.File(self.mixed_p_file, "r")
         self.states = self.h5_file["states"]
         self.actions = self.h5_file["actions"]
         self.timesteps = self.h5_file["timesteps"]
         self.attn_mask = self.h5_file["attn_mask"]
-        self.states_2 = self.h5_file["states_2"]
-        self.actions_2 = self.h5_file["actions_2"]
-        self.timesteps_2 = self.h5_file["timesteps_2"]
-        self.attn_mask_2 = self.h5_file["attn_mask_2"]
+
+        self.h5_file = h5py.File(self.target_p_file, "r")
+        self.states_2 = self.h5_file["states"]
+        self.actions_2 = self.h5_file["actions"]
+        self.timesteps_2 = self.h5_file["timesteps"]
+        self.attn_mask_2 = self.h5_file["attn_mask"]
         self.labels = self.h5_file["labels"]
 
     def __getitem__(self, index):
         if not hasattr(self, "h5_file"):
             self.open_hdf5()
         return (
-            self.states[index, ...],
-            self.actions[index, ...],
-            self.timesteps[index, ...],
-            self.attn_mask[index, ...],
+            self.states[self.m_idxs[index], ...],
+            self.actions[self.m_idxs[index], ...],
+            self.timesteps[self.m_idxs[index], ...],
+            self.attn_mask[self.m_idxs[index], ...],
             self.states_2[index, ...],
             self.actions_2[index, ...],
             self.timesteps_2[index, ...],
@@ -99,33 +124,30 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
     def max_episode_length(self):
         return self._max_episode_length
 
-    # None if not a combined dataset
-    def c_idx(self):
-        return self._c_idx
+    # # None if not a combined dataset
+    # def c_idx(self):
+    #     return self._c_idx
 
-    # 1 if not a combined dataset
-    def c_num(self):
-        return self._c_n
+    # # 1 if not a combined dataset
+    # def c_num(self):
+    #     return self._c_n
 
 
 class Dec_H5Dataset(torch.utils.data.Dataset):
     # combined = true means this is a virtual dataset of combined data files
     # the data tag is used for return_to_go if there are multiple in the file.
-    def __init__(self, file_path, combined=True):
+    def __init__(self, file_path, normalized_returns=True):
         super(Dec_H5Dataset, self).__init__()
         self.file_path = file_path
+        self.normalized_returns = normalized_returns
         with h5py.File(self.file_path, "r") as f:
             self._sts_shape = f["states"].shape
             self._acts_shape = f["actions"].shape
-            self._max_episode_length = np.max(f["timesteps"][:])
-            if combined:
-                self._c_idx = {}
-                for key, val in f.attrs.items():
-                    self._c_idx[key] = val
-                self._c_n = len(self._c_idx)
-            else:
-                self._c_idx = None
-                self._c_n = 1
+            size = f["states"].shape[0]
+            for i in range(size):
+                self._max_episode_length = np.max(
+                    f["timesteps"][i, ...], self._max_episode_length
+                )
 
     def open_hdf5(self):
         self.h5_file = h5py.File(self.file_path, "r")
@@ -133,7 +155,10 @@ class Dec_H5Dataset(torch.utils.data.Dataset):
         self.actions = self.h5_file["actions"]
         self.timesteps = self.h5_file["timesteps"]
         self.attn_mask = self.h5_file["attn_mask"]
-        self.returns = self.h5_file["returns"]
+        if self.normalized_returns:
+            self.returns = self.h5_file["n_returns"]
+        else:
+            self.returns = self.h5_file["raw_returns"]
 
     def __getitem__(self, index):
         if not hasattr(self, "h5_file"):
@@ -154,14 +179,6 @@ class Dec_H5Dataset(torch.utils.data.Dataset):
 
     def max_episode_length(self):
         return self._max_episode_length
-
-    # None if not a combined dataset
-    def c_idx(self):
-        return self._c_idx
-
-    # 1 if not a combined dataset
-    def c_num(self):
-        return self._c_n
 
 
 class Mentor_H5Dataset(torch.utils.data.Dataset):
