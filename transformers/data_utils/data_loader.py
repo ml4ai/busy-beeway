@@ -1,5 +1,4 @@
 from collections import defaultdict
-from itertools import chain
 
 import h5py
 import jax.numpy as jnp
@@ -69,9 +68,7 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
 
         with h5py.File(self.mixed_p_file, "r") as f:
             m_size = f["states"].shape[0]
-            self.m_idxs = list(
-                chain.from_iterable(rng.choice(m_size, self._sts_shape[0], False))
-            )
+            self.m_idxs = rng.choice(m_size, self._sts_shape[0], False)
             for m in range(m_size):
                 self._max_episode_length = np.max(
                     f["timesteps"][m, ...], self._max_episode_length
