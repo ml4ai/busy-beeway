@@ -108,9 +108,10 @@ def main(argv):
     end_value = learning_rate[2]
     dim = args.dim
     workers = args.workers
-
+    rng = np.random.default_rng(seed)
+    seed, _ = rng.integers(0,10000,2)
     try:
-        data = Pref_H5Dataset(data_1,data_2)
+        data = Pref_H5Dataset(data_1,data_2,rng)
         train_pt(
             data,
             seed,
