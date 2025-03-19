@@ -93,21 +93,21 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
 
     # Target data is denoted with a 2, since the labels are all 1 for the target
     def open_hdf5(self):
-        self.h5_file = h5py.File(self.mixed_p_file, "r")
-        self.states = self.h5_file["states"]
-        self.actions = self.h5_file["actions"]
-        self.timesteps = self.h5_file["timesteps"]
-        self.attn_mask = self.h5_file["attn_mask"]
+        self.h5_mixed_file = h5py.File(self.mixed_p_file, "r")
+        self.states = self.h5_mixed_file["states"]
+        self.actions = self.h5_mixed_file["actions"]
+        self.timesteps = self.h5_mixed_file["timesteps"]
+        self.attn_mask = self.h5_mixed_file["attn_mask"]
 
-        self.h5_file = h5py.File(self.target_p_file, "r")
-        self.states_2 = self.h5_file["states"]
-        self.actions_2 = self.h5_file["actions"]
-        self.timesteps_2 = self.h5_file["timesteps"]
-        self.attn_mask_2 = self.h5_file["attn_mask"]
-        self.labels = self.h5_file["labels"]
+        self.h5_target_file = h5py.File(self.target_p_file, "r")
+        self.states_2 = self.h5_target_file["states"]
+        self.actions_2 = self.h5_target_file["actions"]
+        self.timesteps_2 = self.h5_target_file["timesteps"]
+        self.attn_mask_2 = self.h5_target_file["attn_mask"]
+        self.labels = self.h5_target_file["labels"]
 
     def __getitem__(self, index):
-        if not hasattr(self, "h5_file"):
+        if not hasattr(self, "h5_mixed_file"):
             self.open_hdf5()
         return (
             self.states[self.m_idxs[index], ...],
