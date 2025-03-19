@@ -77,7 +77,7 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
                 self.m_idxs = []
                 for i in range(self._sts_shape[0]):
                     sts_static = f["states"][i, 0, 11:16]
-                    matches = np.argwhere(np.all(sts == st_static, axis=1))[:, 0]
+                    matches = np.argwhere(np.all(sts == sts_static, axis=1))[:, 0]
                     if matches:
                         self.m_idxs.append(rng.choice(matches))
                     else:
