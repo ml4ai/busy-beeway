@@ -66,21 +66,30 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
             #     self._c_idx = None
             #     self._c_n = 1
 
-        with h5py.File(self.mixed_p_file, "r") as f:
-            m_size = f["states"].shape[0]
-            self.m_idxs = rng.choice(m_size, self._sts_shape[0], False)
-            for m in range(m_size):
-                self._max_episode_length = max(
-                    np.max(f["timesteps"][m, :]), self._max_episode_length
-                )
-            # if combined:
-            #     self._c_idx = {}
-            #     for key, val in f.attrs.items():
-            #         self._c_idx[key] = val
-            #     self._c_n = len(self._c_idx)
-            # else:
-            #     self._c_idx = None
-            #     self._c_n = 1
+            with h5py.File(self.mixed_p_file, "r") as g:
+                m_size = g["states"].shape[0]
+                for m in range(m_size):
+                    self._max_episode_length = max(
+                        np.max(g["timesteps"][m, :]), self._max_episode_length
+                    )
+
+                sts = g["states"][:, 0, 11:16]
+                self.m_idxs = []
+                for i in self._sts_shape[0]:
+                    sts_static = f["states"][i, 0, 11:16]
+                    matches = np.argwhere(np.all(sts == st_static, axis=1))[:, 0]
+                    if matches:
+                        self.m_idxs.append(rng.choice(matches))
+                    else:
+                        self.m_idxs.append(rng.choice(sts.shape[0]))
+                # if combined:
+                #     self._c_idx = {}
+                #     for key, val in f.attrs.items():
+                #         self._c_idx[key] = val
+                #     self._c_n = len(self._c_idx)
+                # else:
+                #     self._c_idx = None
+                #     self._c_n = 1
 
     # Target data is denoted with a 2, since the labels are all 1 for the target
     def open_hdf5(self):
