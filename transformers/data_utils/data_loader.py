@@ -75,6 +75,7 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
 
                 sts = g["states"][:, 0, 11:16]
                 self.m_idxs = []
+                self.labels = []
                 for i in range(self._sts_shape[0]):
                     sts_static = f["states"][i, 0, 11:16]
                     matches = np.argwhere(np.all(sts == sts_static, axis=1))[:, 0]
@@ -82,6 +83,11 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
                         self.m_idxs.append(rng.choice(matches))
                     else:
                         self.m_idxs.append(rng.choice(sts.shape[0]))
+                    if np.all(f["actions"][i,:,2]) and np.all(g["actions"][self.m_idxs[i],:,2]):
+                        self.labels.append(0.5)
+                    else:
+                        self.labels.append(1.0)
+                self.labels = np.asarray(self.labels)
                 # if combined:
                 #     self._c_idx = {}
                 #     for key, val in f.attrs.items():
@@ -104,7 +110,7 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
         self.actions_2 = self.h5_target_file["actions"]
         self.timesteps_2 = self.h5_target_file["timesteps"]
         self.attn_mask_2 = self.h5_target_file["attn_mask"]
-        self.labels = self.h5_target_file["labels"]
+        # self.labels = self.h5_target_file["labels"]
 
     def __getitem__(self, index):
         if not hasattr(self, "h5_mixed_file"):
