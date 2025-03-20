@@ -83,7 +83,9 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
                         self.m_idxs.append(rng.choice(matches))
                     else:
                         self.m_idxs.append(rng.choice(sts.shape[0]))
-                    if np.all(f["actions"][i,:,2]) and np.all(g["actions"][self.m_idxs[i],:,2]):
+                    if np.all(f["actions"][i, :, 2] == 0) and np.all(
+                        g["actions"][self.m_idxs[i], :, 2] == 0
+                    ):
                         self.labels.append(0.5)
                     else:
                         self.labels.append(1.0)
