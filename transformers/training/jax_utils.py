@@ -39,6 +39,7 @@ def cross_ent_loss(logits, target, classes=2):
 
     if len(target.shape) == 1:
         label = jax.nn.one_hot(target, num_classes=classes)
+        label.at[target == 0.5].set(0.5)
     else:
         label = target
     loss = jnp.nanmean(optax.softmax_cross_entropy(logits=logits, labels=label))
