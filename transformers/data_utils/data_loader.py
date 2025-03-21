@@ -125,7 +125,7 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
             self.actions_2[self.m_idxs[index], ...],
             self.timesteps_2[self.m_idxs[index], ...],
             self.attn_mask_2[self.m_idxs[index], ...],
-            self.labels[index],
+            self.labels[self.m_idxs[index]],
         )
 
     def __len__(self):
