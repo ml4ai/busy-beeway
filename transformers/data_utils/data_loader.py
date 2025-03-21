@@ -77,7 +77,7 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
 
                     m_static = g["states"][m, 0, 11:16]
                     t_static = f["states"][:, 0, 11:16]
-                    matches = np.argwhere(np.all(t_static == g_static, axis=1))[:, 0]
+                    matches = np.argwhere(np.all(t_static == m_static, axis=1))[:, 0]
                     if matches.shape[0] > 0:
                         self.m_idxs.append(rng.choice(matches))
                     else:
