@@ -54,8 +54,6 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
         self.target_p_file = target_p_file
         self.mixed_p_file = mixed_p_file
         with h5py.File(self.target_p_file, "r") as f:
-            self._sts_shape = f["states"].shape
-            self._acts_shape = f["actions"].shape
             self._max_episode_length = np.max(f["timesteps"][:])
             # if combined:
             #     self._c_idx = {}
@@ -67,29 +65,30 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
             #     self._c_n = 1
 
             with h5py.File(self.mixed_p_file, "r") as g:
+                self._sts_shape = g["states"].shape
+                self._acts_shape = g["actions"].shape
                 m_size = g["states"].shape[0]
+                # self.labels = []
+                self.m_idxs = []
                 for m in range(m_size):
                     self._max_episode_length = max(
                         np.max(g["timesteps"][m, :]), self._max_episode_length
                     )
 
-                sts = g["states"][:, 0, 11:16]
-                self.m_idxs = []
-                self.labels = []
-                for i in range(self._sts_shape[0]):
-                    sts_static = f["states"][i, 0, 11:16]
-                    matches = np.argwhere(np.all(sts == sts_static, axis=1))[:, 0]
+                    m_static = g["states"][m, 0, 11:16]
+                    t_static = f["states"][:, 0, 11:16]
+                    matches = np.argwhere(np.all(t_static == g_static, axis=1))[:, 0]
                     if matches.shape[0] > 0:
                         self.m_idxs.append(rng.choice(matches))
                     else:
-                        self.m_idxs.append(rng.choice(sts.shape[0]))
-                    if np.all(f["actions"][i, :, 2] == 0) and np.all(
-                        g["actions"][self.m_idxs[i], :, 2] == 0
-                    ):
-                        self.labels.append(0.5)
-                    else:
-                        self.labels.append(1.0)
-                self.labels = np.asarray(self.labels)
+                        self.m_idxs.append(rng.choice(t_static.shape[0]))
+                #     if np.all(f["actions"][self.m_idxs[m], :, 2] == 0) and np.all(
+                #         g["actions"][m, :, 2] == 0
+                #     ):
+                #         self.labels.append(0.5)
+                #     else:
+                #         self.labels.append(1.0)
+                # self.labels = np.asarray(self.labels)
                 # if combined:
                 #     self._c_idx = {}
                 #     for key, val in f.attrs.items():
@@ -112,20 +111,20 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
         self.actions_2 = self.h5_target_file["actions"]
         self.timesteps_2 = self.h5_target_file["timesteps"]
         self.attn_mask_2 = self.h5_target_file["attn_mask"]
-        # self.labels = self.h5_target_file["labels"]
+        self.labels = self.h5_target_file["labels"]
 
     def __getitem__(self, index):
         if not hasattr(self, "h5_mixed_file"):
             self.open_hdf5()
         return (
-            self.states[self.m_idxs[index], ...],
-            self.actions[self.m_idxs[index], ...],
-            self.timesteps[self.m_idxs[index], ...],
-            self.attn_mask[self.m_idxs[index], ...],
-            self.states_2[index, ...],
-            self.actions_2[index, ...],
-            self.timesteps_2[index, ...],
-            self.attn_mask_2[index, ...],
+            self.states[index, ...],
+            self.actions[index, ...],
+            self.timesteps[index, ...],
+            self.attn_mask[index, ...],
+            self.states_2[self.m_idxs[index], ...],
+            self.actions_2[self.m_idxs[index], ...],
+            self.timesteps_2[self.m_idxs[index], ...],
+            self.attn_mask_2[self.m_idxs[index], ...],
             self.labels[index],
         )
 
