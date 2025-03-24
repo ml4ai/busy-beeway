@@ -65,3 +65,5 @@ participant_list.txt
 test.ipynb
 *.mp4
 *.png
+*.ckpt
+*.log
