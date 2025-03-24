@@ -8,7 +8,7 @@ import torch
 from flax import nnx
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
-from transformers.evaluation.eval_episodes import bb_run_episode
+from transformers.evaluation.eval_episodes import bb_run_episode, run_antmaze_medium
 from transformers.models.dec_transformer import DT
 from transformers.models.pref_transformer import PT
 from transformers.training.jax_utils import batch_to_jax
@@ -229,8 +229,8 @@ def train_dt(
     num_workers=2,
     n_epochs=50,
     eval_settings=[1, 10, 100, 500, 0],
-    criteria_key="eval_loss",
-    criteria_type="loss",
+    criteria_key="eval_metric",
+    criteria_type="max",
     save_dir="~/busy-beeway/transformers/logs",
     save=True,
     **kwargs,
@@ -278,11 +278,11 @@ def train_dt(
         action_dim,
         kwargs.get("max_episode_steps", int(max_episode_length)),
         embd_dim,
-        kwargs.get("num_heads", 8),
+        kwargs.get("num_heads", 2),
         kwargs.get("attn_dropout", 0.1),
         kwargs.get("resid_dropout", 0.1),
         kwargs.get("intermediate_dim", 4 * embd_dim),
-        kwargs.get("num_layers", 6),
+        kwargs.get("num_layers", 3),
         kwargs.get("embd_dropout", 0.1),
         kwargs.get("max_pos", max_pos),
         kwargs.get("eps", 0.1),
@@ -303,8 +303,10 @@ def train_dt(
         eps=model_args[11],
         rngs=rngs,
     )
-    # TODO: Control statement for different environments
-    eval_sim = bb_run_episode
+    if eval_settings[3] == 1:
+        eval_sim = run_antmaze_medium
+    else:
+        eval_sim = bb_run_episode
 
     model_args = np.array(model_args)
 
@@ -318,7 +320,7 @@ def train_dt(
         end_value=kwargs.get("end_value", 0),
     )
     c_best_epoch = 0
-    if criteria_type == "acc":
+    if criteria_type == "max":
         c_criteria_key = -np.inf
     else:
         c_criteria_key = np.inf
@@ -329,7 +331,7 @@ def train_dt(
                 "train_time": np.nan,
                 "training_loss": [],
                 "training_acc": [],
-                "eval_loss": [],
+                "eval_metric": [],
                 "best_epoch": c_best_epoch,
                 f"{criteria_key}_best": c_criteria_key,
             }
@@ -365,7 +367,7 @@ def train_dt(
                     total=eval_settings[1],
                     desc=f"Evaluation Epoch {epoch}",
                 ):
-                    ep_return, ep_length = eval_sim(
+                    met = eval_sim(
                         dec,
                         r_model,
                         move_stats,
@@ -374,12 +376,10 @@ def train_dt(
                         max_episode_length,
                         rng=np_rng,
                     )
-                    metrics["eval_loss"].append(
-                        ((eval_settings[2] - ep_return) ** 2) / ep_length
-                    )
+                    metrics["eval_metric"].append(met)
                 criteria = np.mean(metrics[criteria_key])
 
-                if criteria_type == "acc":
+                if criteria_type == "max":
                     if criteria >= c_criteria_key:
                         c_best_epoch = epoch
                         c_criteria_key = criteria
@@ -414,7 +414,7 @@ def train_dt(
                 "epoch": epoch,
                 "train_time": np.nan,
                 "training_loss": [],
-                "eval_loss": [],
+                "eval_metric": [],
                 "best_epoch": c_best_epoch,
                 f"{criteria_key}_best": c_criteria_key,
             }
@@ -450,7 +450,7 @@ def train_dt(
                     total=eval_settings[1],
                     desc=f"Evaluation Epoch {epoch}",
                 ):
-                    ep_return, ep_length = eval_sim(
+                    met = eval_sim(
                         dec,
                         r_model,
                         move_stats,
@@ -459,11 +459,9 @@ def train_dt(
                         max_episode_length,
                         rng=np_rng,
                     )
-                    metrics["eval_loss"].append(
-                        ((eval_settings[2] - ep_return) ** 2) / ep_length
-                    )
+                    metrics["eval_metric"].append(met)
                 criteria = np.mean(metrics[criteria_key])
-                if criteria_type == "acc":
+                if criteria_type == "max":
                     if criteria >= c_criteria_key:
                         c_best_epoch = epoch
                         c_criteria_key = criteria

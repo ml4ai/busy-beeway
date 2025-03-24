@@ -149,17 +149,20 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
 class Dec_H5Dataset(torch.utils.data.Dataset):
     # combined = true means this is a virtual dataset of combined data files
     # the data tag is used for return_to_go if there are multiple in the file.
-    def __init__(self, file_path, normalized_returns=True):
+    # The task returns flag overwrite normalized_returns flag
+    def __init__(self, file_path, normalized_returns=True, task_returns=False):
         super(Dec_H5Dataset, self).__init__()
         self.file_path = file_path
         self.normalized_returns = normalized_returns
+        self.task_returns = task_returns
+        self._max_episode_length = 0
         with h5py.File(self.file_path, "r") as f:
             self._sts_shape = f["states"].shape
             self._acts_shape = f["actions"].shape
             size = f["states"].shape[0]
             for i in range(size):
-                self._max_episode_length = np.max(
-                    f["timesteps"][i, ...], self._max_episode_length
+                self._max_episode_length = max(
+                    np.max(f["timesteps"][i, ...]), self._max_episode_length
                 )
 
     def open_hdf5(self):
@@ -168,10 +171,13 @@ class Dec_H5Dataset(torch.utils.data.Dataset):
         self.actions = self.h5_file["actions"]
         self.timesteps = self.h5_file["timesteps"]
         self.attn_mask = self.h5_file["attn_mask"]
-        if self.normalized_returns:
-            self.returns = self.h5_file["n_returns"]
+        if self.task_returns:
+            self.returns = self.h5_file["task_returns"]
         else:
-            self.returns = self.h5_file["raw_returns"]
+            if self.normalized_returns:
+                self.returns = self.h5_file["n_returns"]
+            else:
+                self.returns = self.h5_file["raw_returns"]
 
     def __getitem__(self, index):
         if not hasattr(self, "h5_file"):

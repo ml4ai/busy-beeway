@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from flax import nnx
 from tqdm import tqdm
+import minari
 
 
 def rand_circle(R, N, C=(0, 0), rng=np.random.default_rng()):
@@ -250,10 +251,10 @@ def bb_run_episode(
     a = jnp.zeros((1, 0, 3))
     t = jnp.zeros((1, 1), dtype=jnp.int32)
     d_model = nnx.jit(d_model, static_argnums=5)
-    episode_return, episode_length = 0, 0
+    episode_return = 0
     for i in tqdm(range(max_horizon), desc="Timesteps"):
         a = jnp.concat([a, jnp.zeros((1, 1, 3))], axis=1)
-        a = a[-context_length:]
+        a = a[:, -context_length:, :]
         _, _, action = d_model(
             R,
             s,
@@ -321,19 +322,18 @@ def bb_run_episode(
             s = jnp.concat([s, create_new_state().reshape(1, 1, 16)], axis=1)
         else:
             s = jnp.concat([s, create_new_state().reshape(1, 1, 15)], axis=1)
-        s[-context_length:]
+        s = s[:, -context_length:, :]
 
         R = jnp.concat([R, (R[-1][-1] - reward).reshape(1, 1, 1)], axis=1)
-        R[-context_length:]
+        R = R[:, -context_length:, :]
 
         t = jnp.concat([t, (t[-1][-1] + 1).reshape(1, 1)], axis=1)
-        t[-context_length:]
+        t = t[:, -context_length:]
 
         episode_return += reward
-        episode_length += 1
         if coll:
             break
-    return episode_return, episode_length
+    return episode_return
 
 
 def bb_record_episode(
@@ -524,7 +524,7 @@ def bb_record_episode(
     d_model = nnx.jit(d_model, static_argnums=5)
     for i in tqdm(range(max_horizon), desc="Timesteps"):
         a = jnp.concat([a, jnp.zeros((1, 1, 3))], axis=1)
-        a = a[-context_length:]
+        a = a[:, -context_length:, :]
         _, _, action = d_model(
             R,
             s,
@@ -593,13 +593,13 @@ def bb_record_episode(
             s = jnp.concat([s, create_new_state().reshape(1, 1, 16)], axis=1)
         else:
             s = jnp.concat([s, create_new_state().reshape(1, 1, 15)], axis=1)
-        s[-context_length:]
+        s = s[:, -context_length:, :]
 
         R = jnp.concat([R, (R[-1][-1] - reward).reshape(1, 1, 1)], axis=1)
-        R[-context_length:]
+        R = R[:, -context_length:, :]
 
         t = jnp.concat([t, (t[-1][-1] + 1).reshape(1, 1)], axis=1)
-        t[-context_length:]
+        t = t[:, -context_length:]
 
         episode_return += reward
         episode_length += 1
@@ -644,3 +644,129 @@ def bb_record_episode(
             "goal": g,
         },
     )
+
+
+# If no r_model is given, then episode_return == task_episode_return (if set to True)
+# normalized_score == True does nothing if compute_task_return != True
+def run_antmaze_medium(
+    d_model,
+    r_model,
+    move_stats,
+    context_length=100,
+    target_return=100.0,
+    max_horizon=500,
+    compute_task_return=False,
+    normalized_score=False,
+    rng=np.random.default_rng(),
+):
+    dataset = minari.load_dataset("D4RL/antmaze/medium-play-v1")
+    env = dataset.recover_environment()
+
+    obs, info = env.reset()
+
+    episode_over = False
+    d_model = nnx.jit(d_model, static_argnums=5)
+
+    R = jnp.array(target_return).reshape(1, 1, 1)
+    s = jnp.concatenate(
+        [
+            obs["desired_goal"],
+            obs["achieved_goal"],
+            obs["observation"],
+        ],
+    ).reshape(1, 1, -1)
+    a = jnp.zeros((1, 0, env.action_space.shape[0]))
+    t = jnp.zeros((1, 1), dtype=jnp.int32)
+    episode_return = 0
+    task_episode_return = 0
+    if r_model is None:
+        while not episode_over:
+            a = jnp.concat([a, jnp.zeros((1, 1, env.action_space.shape[0]))], axis=1)
+            a = a[:, -context_length:, :]
+            _, _, action = d_model(
+                R,
+                s,
+                a,
+                t,
+                jnp.ones((1, R.shape[1]), dtype=jnp.float32),
+                training=False,
+            )
+            action = action[-1][-1]
+            a = a.at[-1, -1].set(action)
+            obs, reward, terminated, truncated, info = env.step(action)
+            s = jnp.concatenate(
+                [
+                    s,
+                    jnp.concatenate(
+                        [
+                            obs["desired_goal"],
+                            obs["achieved_goal"],
+                            obs["observation"],
+                        ],
+                    ).reshape(1, 1, -1),
+                ],
+                axis=1,
+            )
+            s = s[:, -context_length:, :]
+            R = jnp.concat([R, (R[-1][-1] - reward).reshape(1, 1, 1)], axis=1)
+            R = R[:, -context_length:, :]
+            t = jnp.concat([t, (t[-1][-1] + 1).reshape(1, 1)], axis=1)
+            t = t[:, -context_length:]
+            episode_over = terminated or truncated
+            episode_return += reward
+            task_episode_return += reward
+    else:
+        while not episode_over:
+            a = jnp.concat([a, jnp.zeros((1, 1, env.action_space.shape[0]))], axis=1)
+            a = a[:, -context_length:, :]
+            _, _, action = d_model(
+                R,
+                s,
+                a,
+                t,
+                jnp.ones((1, R.shape[1]), dtype=jnp.float32),
+                training=False,
+            )
+            action = action[-1][-1]
+            a = a.at[-1, -1].set(action)
+
+            preds, _ = r_model(
+                s,
+                a,
+                t,
+                jnp.ones((1, R.shape[1]), dtype=jnp.float32),
+                training=False,
+            )
+            reward = preds["value"][:, 0, -1]
+            obs, t_reward, terminated, truncated, info = env.step(action)
+            s = jnp.concatenate(
+                [
+                    s,
+                    jnp.concatenate(
+                        [
+                            obs["desired_goal"],
+                            obs["achieved_goal"],
+                            obs["observation"],
+                        ],
+                    ).reshape(1, 1, -1),
+                ],
+                axis=1,
+            )
+            s = s[:, -context_length:, :]
+            R = jnp.concat([R, (R[-1][-1] - reward).reshape(1, 1, 1)], axis=1)
+            R = R[:, -context_length:, :]
+            t = jnp.concat([t, (t[-1][-1] + 1).reshape(1, 1)], axis=1)
+            t = t[:, -context_length:]
+            episode_over = terminated or truncated
+            episode_return += reward
+            task_episode_return += t_reward
+    env.close()
+    if compute_task_return:
+        if normalized_score:
+            return (
+                episode_return,
+                task_episode_return,
+                minari.get_normalized_score(dataset, task_episode_return),
+            )
+        return episode_return, task_episode_return
+    return episode_return

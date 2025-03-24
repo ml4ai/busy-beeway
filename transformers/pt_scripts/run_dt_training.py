@@ -6,14 +6,15 @@ sys.path.insert(0, os.path.abspath("../.."))
 import jax
 import jax.numpy as jnp
 import numpy as np
-import torch.multiprocessing as multiprocessing
 import orbax.checkpoint as ocp
-from flax import nnx
+import torch.multiprocessing as multiprocessing
 from argformat import StructuredFormatter
+from flax import nnx
+
 from transformers.data_utils.data_loader import Dec_H5Dataset
-from transformers.training.train_model import train_dt
 from transformers.models.pref_transformer import load_PT
 from transformers.replayer.replayer import load_stats
+from transformers.training.train_model import train_dt
 
 
 def main(argv):
@@ -28,16 +29,17 @@ def main(argv):
         help="HDF5 file containing data. \nThe file must have the datasets \n'Observations',timesteps',etc.",
     )
     parser.add_argument(
-        "reward",
-        metavar="R",
-        type=str,
-        help="A .ckpt directory containing reward model",
-    )
-    parser.add_argument(
         "output_type",
         metavar="O",
         type=str,
         help="This determines what the DT is mainly trying to predict. \nOptions should be Q (state-action value), \nS_D (discrete states), \nS_F (feature-based states), \nA_D (discrete actions), \nA_F (feature-based actions",
+    )
+    parser.add_argument(
+        "-r",
+        "--reward_function",
+        type=str,
+        default=None,
+        help="A .ckpt directory containing reward model. \nThis is required for evaluating with a learned reward function",
     )
     parser.add_argument(
         "-e",
@@ -45,7 +47,7 @@ def main(argv):
         type=int,
         default=[1, 10, 100, 0],
         nargs=4,
-        help="Eval settings (period, number of episodes, target return, eval_type)",
+        help="Eval settings (period, number of episodes, target return, eval_type). \neval_type == 0 for Busy Beeway, 1 for AntMaze_Medium-v4",
     )
     parser.add_argument(
         "-b",
@@ -97,17 +99,32 @@ def main(argv):
         "-m",
         "--move_stats",
         type=str,
-        default="~/busy-beeway/transformers/t0012/cache/p_stats.npy",
-        help="File with obstacle stats",
+        default=None,
+        help="File with obstacle stats. \nThis is required for Busy Beeway",
+    )
+    parser.add_argument(
+        "-a",
+        "--normalized_returns",
+        action="store_true",
+        help="Uses normalized returns for training. \nWorks with a learned reward function only!",
     )
     multiprocessing.set_start_method("forkserver")
     args = parser.parse_args(argv)
     data = os.path.expanduser(args.data)
-    checkpointer = ocp.Checkpointer(ocp.CompositeCheckpointHandler())
-    r_model = load_PT(os.path.expanduser(args.reward), checkpointer)
-    r_model = nnx.jit(r_model, static_argnums=4)
-    checkpointer.close()
-    move_stats = load_stats(args.move_stats)
+    if args.reward_function:
+        reward_function = os.path.expanduser(args.reward_function)
+        checkpointer = ocp.Checkpointer(ocp.CompositeCheckpointHandler())
+        r_model = load_PT(reward_function, checkpointer, on_cpu=True)
+        r_model = nnx.jit(r_model, static_argnums=4)
+        checkpointer.close()
+        task_returns = False
+    else:
+        r_model = None
+        task_returns = True
+    if args.move_stats:
+        move_stats = load_stats(args.move_stats)
+    else:
+        move_stats = None
     batch_size = args.batch_size
     eval_settings = args.eval_settings
     n_epochs = args.n_epochs
@@ -121,7 +138,7 @@ def main(argv):
     workers = args.workers
 
     try:
-        data = Dec_H5Dataset(data)
+        data = Dec_H5Dataset(data, normalized_returns=args.normalized_returns,task_returns=task_returns)
         train_dt(
             data,
             r_model,
