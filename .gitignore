@@ -62,4 +62,6 @@ participant_list.txt
 *.hdf5
 *.pptx
 *.txt
-test_notebook.ipynb
+test.ipynb
+*.mp4
+*.png
