@@ -31,7 +31,7 @@ class Q_MLP(nnx.Module):
             "sin": jnp.sin,
             "leaky_relu": nnx.leaky_relu,
             "swish": nnx.swish,
-            "none": Identity,
+            "none": Identity(),
         }
         self.activations = options[activations]
 
