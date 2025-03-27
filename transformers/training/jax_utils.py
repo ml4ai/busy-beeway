@@ -39,7 +39,11 @@ def cross_ent_loss(logits, target, classes=2):
 
     if len(target.shape) == 1:
         label = jax.nn.one_hot(target, num_classes=classes)
-        label = jnp.where(jnp.stack([jnp.all(label == 0,axis=1), jnp.all(label == 0,axis=1)]).T,0.5,label)
+        label = jnp.where(
+            jnp.stack([jnp.all(label == 0, axis=1), jnp.all(label == 0, axis=1)]).T,
+            0.5,
+            label,
+        )
     else:
         label = target
     loss = jnp.nanmean(optax.softmax_cross_entropy(logits=logits, labels=label))
@@ -368,6 +372,35 @@ def wasserstein_inner_loss_fn_nc(
         calculate_w_loss(model, batch["nnet_samples"], batch["gp_samples"]).sum()
     )
     return objective
+
+
+def val_loss(vCritic, tCritic, expectile, batch):
+    q1, q2 = tCritic(batch["states"], batch["actions"])
+    q = jnp.minimum(q1, q2)
+    v = vCritic(batch["states"])
+    diff = q - v
+    return (jnp.where(diff > 0, expectile, (1 - expectile)) * (diff**2)).mean()
+
+
+def actor_loss(actor, vCritic, tCritic, temperature, batch):
+    q1, q2 = tCritic(batch["states"], batch["actions"])
+    q = jnp.minimum(q1, q2)
+    v = vCritic(batch["states"])
+    exp_a = jnp.exp((q - v) * temperature)
+    exp_a = jnp.minimum(exp_a, 100.0)
+    dist = actor(batch["states"], training=True)
+    log_probs = dist.log_prob(batch["actions"])
+    return -(exp_a * log_probs).mean()
+
+
+def q_loss(qCritic, vCritic, discount, batch):
+    next_v = vCritic(batch["next_states"])
+
+    target_q = batch["rewards"] + discount * batch["attn_mask"] * next_v
+    
+    q1, q2 = qCritic(batch["states"], batch["actions"])
+
+    return ((q1 - target_q)**2 + (q2 - target_q)**2).mean()
 
 
 @jax.jit
