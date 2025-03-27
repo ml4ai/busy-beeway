@@ -87,7 +87,7 @@ def train_pt(
         kwargs.get("attn_dropout", 0.1),
         kwargs.get("resid_dropout", 0.1),
         kwargs.get("intermediate_dim", 4 * embd_dim),
-        kwargs.get("num_layers", 1),
+        kwargs.get("num_layers", 3),
         kwargs.get("embd_dropout", 0.1),
         kwargs.get("max_pos", max_pos),
         kwargs.get("eps", 0.1),

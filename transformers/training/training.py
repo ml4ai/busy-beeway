@@ -12,14 +12,15 @@ from transformers.training.jax_utils import (
     q_loss_fn,
     sd_loss_fn,
     sf_loss_fn,
+    val_loss,
+    actor_loss,
+    q_loss,
 )
 
 
 class PrefTransformerTrainer(object):
 
     def __init__(self, trans, **kwargs):
-        self.trans = trans
-
         optimizer_class = optax.adamw
         # May need to reconfigure for our data
         scheduler_class = optax.warmup_cosine_decay_schedule(
@@ -50,8 +51,9 @@ def _eval_pref_step(state, batch):
 
 @nnx.jit
 def _train_pref_step(state, batch):
-    grad_fn = nnx.value_and_grad(pref_loss_fn, has_aux=True)
-    (loss, acc), grads = grad_fn(state.model, batch, True)
+    (loss, acc), grads = nnx.value_and_grad(pref_loss_fn, has_aux=True)(
+        state.model, batch, True
+    )
     state.update(grads)
     return dict(training_loss=loss, training_acc=acc)
 
@@ -67,7 +69,6 @@ class DecTransformerTrainer(object):
         output_type="A_F",
         **kwargs,
     ):
-        self.dec = dec
         optimizer_class = optax.adamw
         # May need to reconfigure for our data
         scheduler_class = optax.warmup_cosine_decay_schedule(
@@ -77,7 +78,9 @@ class DecTransformerTrainer(object):
             decay_steps=kwargs.get("decay_steps", 650),
             end_value=kwargs.get("end_value", 0),
         )
-        tx = optax.chain(optax.clip_by_global_norm(0.25),optimizer_class(scheduler_class)) 
+        tx = optax.chain(
+            optax.clip_by_global_norm(0.25), optimizer_class(scheduler_class)
+        )
         # Reconfigure for our data
 
         match output_type:
@@ -105,41 +108,102 @@ class DecTransformerTrainer(object):
 
 @nnx.jit
 def _train_Qdec_step(state, batch):
-    grad_fn = nnx.value_and_grad(q_loss_fn)
-    loss, grads = grad_fn(state.model, batch, True)
+    loss, grads = nnx.value_and_grad(q_loss_fn)(state.model, batch, True)
     state.update(grads)
     return dict(training_loss=loss)
 
+
 @nnx.jit
 def _train_S_Ddec_step(state, batch):
-    grad_fn = nnx.value_and_grad(sd_loss_fn, has_aux=True)
-    (loss, acc), grads = grad_fn(state.model, batch, True)
+    (loss, acc), grads = nnx.value_and_grad(sd_loss_fn, has_aux=True)(
+        state.model, batch, True
+    )
     state.update(grads)
     return dict(training_loss=loss, training_acc=acc)
 
 
 @nnx.jit
 def _train_S_Fdec_step(state, batch):
-    grad_fn = nnx.value_and_grad(sf_loss_fn)
-    loss, grads = grad_fn(state.model, batch, True)
+    loss, grads = nnx.value_and_grad(sf_loss_fn)(state.model, batch, True)
     state.update(grads)
     return dict(training_loss=loss)
 
 
 @nnx.jit
 def _train_A_Ddec_step(state, batch):
-    grad_fn = nnx.value_and_grad(ad_loss_fn, has_aux=True)
-    (loss, acc), grads = grad_fn(state.model, batch, True)
+    (loss, acc), grads = nnx.value_and_grad(ad_loss_fn, has_aux=True)(
+        state.model, batch, True
+    )
     state.update(grads)
     return dict(training_loss=loss, training_acc=acc)
 
 
 @nnx.jit
 def _train_A_Fdec_step(state, batch):
-    grad_fn = nnx.value_and_grad(af_loss_fn)
-    loss, grads = grad_fn(state.model, batch, True)
+    loss, grads = nnx.value_and_grad(af_loss_fn)(state.model, batch, True)
     state.update(grads)
     return dict(training_loss=loss)
+
+
+class IQLTrainer(object):
+
+    def __init__(self, actor, vCritic, qCritic, tCritic, **kwargs):
+        opt_decay_schedule = kwargs.get("opt_decay_schedule", "cosine")
+
+        actor_lr = kwargs.get("actor_lr", 3e-4)
+        if opt_decay_schedule == "cosine":
+            schedule_fn = optax.cosine_decay_schedule(
+                actor_lr, kwargs.get("max_steps", int(1e6))
+            )
+            actor_optimizer = optax.chain(
+                optax.scale_by_adam(), optax.scale_by_schedule(schedule_fn)
+            )
+        else:
+            actor_optimizer = optax.adam(learning_rate=actor_lr)
+
+        vCritic_optimizer = optax.adam(learning_rate=kwargs.get("value_lr", 3e-4))
+
+        qCritic_optimizer = optax.adam(learning_rate=kwargs.get("critic_lr", 3e-4))
+
+        self.train = nnx.cached_partial(
+            _train_IQL_step,
+            nnx.Optimizer(actor, actor_optimizer),
+            nnx.Optimizer(vCritic, vCritic_optimizer),
+            nnx.Optimizer(qCritic, qCritic_optimizer),
+            tCritic,
+            kwargs.get("expectile", 0.8),
+            kwargs.get("temperature", 0.1),
+            kwargs.get("discount", 0.99),
+            kwargs.get("tau", 0.005),
+        )
+
+
+@nnx.jit
+def _train_IQL_step(
+    actor_state, v_state, q_state, tCritic, expectile, temperature, discount, tau, batch
+):
+    v_loss, v_grads = nnx.value_and_grad(val_loss)(
+        v_state.model, tCritic, expectile, batch
+    )
+    v_state.update(v_grads)
+
+    act_loss, act_grads = nnx.value_and_grad(actor_loss)(
+        actor_state.model, v_state.model, tCritic, temperature, batch
+    )
+    actor_state.update(act_grads)
+
+    qq_loss, qq_grads = nnx.value_and_grad(q_loss)(
+        q_state.model, v_state.model, discount, batch
+    )
+    q_state.update(qq_grads)
+
+    t_p_state = nnx.state(tCritic, nnx.Param)
+    q_p_state = nnx.state(qCritic, nnx.Param)
+    new_t_p_state = jax.tree.map(
+        lambda x, y: y * tau + x * (1 - tau), t_p_state, q_p_state
+    )
+    nnx.update(tCritic, new_t_p_state)
+    return dict(training_loss=v_loss+act_loss+qq_loss)
 
 
 # class MentorTransformerTrainer(object):
