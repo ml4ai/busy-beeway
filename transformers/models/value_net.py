@@ -88,36 +88,36 @@ class MLP(nnx.Module):
 class ValueCritic(nnx.Module):
     def __init__(
         self,
-        observation_dim: int,
+        state_dim: int,
         hidden_dims: Sequence[int],
         rngs: nnx.Rngs = nnx.Rngs(0, params=1, dropout=2),
     ):
-        self.mlp = MLP(observation_dim, hidden_dims, 1, rngs=rngs)
+        self.mlp = MLP(state_dim, hidden_dims, 1, rngs=rngs)
 
-    def __call__(self, observations: jax.Array) -> jax.Array:
-        critic = self.mlp(observations)
+    def __call__(self, states: jax.Array) -> jax.Array:
+        critic = self.mlp(states)
         return jnp.squeeze(critic, -1)
 
 
 class Critic(nnx.Module):
     def __init__(
         self,
-        observation_dim: int,
+        state_dim: int,
         action_dim: int,
         hidden_dims: Sequence[int],
         activations: Callable[[jax.Array], jax.Array] = nnx.relu,
         rngs: nnx.Rngs = nnx.Rngs(0, params=1, dropout=2),
     ):
         self.mlp = MLP(
-            observation_dim + action_dim,
+            state_dim + action_dim,
             hidden_dims,
             1,
             activations=activations,
             rngs=rngs,
         )
 
-    def __call__(self, observations: jax.Array, actions: jax.Array) -> jax.Array:
-        inputs = jnp.concatenate([observations, actions], -1)
+    def __call__(self, states: jax.Array, actions: jax.Array) -> jax.Array:
+        inputs = jnp.concatenate([states, actions], -1)
         critic = self.mlp(inputs)
         return jnp.squeeze(critic, -1)
 
@@ -125,27 +125,27 @@ class Critic(nnx.Module):
 class DoubleCritic(nnx.Module):
     def __init__(
         self,
-        observation_dim: int,
+        state_dim: int,
         action_dim: int,
         hidden_dims: Sequence[int],
         activations: Callable[[jax.Array], jax.Array] = nnx.relu,
         rngs: nnx.Rngs = nnx.Rngs(0, params=1, dropout=2),
     ):
         self.critic1 = Critic(
-            observation_dim, action_dim, hidden_dims, activations=activations, rngs=rngs
+            state_dim, action_dim, hidden_dims, activations=activations, rngs=rngs
         )
 
         self.critic2 = Critic(
-            observation_dim, action_dim, hidden_dims, activations=activations, rngs=rngs
+            state_dim, action_dim, hidden_dims, activations=activations, rngs=rngs
         )
 
     def __call__(
-        self, observations: jax.Array, actions: jax.Array
+        self, states: jax.Array, actions: jax.Array
     ) -> Tuple[jax.Array, jax.Array]:
         critic1 = self.critic1(
-            observations, actions
+            states, actions
         )
         critic2 = self.critic2(
-            observations, actions
+            states, actions
         )
         return critic1, critic2

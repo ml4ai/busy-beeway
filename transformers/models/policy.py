@@ -11,10 +11,11 @@ tfb = tfp.bijectors
 
 from transformers.models.value_net import Identity, default_init, MLP
 
+
 class NormalTanhPolicy(nnx.Module):
     def __init__(
         self,
-        observation_dim: int,
+        state_dim: int,
         mlp_output_dim: int,
         hidden_dims: Sequence[int],
         action_dim: int,
@@ -27,7 +28,7 @@ class NormalTanhPolicy(nnx.Module):
         rngs: nnx.Rngs = nnx.Rngs(0, params=1, dropout=2),
     ):
         self.mlp = MLP(
-            observation_dim,
+            state_dim,
             mlp_output_dim,
             hidden_dims,
             activation_final=True,
@@ -66,11 +67,11 @@ class NormalTanhPolicy(nnx.Module):
 
     def __call__(
         self,
-        observations: jax.Array,
+        states: jax.Array,
         temperature: float = 1.0,
         training: bool = False,
     ) -> tfd.Distribution:
-        outputs = self.mlp(observations, training=training)
+        outputs = self.mlp(states, training=training)
 
         means = self.mean_linear(outputs)
 
@@ -90,10 +91,10 @@ class NormalTanhPolicy(nnx.Module):
 @nnx.jit
 def sample_actions(
     actor: nnx.Module,
-    observations: np.ndarray,
+    states: jax.Array,
     temperature: float = 1.0,
     rngs: nnx.Rngs = nnx.Rngs(sample=4),
 ) -> jax.Array:
-    dist = actor_def(observations, temperature)
+    dist = actor_def(states, temperature)
     key = rngs.sample()
     return dist.sample(seed=key)
