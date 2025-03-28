@@ -50,12 +50,6 @@ def main(argv):
         action="store_true",
         help="Compute Raw Episode Returns (from unnormalized returns).",
     )
-    parser.add_argument(
-        "-r",
-        "--returns",
-        action="store_true",
-        help="Compute Raw Trajectory returns (from unnormalized returns) and Raw Episode Returns (overwrites --ep_returns flag).",
-    )
     args = parser.parse_args(argv)
     reward = os.path.expanduser(args.reward)
     data = os.path.expanduser(args.data)
@@ -73,7 +67,7 @@ def main(argv):
                 ts = f["timesteps"][:]
                 am = f["attn_mask"][:]
 
-                preds, _ = r_model(
+                rewards, _ = r_model(
                     sts,
                     acts,
                     ts,
@@ -81,11 +75,7 @@ def main(argv):
                     training=False,
                 )
                 seq_length = sts.shape[1]
-                rewards = []
-                for i in range(seq_length):
-                    rewards.append(preds["value"][:, 0, i])
-                rewards = jnp.concatenate(rewards, axis=1)
-                del preds
+                rewards = rewards.reshape(-1, seq_length)
                 if jnp.any(jnp.isnan(rewards)):
                     sts = jnp.delete(
                         sts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
@@ -104,165 +94,160 @@ def main(argv):
                         jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]),
                         axis=0,
                     )
-                del f["states"]
+
+                sts = sts.reshape(-1, sts.shape[2])
+                if "states" in f:
+                    del f["states"]
                 f.create_dataset("states", data=sts, chunks=True)
 
-                del f["actions"]
+                ts = ts.ravel()
+                next_sts = []
+                for i in tqdm(
+                    range(1, ts.shape[0]), total=ts.shape[0], desc="Next States"
+                ):
+                    if ts[i] == 0:
+                        next_sts.append(jnp.zeros(sts.shape[1]))
+                    next_sts.append(sts[i])
+
+                next_sts = jnp.stack(next_sts)
+
+                if "next_states" in f:
+                    del f["next_states"]
+                f.create_dataset("next_states", data=next_sts, chunks=True)
+
+                acts = acts.reshape(-1, acts.shape[2])
+                if "actions" in f:
+                    del f["actions"]
                 f.create_dataset("actions", data=acts, chunks=True)
 
-                del f["timesteps"]
-                f.create_dataset("timesteps", data=ts, chunks=True)
-
-                del f["attn_mask"]
+                am = am.ravel()
+                if "attn_mask" in f:
+                    del f["attn_mask"]
                 f.create_dataset("attn_mask", data=am, chunks=True)
 
-                if args.ep_returns or args.returns:
-                    rewards = rewards.ravel()
-                    r_am = am.ravel()
-                    r_ts = ts.ravel()
-                    if args.returns:
-                        returns = jnp.zeros_like(rewards, dtype=float)
-                        R = 0.0
-                        ep_rtns = []
-                        for i in tqdm(
-                            reversed(range(rewards.shape[0])),
-                            total=rewards.shape[0],
-                            desc="Raw Returns",
-                        ):
-                            if r_am[i] != 0:
-                                R = R + rewards[i]
-                                returns = returns.at[i].set(R)
-                            if r_ts[i] == 0:
-                                ep_rtns.append(R)
-                                R = 0.0
-                        returns = returns.reshape(am.shape[0], am.shape[1])
-                        ep_rtns = jnp.array(ep_rtns)
-
-                        if "raw_returns" in f:
-                            del f["raw_returns"]
-                        f.create_dataset("raw_returns", data=returns, chunks=True)
-
-                    else:
-                        R = 0.0
-                        ep_rtns = []
-                        for i in tqdm(
-                            reversed(range(rewards.shape[0])),
-                            total=rewards.shape[0],
-                            desc="Raw Episode Returns",
-                        ):
-                            if r_am[i] != 0:
-                                R = R + rewards[i]
-                            if r_ts[i] == 0:
-                                ep_rtns.append(R)
-                                R = 0.0
-                        ep_rtns = jnp.array(ep_rtns)
-
-                    if "raw_ep_returns" in f:
-                        del f["raw_ep_returns"]
-                    f.create_dataset("raw_ep_returns", data=ep_rtns, chunks=True)
-
+                rewards = rewards.ravel()
                 if "rewards" in f:
                     del f["rewards"]
                 f.create_dataset("rewards", data=rewards, chunks=True)
+
+                if args.ep_returns:
+                    R = 0.0
+                    ep_rtns = []
+                    for i in tqdm(
+                        reversed(range(rewards.shape[0])),
+                        total=rewards.shape[0],
+                        desc="Episode Returns",
+                    ):
+                        if am[i] != 0:
+                            R = R + rewards[i]
+                        if ts[i] == 0:
+                            ep_rtns.append(R)
+                            R = 0.0
+                    ep_rtns = jnp.array(ep_rtns)
+
+                    if "ep_returns" in f:
+                        del f["ep_returns"]
+                    f.create_dataset("ep_returns", data=ep_rtns, chunks=True)
+
+                    max_ep_length = jnp.max(ts)
+
+                    if "max_ep_length" in f:
+                        del f["max_ep_length"]
+                    f.create_dataset("max_ep_length", data=max_ep_length, chunks=True)
     else:
         with h5py.File(f"{data}/{p_id}.hdf5", "a") as f:
-            sts = f["states"][:]
-            acts = f["actions"][:]
-            ts = f["timesteps"][:]
-            am = f["attn_mask"][:]
+                sts = f["states"][:]
+                acts = f["actions"][:]
+                ts = f["timesteps"][:]
+                am = f["attn_mask"][:]
 
-            max_episode_length = np.max(ts)
-            preds, _ = r_model(
-                sts,
-                acts,
-                ts,
-                am,
-                training=False,
-            )
-            seq_length = sts.shape[1]
-            rewards = []
-            for i in range(seq_length):
-                rewards.append(preds["value"][:, 0, i])
-            rewards = jnp.concatenate(rewards, axis=1)
-            del preds
-            if jnp.any(jnp.isnan(rewards)):
-                sts = jnp.delete(
-                    sts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
+                rewards, _ = r_model(
+                    sts,
+                    acts,
+                    ts,
+                    am,
+                    training=False,
                 )
-                acts = jnp.delete(
-                    acts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
-                )
-                ts = jnp.delete(
-                    ts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
-                )
-                am = jnp.delete(
-                    am, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
-                )
-                rewards = jnp.delete(
-                    rewards,
-                    jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]),
-                    axis=0,
-                )
-            del f["states"]
-            f.create_dataset("states", data=sts, chunks=True)
+                seq_length = sts.shape[1]
+                rewards = rewards.reshape(-1, seq_length)
+                if jnp.any(jnp.isnan(rewards)):
+                    sts = jnp.delete(
+                        sts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
+                    )
+                    acts = jnp.delete(
+                        acts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
+                    )
+                    ts = jnp.delete(
+                        ts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
+                    )
+                    am = jnp.delete(
+                        am, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
+                    )
+                    rewards = jnp.delete(
+                        rewards,
+                        jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]),
+                        axis=0,
+                    )
 
-            del f["actions"]
-            f.create_dataset("actions", data=acts, chunks=True)
+                sts = sts.reshape(-1, sts.shape[2])
+                if "states" in f:
+                    del f["states"]
+                f.create_dataset("states", data=sts, chunks=True)
 
-            del f["timesteps"]
-            f.create_dataset("timesteps", data=ts, chunks=True)
+                ts = ts.ravel()
+                next_sts = []
+                for i in tqdm(
+                    range(1, ts.shape[0]), total=ts.shape[0], desc="Next States"
+                ):
+                    if ts[i] == 0:
+                        next_sts.append(jnp.zeros(sts.shape[1]))
+                    next_sts.append(sts[i])
 
-            del f["attn_mask"]
-            f.create_dataset("attn_mask", data=am, chunks=True)
+                next_sts = jnp.stack(next_sts)
 
-            if args.ep_returns or args.returns:
+                if "next_states" in f:
+                    del f["next_states"]
+                f.create_dataset("next_states", data=next_sts, chunks=True)
+
+                acts = acts.reshape(-1, acts.shape[2])
+                if "actions" in f:
+                    del f["actions"]
+                f.create_dataset("actions", data=acts, chunks=True)
+
+                am = am.ravel()
+                if "attn_mask" in f:
+                    del f["attn_mask"]
+                f.create_dataset("attn_mask", data=am, chunks=True)
+
                 rewards = rewards.ravel()
-                r_am = am.ravel()
-                r_ts = ts.ravel()
-                if args.returns:
-                    returns = jnp.zeros_like(rewards, dtype=float)
+                if "rewards" in f:
+                    del f["rewards"]
+                f.create_dataset("rewards", data=rewards, chunks=True)
+
+                if args.ep_returns:
                     R = 0.0
                     ep_rtns = []
                     for i in tqdm(
                         reversed(range(rewards.shape[0])),
                         total=rewards.shape[0],
-                        desc="Raw Returns",
+                        desc="Episode Returns",
                     ):
-                        if r_am[i] != 0:
+                        if am[i] != 0:
                             R = R + rewards[i]
-                            returns = returns.at[i].set(R)
-                        if r_ts[i] == 0:
-                            ep_rtns.append(R)
-                            R = 0.0
-                    returns = returns.reshape(am.shape[0], am.shape[1])
-                    ep_rtns = jnp.array(ep_rtns)
-
-                    if "raw_returns" in f:
-                        del f["raw_returns"]
-                    f.create_dataset("raw_returns", data=returns, chunks=True)
-
-                else:
-                    R = 0.0
-                    ep_rtns = []
-                    for i in tqdm(
-                        reversed(range(rewards.shape[0])),
-                        total=rewards.shape[0],
-                        desc="Raw Episode Returns",
-                    ):
-                        if r_am[i] != 0:
-                            R = R + rewards[i]
-                        if r_ts[i] == 0:
+                        if ts[i] == 0:
                             ep_rtns.append(R)
                             R = 0.0
                     ep_rtns = jnp.array(ep_rtns)
 
-                if "raw_ep_returns" in f:
-                    del f["raw_ep_returns"]
-                f.create_dataset("raw_ep_returns", data=ep_rtns, chunks=True)
+                    if "ep_returns" in f:
+                        del f["ep_returns"]
+                    f.create_dataset("ep_returns", data=ep_rtns, chunks=True)
 
-            if "rewards" in f:
-                del f["rewards"]
-            f.create_dataset("rewards", data=rewards, chunks=True)
+                    max_ep_length = jnp.max(ts)
+
+                    if "max_ep_length" in f:
+                        del f["max_ep_length"]
+                    f.create_dataset("max_ep_length", data=max_ep_length, chunks=True)
     sys.exit(0)
 
 
