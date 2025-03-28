@@ -8,12 +8,23 @@ import torch
 from flax import nnx
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
-from transformers.evaluation.eval_episodes import bb_run_episode, run_antmaze_medium
+from transformers.evaluation.eval_episodes import (
+    bb_run_episode,
+    run_antmaze_medium,
+    bb_run_episode_IQL,
+    run_antmaze_medium_IQL,
+)
 from transformers.models.dec_transformer import DT
 from transformers.models.pref_transformer import PT
+from transformers.models.policy import NormalTanhPolicy
+from transformers.models.value_net import ValueCritic, DoubleCritic
 from transformers.training.jax_utils import batch_to_jax
 from transformers.training.logging_utils import logger, setup_logger
-from transformers.training.training import DecTransformerTrainer, PrefTransformerTrainer
+from transformers.training.training import (
+    DecTransformerTrainer,
+    PrefTransformerTrainer,
+    IQLTrainer,
+)
 from transformers.training.utils import Timer, save_model
 
 
@@ -228,7 +239,7 @@ def train_dt(
     batch_size=64,
     num_workers=2,
     n_epochs=50,
-    eval_settings=[1, 10, 100, 500, 0],
+    eval_settings=[1, 10, 100, 0],
     criteria_key="eval_metric",
     criteria_type="max",
     save_dir="~/busy-beeway/transformers/logs",
@@ -490,6 +501,210 @@ def train_dt(
             logger.dump_tabular(with_prefix=False, with_timestamp=False)
         if save:
             save_model(dec, model_args, "model", save_dir, checkpointer)
+    checkpointer.close()
+
+
+def train_IQL(
+    data,
+    r_model,
+    move_stats,
+    seed,
+    batch_size=64,
+    num_workers=2,
+    n_epochs=50,
+    eval_settings=[1, 10, 100, 0],
+    criteria_key="eval_metric",
+    criteria_type="max",
+    save_dir="~/busy-beeway/transformers/logs",
+    save=True,
+    **kwargs,
+):
+
+    save_dir = osp.expanduser(save_dir)
+    checkpointer = ocp.Checkpointer(ocp.CompositeCheckpointHandler())
+    setup_logger(
+        variant=None,
+        seed=seed,
+        base_log_dir=save_dir,
+        include_exp_prefix_sub_dir=False,
+    )
+
+    state_shape, action_shape = data.shapes()
+    state_dim = state_shape[2]
+    action_dim = action_shape[2]
+
+    rng_key = jax.random.key(seed)
+    rng_key, rng_subkey = jax.random.split(rng_key, 2)
+    t_keys = jax.random.randint(rng_subkey, 2, 0, 10000)
+    gen1 = torch.Generator().manual_seed(int(t_keys[0]))
+    np_rng = np.random.default_rng(int(t_keys[1]))
+    training_data_loader = DataLoader(
+        data,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        generator=gen1,
+        pin_memory=True,
+    )
+
+    interval = len(training_data_loader)
+
+    rng_subkey1, rng_subkey2, rng_subkey3, rng_subkey4 = jax.random.split(rng_key, 4)
+    rngs = nnx.Rngs(rng_subkey1, params=rng_subkey2, dropout=rng_subkey3, sample=rng_subkey4)
+
+    hidden_dims = (kwargs.get("hidden_dims", [256, 256]),)
+    actor_args = [
+        state_dim,
+        hidden_dims[-1],
+        hidden_dims[:-1],
+        action_dim,
+        kwargs.get("state_dependent_std", True),
+        kwargs.get("dropout_rate", None),
+        kwargs.get("log_std_scale", 1.0),
+        kwargs.get("log_std_min", -10.0),
+        kwargs.get("log_std_max", 2.0),
+        kwargs.get("tanh_squash_distribution", True),
+        seed,
+    ]
+    actor = NormalTanhPolicy(
+        state_dim=actor_args[0],
+        mlp_output_dim=actor_args[1],
+        hidden_dims=actor_args[2],
+        action_dim=actor_args[3],
+        state_dependent_std=actor_args[4],
+        dropout_rate=actor_args[5],
+        log_std_scale=actor_args[6],
+        log_std_min=actor_args[7],
+        log_std_max=actor_args[8],
+        tanh_squash_distribution=actor_args[9],
+        rngs=rngs,
+    )
+
+    vCritic = ValueCritic(state_dim=state_dim, hidden_dims=hidden_dims)
+
+    activations = kwargs.get("activations", nnx.relu)
+
+    qCritic = DoubleCritic(
+        state_dim=state_dim,
+        action_dim=action_dim,
+        hidden_dims=hidden_dims,
+        activations=activations,
+    )
+
+    tCritic = DoubleCritic(
+        state_dim=state_dim,
+        action_dim=action_dim,
+        hidden_dims=hidden_dims,
+        activations=activations,
+    )
+
+    if eval_settings[3] == 1:
+        eval_sim = run_antmaze_medium_IQL
+    else:
+        eval_sim = bb_run_episode_IQL
+
+    actor_args = np.array(actor_args)
+
+    trainer = IQLTrainer(
+        actor,
+        vCritic,
+        qCritic,
+        tCritic,
+        opt_decay_schedule=kwargs.get("opt_decay_schedule", "cosine"),
+        max_steps=kwargs.get("max_steps", int(1e6)),
+        actor_lr=kwargs.get("actor_lr", 3e-4),
+        value_lr=kwargs.get("value_lr", 3e-4),
+        critic_lr=kwargs.get("critic_lr", 3e-4),
+        expectile=kwargs.get("expectile", 0.8),
+        temperature=kwargs.get("temperature", 0.1),
+        discount=kwargs.get("discount", 0.99),
+        tau=kwargs.get("tau", 0.005),
+    )
+    c_best_epoch = 0
+    if criteria_type == "max":
+        c_criteria_key = -np.inf
+    else:
+        c_criteria_key = np.inf
+    for epoch in range(n_epochs + 1):
+        metrics = {
+            "epoch": epoch,
+            "train_time": np.nan,
+            "training_loss": [],
+            "eval_metric": [],
+            "best_epoch": c_best_epoch,
+            f"{criteria_key}_best": c_criteria_key,
+        }
+        if epoch:
+            with Timer() as train_timer:
+                for i, t_data in tqdm(
+                    enumerate(training_data_loader),
+                    total=interval,
+                    desc=f"Training Epoch {epoch}",
+                ):
+                    batch = {}
+                    (
+                        batch["states"],
+                        batch["next_states"],
+                        batch["actions"],
+                        batch["timesteps"],
+                        batch["attn_mask"],
+                        batch["rewards"],
+                    ) = t_data
+                    for k in batch:
+                        batch[k] = jnp.asarray(batch[k])
+                    batch = batch_to_jax(batch)
+                    for key, val in trainer.train(batch).items():
+                        metrics[key].append(val)
+            metrics["train_time"] = train_timer()
+        else:
+            # for using early stopping with train loss.
+            metrics["training_loss"] = np.nan
+
+        # eval phase
+        if epoch % eval_settings[0] == 0:
+            for i in tqdm(
+                range(eval_settings[1]),
+                total=eval_settings[1],
+                desc=f"Evaluation Epoch {epoch}",
+            ):
+                met = eval_sim(
+                    actor,
+                    r_model,
+                    move_stats,
+                    max_episode_length,
+                    rng=rngs,
+                )
+                metrics["eval_metric"].append(met)
+            criteria = np.mean(metrics[criteria_key])
+            if criteria_type == "max":
+                if criteria >= c_criteria_key:
+                    c_best_epoch = epoch
+                    c_criteria_key = criteria
+                    metrics["best_epoch"] = c_best_epoch
+                    metrics[f"{criteria_key}_best"] = c_criteria_key
+                    save_model(
+                        actor, actor_args, "best_actor", save_dir, checkpointer
+                    )
+            else:
+                if criteria <= c_criteria_key:
+                    c_best_epoch = epoch
+                    c_criteria_key = criteria
+                    metrics["best_epoch"] = c_best_epoch
+                    metrics[f"{criteria_key}_best"] = c_criteria_key
+                    save_model(
+                        actor, actor_args, "best_actor", save_dir, checkpointer
+                    )
+
+        for key, val in metrics.items():
+            if isinstance(val, list):
+                if len(val):
+                    metrics[key] = np.mean(val)
+                else:
+                    metrics[key] = np.nan
+        logger.record_dict(metrics)
+        logger.dump_tabular(with_prefix=False, with_timestamp=False)
+    if save:
+        save_model(actor, actor_args, "actor", save_dir, checkpointer)
     checkpointer.close()
 
 
