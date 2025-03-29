@@ -512,7 +512,7 @@ def train_IQL(
     batch_size=64,
     num_workers=2,
     n_epochs=50,
-    eval_settings=[1, 10, 0],
+    eval_settings=[1, 10, 500,0],
     criteria_key="eval_metric",
     criteria_type="max",
     save_dir="~/busy-beeway/transformers/logs",
@@ -599,7 +599,7 @@ def train_IQL(
         activations=activations,
     )
 
-    if eval_settings[2] == 1:
+    if eval_settings[3] == 1:
         eval_sim = run_antmaze_medium_IQL
     else:
         eval_sim = bb_run_episode_IQL
@@ -674,7 +674,7 @@ def train_IQL(
                     actor,
                     r_model,
                     move_stats,
-                    max_episode_length,
+                    eval_settings[2],
                     rng=rngs,
                 )
                 metrics["eval_metric"].append(met)
