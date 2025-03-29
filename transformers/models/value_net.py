@@ -36,6 +36,8 @@ class MLP(nnx.Module):
         dropout_rate: Optional[float] = None,
         rngs: nnx.Rngs = nnx.Rngs(0, params=1, dropout=2),
     ):
+        print(input_dim)
+        print(hidden_dims[0])
         self.layers = [
             nnx.Linear(
                 input_dim,
