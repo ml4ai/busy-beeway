@@ -129,7 +129,7 @@ def main(argv):
     workers = args.workers
 
     try:
-        data = IQL_H5Dataset(data, normalized_returns=args.normalized_returns)
+        data = IQL_H5Dataset(data, normalized_rewards=args.normalized_returns)
         train_dt(
             data,
             r_model,
