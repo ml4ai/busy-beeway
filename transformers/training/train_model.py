@@ -530,8 +530,8 @@ def train_IQL(
     )
 
     state_shape, action_shape = data.shapes()
-    state_dim = state_shape[2]
-    action_dim = action_shape[2]
+    state_dim = state_shape[1]
+    action_dim = action_shape[1]
 
     rng_key = jax.random.key(seed)
     rng_key, rng_subkey = jax.random.split(rng_key, 2)
@@ -550,7 +550,9 @@ def train_IQL(
     interval = len(training_data_loader)
 
     rng_subkey1, rng_subkey2, rng_subkey3, rng_subkey4 = jax.random.split(rng_key, 4)
-    rngs = nnx.Rngs(rng_subkey1, params=rng_subkey2, dropout=rng_subkey3, sample=rng_subkey4)
+    rngs = nnx.Rngs(
+        rng_subkey1, params=rng_subkey2, dropout=rng_subkey3, sample=rng_subkey4
+    )
 
     hidden_dims = (kwargs.get("hidden_dims", [256, 256]),)
     actor_args = [
@@ -682,18 +684,14 @@ def train_IQL(
                     c_criteria_key = criteria
                     metrics["best_epoch"] = c_best_epoch
                     metrics[f"{criteria_key}_best"] = c_criteria_key
-                    save_model(
-                        actor, actor_args, "best_actor", save_dir, checkpointer
-                    )
+                    save_model(actor, actor_args, "best_actor", save_dir, checkpointer)
             else:
                 if criteria <= c_criteria_key:
                     c_best_epoch = epoch
                     c_criteria_key = criteria
                     metrics["best_epoch"] = c_best_epoch
                     metrics[f"{criteria_key}_best"] = c_criteria_key
-                    save_model(
-                        actor, actor_args, "best_actor", save_dir, checkpointer
-                    )
+                    save_model(actor, actor_args, "best_actor", save_dir, checkpointer)
 
         for key, val in metrics.items():
             if isinstance(val, list):
