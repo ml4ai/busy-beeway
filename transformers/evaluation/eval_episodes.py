@@ -267,14 +267,14 @@ def bb_run_episode(
         action = action[-1][-1]
         a = a.at[-1, -1].set(action)
 
-        preds, _ = r_model(
+        reward, _ = r_model(
             s,
             a,
             t,
             jnp.ones((1, R.shape[1]), dtype=jnp.float32),
             training=False,
         )
-        reward = preds["value"][:, 0, -1]
+        reward = reward["value"][:, 0, -1]
 
         old_p_posX = p_posX
         old_p_posY = p_posY
@@ -533,14 +533,14 @@ def bb_record_episode(
         action = action[-1][-1]
         a = a.at[-1, -1].set(action)
 
-        preds, _ = r_model(
+        reward, _ = r_model(
             s,
             a,
             t,
             jnp.ones((1, R.shape[1]), dtype=jnp.float32),
             training=False,
         )
-        reward = preds["value"][:, 0, -1]
+        reward = reward["value"][:, 0, -1]
 
         old_p_posX = p_posX
         old_p_posY = p_posY
@@ -804,14 +804,14 @@ def bb_run_episode_IQL(
         a = jnp.concat([a, action.reshape(1, 1, -1)], axis=1)
         a = a[:, -context_length:, :]
 
-        preds, _ = r_model(
+        reward, _ = r_model(
             s,
             a,
             t,
             jnp.ones((1, R.shape[1]), dtype=jnp.float32),
             training=False,
         )
-        reward = preds["value"][:, 0, -1]
+        reward = reward["value"][:, 0, -1]
 
         old_p_posX = p_posX
         old_p_posY = p_posY
@@ -1063,14 +1063,14 @@ def bb_record_episode_IQL(
         a = jnp.concat([a, action.reshape(1, 1, -1)], axis=1)
         a = a[:, -context_length:, :]
 
-        preds, _ = r_model(
+        reward, _ = r_model(
             s,
             a,
             t,
             jnp.ones((1, R.shape[1]), dtype=jnp.float32),
             training=False,
         )
-        reward = preds["value"][:, 0, -1]
+        reward = reward["value"][:, 0, -1]
 
         old_p_posX = p_posX
         old_p_posY = p_posY
@@ -1255,14 +1255,14 @@ def run_antmaze_medium(
             action = action[-1][-1]
             a = a.at[-1, -1].set(action)
 
-            preds, _ = r_model(
+            reward, _ = r_model(
                 s,
                 a,
                 t,
                 jnp.ones((1, R.shape[1]), dtype=jnp.float32),
                 training=False,
             )
-            reward = preds["value"][:, 0, -1]
+            reward = reward["value"][:, 0, -1]
             obs, t_reward, terminated, truncated, info = env.step(action)
             s = jnp.concatenate(
                 [
@@ -1355,14 +1355,14 @@ def run_antmaze_medium_IQL(
             a = jnp.concat([a, action.reshape(1, 1, -1)], axis=1)
             a = a[:, -context_length:, :]
 
-            preds, _ = r_model(
+            reward, _ = r_model(
                 s,
                 a,
                 t,
                 jnp.ones((1, R.shape[1]), dtype=jnp.float32),
                 training=False,
             )
-            reward = preds["value"][:, 0, -1]
+            reward = reward["value"][:, 0, -1]
             obs, t_reward, terminated, truncated, info = env.step(action)
             s = jnp.concatenate(
                 [
