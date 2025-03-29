@@ -649,7 +649,7 @@ def bb_run_episode_IQL(
 ):
     key = rngs.sample()
     t_keys = jax.random.randint(key, 2, 0, 10000)
-    rng = np.random.default_rng(t_keys[0])
+    rng = np.random.default_rng(int(t_keys[0]))
     n_obstacles = rng.choice([50, 100, 150])
     ai = rng.choice(4)
     p_attempt = rng.choice(4)
@@ -890,7 +890,7 @@ def bb_record_episode_IQL(
 
     key = rngs.sample()
     t_keys = jax.random.randint(key, 2, 0, 10000)
-    rng = np.random.default_rng(t_keys[0])
+    rng = np.random.default_rng(int(t_keys[0]))
     if n_obstacles is None:
         n_obstacles = rng.choice([50, 100, 150])
 
