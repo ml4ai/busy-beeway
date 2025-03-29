@@ -95,6 +95,6 @@ def sample_actions(
     temperature: float = 1.0,
     rngs: nnx.Rngs = nnx.Rngs(sample=4),
 ) -> jax.Array:
-    dist = actor_def(states, temperature)
+    dist = actor(states, temperature)
     key = rngs.sample()
     return dist.sample(seed=key)
