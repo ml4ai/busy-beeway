@@ -92,7 +92,7 @@ class ValueCritic(nnx.Module):
         hidden_dims: Sequence[int],
         rngs: nnx.Rngs = nnx.Rngs(0, params=1, dropout=2),
     ):
-        self.mlp = MLP(state_dim, hidden_dims, 1, rngs=rngs)
+        self.mlp = MLP(state_dim, 1,hidden_dims, rngs=rngs)
 
     def __call__(self, states: jax.Array) -> jax.Array:
         critic = self.mlp(states)
@@ -110,8 +110,8 @@ class Critic(nnx.Module):
     ):
         self.mlp = MLP(
             state_dim + action_dim,
-            hidden_dims,
             1,
+            hidden_dims,
             activations=activations,
             rngs=rngs,
         )
