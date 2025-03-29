@@ -512,7 +512,7 @@ def train_IQL(
     batch_size=64,
     num_workers=2,
     n_epochs=50,
-    eval_settings=[1, 10, 500,0],
+    eval_settings=[1, 10, 500, 0],
     criteria_key="eval_metric",
     criteria_type="max",
     save_dir="~/busy-beeway/transformers/logs",
@@ -675,7 +675,7 @@ def train_IQL(
                     r_model,
                     move_stats,
                     eval_settings[2],
-                    rng=rngs,
+                    rngs=rngs,
                 )
                 metrics["eval_metric"].append(met)
             criteria = np.mean(metrics[criteria_key])

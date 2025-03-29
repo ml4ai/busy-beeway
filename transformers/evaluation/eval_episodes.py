@@ -645,8 +645,10 @@ def bb_run_episode_IQL(
     move_stats,
     max_horizon=500,
     days=153,
-    rng=np.random.default_rng(),
+    rngs=nnx.Rngs(sample=4),
 ):
+    key = rngs.sample()
+    rng = np.random.default_rng(key)
     n_obstacles = rng.choice([50, 100, 150])
     ai = rng.choice(4)
     p_attempt = rng.choice(4)
@@ -794,7 +796,7 @@ def bb_run_episode_IQL(
 
     episode_return = 0
     for i in tqdm(range(max_horizon), desc="Timesteps"):
-        action = sample_actions(policy, s[-1, -1], 0.0)
+        action = sample_actions(policy, s[-1, -1], 0.0,rngs)
         action = jnp.where(
             jnp.array([False, False, True]), jnp.round(jnp.clip(action, 0, 1)), action
         )
@@ -882,9 +884,11 @@ def bb_record_episode_IQL(
     ai=None,
     p_attempt=None,
     day=None,
-    rng=np.random.default_rng(),
+    rngs=nnx.Rngs(sample=4),
 ):
 
+    key = rngs.sample()
+    rng = np.random.default_rng(key)
     if n_obstacles is None:
         n_obstacles = rng.choice([50, 100, 150])
 
@@ -1053,7 +1057,7 @@ def bb_record_episode_IQL(
     success = False
 
     for i in tqdm(range(max_horizon), desc="Timesteps"):
-        action = sample_actions(policy, s[-1, -1], 0.0)
+        action = sample_actions(policy, s[-1, -1], 0.0,rngs)
         action = jnp.where(
             jnp.array([False, False, True]), jnp.round(jnp.clip(action, 0, 1)), action
         )
@@ -1306,7 +1310,7 @@ def run_antmaze_medium_IQL(
     max_horizon=500,
     compute_task_return=False,
     normalized_score=False,
-    rng=nnx.Rngs(sample=4),
+    rngs=nnx.Rngs(sample=4),
 ):
     dataset = minari.load_dataset("D4RL/antmaze/medium-play-v1")
     env = dataset.recover_environment()
@@ -1325,7 +1329,7 @@ def run_antmaze_medium_IQL(
             ],
         )
         while not episode_over:
-            action = sample_actions(policy, s, 0.0,rng)
+            action = sample_actions(policy, s, 0.0,rngs)
             action = jnp.clip(action, -1.0, 1.0)
 
             obs, reward, terminated, truncated, info = env.step(action)
@@ -1350,7 +1354,7 @@ def run_antmaze_medium_IQL(
         a = jnp.zeros((1, 0, env.action_space.shape[0]))
         t = jnp.zeros((1, 1), dtype=jnp.int32)
         while not episode_over:
-            action = sample_actions(policy, s[-1, -1], 0.0,rng)
+            action = sample_actions(policy, s[-1, -1], 0.0,rngs)
             action = jnp.clip(action, -1.0, 1.0)
             a = jnp.concat([a, action.reshape(1, 1, -1)], axis=1)
             a = a[:, -context_length:, :]
