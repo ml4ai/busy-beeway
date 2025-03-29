@@ -11,7 +11,7 @@ import torch.multiprocessing as multiprocessing
 from argformat import StructuredFormatter
 from flax import nnx
 
-from transformers.data_utils.data_loader import Dec_H5Dataset
+from transformers.data_utils.data_loader import IQL_H5Dataset
 from transformers.models.pref_transformer import load_PT
 from transformers.replayer.replayer import load_stats
 from transformers.training.train_model import train_IQL
