@@ -812,7 +812,7 @@ def bb_run_episode_IQL(
             s,
             a,
             t,
-            jnp.ones((1, R.shape[1]), dtype=jnp.float32),
+            jnp.ones((1, t.shape[1]), dtype=jnp.float32),
             training=False,
         )
         reward = reward["value"][:, 0, -1]
@@ -863,9 +863,6 @@ def bb_run_episode_IQL(
         s = jnp.concat([s, create_new_state().reshape(1, 1, -1)], axis=1)
 
         s = s[:, -context_length:, :]
-
-        R = jnp.concat([R, (R[-1][-1] - reward).reshape(1, 1, -1)], axis=1)
-        R = R[:, -context_length:, :]
 
         t = jnp.concat([t, (t[-1][-1] + 1).reshape(1, -1)], axis=1)
         t = t[:, -context_length:]
@@ -1075,7 +1072,7 @@ def bb_record_episode_IQL(
             s,
             a,
             t,
-            jnp.ones((1, R.shape[1]), dtype=jnp.float32),
+            jnp.ones((1, t.shape[1]), dtype=jnp.float32),
             training=False,
         )
         reward = reward["value"][:, 0, -1]
@@ -1127,9 +1124,6 @@ def bb_record_episode_IQL(
         s = jnp.concat([s, create_new_state().reshape(1, 1, -1)], axis=1)
 
         s = s[:, -context_length:, :]
-
-        R = jnp.concat([R, (R[-1][-1] - reward).reshape(1, 1, -1)], axis=1)
-        R = R[:, -context_length:, :]
 
         t = jnp.concat([t, (t[-1][-1] + 1).reshape(1, -1)], axis=1)
         t = t[:, -context_length:]
@@ -1368,7 +1362,7 @@ def run_antmaze_medium_IQL(
                 s,
                 a,
                 t,
-                jnp.ones((1, R.shape[1]), dtype=jnp.float32),
+                jnp.ones((1, t.shape[1]), dtype=jnp.float32),
                 training=False,
             )
             reward = reward["value"][:, 0, -1]
@@ -1387,8 +1381,6 @@ def run_antmaze_medium_IQL(
                 axis=1,
             )
             s = s[:, -context_length:, :]
-            R = jnp.concat([R, (R[-1][-1] - reward).reshape(1, 1, -1)], axis=1)
-            R = R[:, -context_length:, :]
             t = jnp.concat([t, (t[-1][-1] + 1).reshape(1, -1)], axis=1)
             t = t[:, -context_length:]
             episode_over = terminated or truncated
