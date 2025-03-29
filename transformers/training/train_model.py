@@ -554,7 +554,7 @@ def train_IQL(
         rng_subkey1, params=rng_subkey2, dropout=rng_subkey3, sample=rng_subkey4
     )
 
-    hidden_dims = (kwargs.get("hidden_dims", [256, 256]),)
+    hidden_dims = kwargs.get("hidden_dims", [256, 256])
     actor_args = [
         state_dim,
         hidden_dims[-1],
