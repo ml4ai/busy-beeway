@@ -648,7 +648,8 @@ def bb_run_episode_IQL(
     rngs=nnx.Rngs(sample=4),
 ):
     key = rngs.sample()
-    rng = np.random.default_rng(key)
+    t_keys = jax.random.randint(key, 2, 0, 10000)
+    rng = np.random.default_rng(t_keys[0])
     n_obstacles = rng.choice([50, 100, 150])
     ai = rng.choice(4)
     p_attempt = rng.choice(4)
@@ -796,7 +797,7 @@ def bb_run_episode_IQL(
 
     episode_return = 0
     for i in tqdm(range(max_horizon), desc="Timesteps"):
-        action = sample_actions(policy, s[-1, -1], 0.0,rngs)
+        action = sample_actions(policy, s[-1, -1], 0.0, rngs)
         action = jnp.where(
             jnp.array([False, False, True]), jnp.round(jnp.clip(action, 0, 1)), action
         )
@@ -888,7 +889,8 @@ def bb_record_episode_IQL(
 ):
 
     key = rngs.sample()
-    rng = np.random.default_rng(key)
+    t_keys = jax.random.randint(key, 2, 0, 10000)
+    rng = np.random.default_rng(t_keys[0])
     if n_obstacles is None:
         n_obstacles = rng.choice([50, 100, 150])
 
@@ -1057,7 +1059,7 @@ def bb_record_episode_IQL(
     success = False
 
     for i in tqdm(range(max_horizon), desc="Timesteps"):
-        action = sample_actions(policy, s[-1, -1], 0.0,rngs)
+        action = sample_actions(policy, s[-1, -1], 0.0, rngs)
         action = jnp.where(
             jnp.array([False, False, True]), jnp.round(jnp.clip(action, 0, 1)), action
         )
@@ -1329,7 +1331,7 @@ def run_antmaze_medium_IQL(
             ],
         )
         while not episode_over:
-            action = sample_actions(policy, s, 0.0,rngs)
+            action = sample_actions(policy, s, 0.0, rngs)
             action = jnp.clip(action, -1.0, 1.0)
 
             obs, reward, terminated, truncated, info = env.step(action)
@@ -1354,7 +1356,7 @@ def run_antmaze_medium_IQL(
         a = jnp.zeros((1, 0, env.action_space.shape[0]))
         t = jnp.zeros((1, 1), dtype=jnp.int32)
         while not episode_over:
-            action = sample_actions(policy, s[-1, -1], 0.0,rngs)
+            action = sample_actions(policy, s[-1, -1], 0.0, rngs)
             action = jnp.clip(action, -1.0, 1.0)
             a = jnp.concat([a, action.reshape(1, 1, -1)], axis=1)
             a = a[:, -context_length:, :]
