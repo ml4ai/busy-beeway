@@ -604,7 +604,7 @@ def train_IQL(
     else:
         eval_sim = bb_run_episode_IQL
 
-    if dropout_rate is None:
+    if actor_args[4] is None:
         actor_args[4] = -1
     actor_args = np.array(actor_args)
 
