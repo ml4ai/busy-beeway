@@ -45,7 +45,7 @@ class MLP(nnx.Module):
             )
         ]
         self.dropout_layers = [init_dropout_layer(dropout_rate, rngs=rngs)]
-        for i in range(1, hidden_dims):
+        for i in range(1, len(hidden_dims)):
             self.layers.append(
                 nnx.Linear(
                     hidden_dims[i - 1],
