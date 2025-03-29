@@ -217,7 +217,7 @@ class IQL_H5Dataset(torch.utils.data.Dataset):
         self.next_states = self.h5_file["next_states"]
         self.actions = self.h5_file["actions"]
         self.attn_mask = self.h5_file["attn_mask"]
-        if self.normalized_reward:
+        if self.normalized_rewards:
             self.rewards = self.h5_file["n_rewards"]
         else:
             self.rewards = self.h5_file["rewards"]
@@ -230,7 +230,7 @@ class IQL_H5Dataset(torch.utils.data.Dataset):
             self.next_states[index, ...],
             self.actions[index, ...],
             self.attn_mask[index, ...],
-            self.rewards[index,...]
+            self.rewards[index, ...],
         )
 
     def __len__(self):
