@@ -39,9 +39,9 @@ def main(argv):
         "-e",
         "--eval_settings",
         type=int,
-        default=[1, 10, 100, 0],
+        default=[1, 10, 0],
         nargs=4,
-        help="Eval settings (period, number of episodes, target return, eval_type). \neval_type == 0 for Busy Beeway, 1 for AntMaze_Medium-v4",
+        help="Eval settings (period, number of episodes, eval_type). \neval_type == 0 for Busy Beeway, 1 for AntMaze_Medium-v4",
     )
     parser.add_argument(
         "-b",
@@ -72,7 +72,7 @@ def main(argv):
         "-d",
         "--hidden_dims",
         type=float,
-        default=[256,256],
+        default=[256, 256],
         nargs="*",
         help="Learning Rate for actor, value critic, and q critic",
     )
@@ -140,9 +140,9 @@ def main(argv):
             n_epochs=n_epochs,
             eval_settings=eval_settings,
             save_dir=output_dir,
-            actor_lr = learning_rate[0],
-            value_lr = learning_rate[1],
-            critic_lr = learning_rate[2],
+            actor_lr=learning_rate[0],
+            value_lr=learning_rate[1],
+            critic_lr=learning_rate[2],
             hidden_dims=args.hidden_dims,
         )
     except FileNotFoundError:
