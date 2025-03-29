@@ -645,6 +645,7 @@ def bb_run_episode_IQL(
     move_stats,
     max_horizon=500,
     days=153,
+    context_length=100,
     rngs=nnx.Rngs(sample=4),
 ):
     key = rngs.sample()
@@ -885,6 +886,7 @@ def bb_record_episode_IQL(
     ai=None,
     p_attempt=None,
     day=None,
+    context_length=100,
     rngs=nnx.Rngs(sample=4),
 ):
 
@@ -1312,6 +1314,7 @@ def run_antmaze_medium_IQL(
     max_horizon=500,
     compute_task_return=False,
     normalized_score=False,
+    context_length=100,
     rngs=nnx.Rngs(sample=4),
 ):
     dataset = minari.load_dataset("D4RL/antmaze/medium-play-v1")
