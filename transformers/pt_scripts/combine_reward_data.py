@@ -61,7 +61,7 @@ def main(argv):
     for p in p_id:
         with h5py.File(f"{data_dir}/{p}.hdf5") as f:
             d, st = f["states"].shape
-            act = f["actions"].shape[2]
+            act = f["actions"].shape[1]
             data_sizes.append(d)
             state_sizes.append(st)
             action_sizes.append(act)
