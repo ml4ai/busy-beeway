@@ -91,6 +91,7 @@ def main(argv):
         checkpointer.close()
         episodes = dataset.iterate_episodes()
         states = []
+        next_states = []
         actions = []
         timesteps = []
         attn_mask = []
@@ -117,6 +118,22 @@ def main(argv):
                         ((0, fill_size - len(ep)), (0, 0)),
                         constant_values=0,
                     )
+
+                    next_sts = np.concatenate(
+                        [
+                            ep.observations["desired_goal"][1:, ...],
+                            ep.observations["achieved_goal"][1:, ...],
+                            ep.observations["observation"][1:, ...],
+                        ],
+                        axis=1,
+                    )
+
+                    next_sts = np.pad(
+                        next_sts,
+                        ((0, fill_size - len(ep)), (0, 0)),
+                        constant_values=0,
+                    )
+
                     acts = np.pad(
                         ep.actions,
                         ((0, fill_size - len(ep)), (0, 0)),
@@ -125,7 +142,7 @@ def main(argv):
 
                     ts = np.arange(fill_size)
                     am = np.zeros(fill_size)
-                    am[:len(ep)] = 1
+                    am[: len(ep)] = 1
 
                     t_r = np.pad(
                         ep.rewards,
@@ -142,58 +159,41 @@ def main(argv):
                         axis=1,
                     )
 
+                    next_sts = np.concatenate(
+                        [
+                            ep.observations["desired_goal"][1 : fill_size + 1, ...],
+                            ep.observations["achieved_goal"][1 : fill_size + 1, ...],
+                            ep.observations["observation"][1 : fill_size + 1, ...],
+                        ],
+                        axis=1,
+                    )
+
                     acts = ep.actions[:fill_size, ...]
 
                     ts = np.arange(fill_size)
 
                     am = np.zeros(fill_size)
-                    am[:len(ep)] = 1
+                    am[: len(ep)] = 1
 
                     t_r = ep.rewards[:fill_size]
 
-                sts = sts.reshape((n_splits, args.query_len, sts.shape[1]))
-                acts = acts.reshape((n_splits, args.query_len, acts.shape[1]))
-                ts = ts.reshape((n_splits, args.query_len))
-                am = am.reshape((n_splits, args.query_len))
-                t_r = t_r.reshape((n_splits, args.query_len))
+                r_sts = sts.reshape((n_splits, args.query_len, sts.shape[1]))
+                r_acts = acts.reshape((n_splits, args.query_len, acts.shape[1]))
+                r_ts = ts.reshape((n_splits, args.query_len))
+                r_am = am.reshape((n_splits, args.query_len))
 
-                preds, _ = r_model(
-                    sts,
-                    acts,
-                    ts,
-                    am,
+                rewards, _ = r_model(
+                    r_sts,
+                    r_acts,
+                    r_ts,
+                    r_am,
                     training=False,
                 )
                 seq_length = sts.shape[1]
-                rewards = []
-                for i in range(seq_length):
-                    rewards.append(preds["value"][:, 0, i])
-                rewards = jnp.concatenate(rewards, axis=1)
-                del preds
-                if jnp.any(jnp.isnan(rewards)):
-                    sts = jnp.delete(
-                        sts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
-                    )
-                    acts = jnp.delete(
-                        acts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
-                    )
-                    ts = jnp.delete(
-                        ts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
-                    )
-                    am = jnp.delete(
-                        am, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
-                    )
-                    rewards = jnp.delete(
-                        rewards,
-                        jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]),
-                        axis=0,
-                    )
-                    t_r = jnp.delete(
-                        t_r,
-                        jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]),
-                        axis=0,
-                    )
+                rewards = rewards["value"].reshape(-1, seq_length)
+
                 states.append(sts)
+                next_states.append(next_sts)
                 actions.append(acts)
                 timesteps.append(ts)
                 attn_mask.append(am)
@@ -201,6 +201,7 @@ def main(argv):
                 rwd.append(rewards)
 
             states = jnp.concatenate(states)
+            next_states = jnp.concatenate(next_states)
             actions = jnp.concatenate(actions)
             timesteps = jnp.concatenate(timesteps)
             attn_mask = jnp.concatenate(attn_mask)
@@ -211,13 +212,13 @@ def main(argv):
                 del f["states"]
             f.create_dataset("states", data=states, chunks=True)
 
+            if "next_states" in f:
+                del f["next_states"]
+            f.create_dataset("next_states", data=next_states, chunks=True)
+
             if "actions" in f:
                 del f["actions"]
             f.create_dataset("actions", data=actions, chunks=True)
-
-            if "timesteps" in f:
-                del f["timesteps"]
-            f.create_dataset("timesteps", data=timesteps, chunks=True)
 
             if "attn_mask" in f:
                 del f["attn_mask"]
@@ -341,8 +342,8 @@ def main(argv):
                     sts = np.concatenate(
                         [
                             ep.observations["desired_goal"][:-1, ...],
-                            ep.observations["achieved_goal"][:-1,...],
-                            ep.observations["observation"][:-1,...],
+                            ep.observations["achieved_goal"][:-1, ...],
+                            ep.observations["observation"][:-1, ...],
                         ],
                         axis=1,
                     )
@@ -381,7 +382,7 @@ def main(argv):
                     ts = np.arange(fill_size)
 
                     am = np.zeros(fill_size)
-                    am[:len(ep)] = 1
+                    am[: len(ep)] = 1
 
                     t_r = ep.rewards[:fill_size]
 

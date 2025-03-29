@@ -50,9 +50,17 @@ def main(argv):
         action="store_true",
         help="Compute Raw Episode Returns (from unnormalized returns).",
     )
+    parser.add_argument(
+        "-o",
+        "--output_dir",
+        type=str,
+        default="~/busy-beeway/transformers/t0012/reward_data_1",
+        help="Output directory",
+    )
     args = parser.parse_args(argv)
     reward = os.path.expanduser(args.reward)
     data = os.path.expanduser(args.data)
+    output_dir = os.path.expanduser(args.output_dir)
     p_id = os.path.expanduser(args.participants)
     checkpointer = ocp.Checkpointer(ocp.CompositeCheckpointHandler())
     r_model = load_PT(reward, checkpointer, on_cpu=True)
@@ -75,7 +83,7 @@ def main(argv):
                     training=False,
                 )
                 seq_length = sts.shape[1]
-                rewards = rewards.reshape(-1, seq_length)
+                rewards = rewards["value"].reshape(-1, seq_length)
                 if jnp.any(jnp.isnan(rewards)):
                     sts = jnp.delete(
                         sts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
@@ -95,104 +103,107 @@ def main(argv):
                         axis=0,
                     )
 
-                sts = sts.reshape(-1, sts.shape[2])
-                if "states" in f:
-                    del f["states"]
-                f.create_dataset("states", data=sts, chunks=True)
+                with h5py.File(f"{output_dir}/{p_id}.hdf5", "a") as g:
+                    sts = sts.reshape(-1, sts.shape[2])
+                    if "states" in g:
+                        del g["states"]
+                    g.create_dataset("states", data=sts, chunks=True)
 
-                ts = ts.ravel()
-                next_sts = []
-                for i in tqdm(
-                    range(1, ts.shape[0]), total=ts.shape[0], desc="Next States"
-                ):
-                    if ts[i] == 0:
-                        next_sts.append(jnp.zeros(sts.shape[1]))
-                    next_sts.append(sts[i])
-
-                next_sts = jnp.stack(next_sts)
-
-                if "next_states" in f:
-                    del f["next_states"]
-                f.create_dataset("next_states", data=next_sts, chunks=True)
-
-                acts = acts.reshape(-1, acts.shape[2])
-                if "actions" in f:
-                    del f["actions"]
-                f.create_dataset("actions", data=acts, chunks=True)
-
-                am = am.ravel()
-                if "attn_mask" in f:
-                    del f["attn_mask"]
-                f.create_dataset("attn_mask", data=am, chunks=True)
-
-                rewards = rewards.ravel()
-                if "rewards" in f:
-                    del f["rewards"]
-                f.create_dataset("rewards", data=rewards, chunks=True)
-
-                if args.ep_returns:
-                    R = 0.0
-                    ep_rtns = []
+                    ts = ts.ravel()
+                    next_sts = []
                     for i in tqdm(
-                        reversed(range(rewards.shape[0])),
-                        total=rewards.shape[0],
-                        desc="Episode Returns",
+                        range(1, ts.shape[0]), total=ts.shape[0], desc="Next States"
                     ):
-                        if am[i] != 0:
-                            R = R + rewards[i]
                         if ts[i] == 0:
-                            ep_rtns.append(R)
-                            R = 0.0
-                    ep_rtns = jnp.array(ep_rtns)
+                            next_sts.append(jnp.zeros(sts.shape[1]))
+                        else:
+                            next_sts.append(sts[i])
+                    next_sts.append(jnp.zeros(sts.shape[1]))
+                    
+                    next_sts = jnp.stack(next_sts)
 
-                    if "ep_returns" in f:
-                        del f["ep_returns"]
-                    f.create_dataset("ep_returns", data=ep_rtns, chunks=True)
+                    if "next_states" in g:
+                        del g["next_states"]
+                    g.create_dataset("next_states", data=next_sts, chunks=True)
 
-                    max_ep_length = jnp.max(ts)
+                    acts = acts.reshape(-1, acts.shape[2])
+                    if "actions" in g:
+                        del g["actions"]
+                    g.create_dataset("actions", data=acts, chunks=True)
 
-                    if "max_ep_length" in f:
-                        del f["max_ep_length"]
-                    f.create_dataset("max_ep_length", data=max_ep_length, chunks=True)
+                    am = am.ravel()
+                    if "attn_mask" in g:
+                        del g["attn_mask"]
+                    g.create_dataset("attn_mask", data=am, chunks=True)
+
+                    rewards = rewards.ravel()
+                    if "rewards" in g:
+                        del g["rewards"]
+                    g.create_dataset("rewards", data=rewards, chunks=True)
+
+                    if args.ep_returns:
+                        R = 0.0
+                        ep_rtns = []
+                        for i in tqdm(
+                            reversed(range(rewards.shape[0])),
+                            total=rewards.shape[0],
+                            desc="Episode Returns",
+                        ):
+                            if am[i] != 0:
+                                R = R + rewards[i]
+                            if ts[i] == 0:
+                                ep_rtns.append(R)
+                                R = 0.0
+                        ep_rtns = jnp.array(ep_rtns)
+
+                        if "ep_returns" in g:
+                            del g["ep_returns"]
+                        g.create_dataset("ep_returns", data=ep_rtns, chunks=True)
+
+                        max_ep_length = jnp.max(ts)
+
+                        if "max_ep_length" in g:
+                            del g["max_ep_length"]
+                        g.create_dataset("max_ep_length", data=max_ep_length)
     else:
         with h5py.File(f"{data}/{p_id}.hdf5", "a") as f:
-                sts = f["states"][:]
-                acts = f["actions"][:]
-                ts = f["timesteps"][:]
-                am = f["attn_mask"][:]
+            sts = f["states"][:]
+            acts = f["actions"][:]
+            ts = f["timesteps"][:]
+            am = f["attn_mask"][:]
 
-                rewards, _ = r_model(
-                    sts,
-                    acts,
-                    ts,
-                    am,
-                    training=False,
+            rewards, _ = r_model(
+                sts,
+                acts,
+                ts,
+                am,
+                training=False,
+            )
+            seq_length = sts.shape[1]
+            rewards = rewards["value"].reshape(-1, seq_length)
+            if jnp.any(jnp.isnan(rewards)):
+                sts = jnp.delete(
+                    sts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
                 )
-                seq_length = sts.shape[1]
-                rewards = rewards.reshape(-1, seq_length)
-                if jnp.any(jnp.isnan(rewards)):
-                    sts = jnp.delete(
-                        sts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
-                    )
-                    acts = jnp.delete(
-                        acts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
-                    )
-                    ts = jnp.delete(
-                        ts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
-                    )
-                    am = jnp.delete(
-                        am, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
-                    )
-                    rewards = jnp.delete(
-                        rewards,
-                        jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]),
-                        axis=0,
-                    )
-
+                acts = jnp.delete(
+                    acts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
+                )
+                ts = jnp.delete(
+                    ts, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
+                )
+                am = jnp.delete(
+                    am, jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]), axis=0
+                )
+                rewards = jnp.delete(
+                    rewards,
+                    jnp.unique(jnp.argwhere(jnp.isnan(rewards))[:, 0]),
+                    axis=0,
+                )
+            with h5py.File(f"{output_dir}/{p_id}.hdf5", "a") as g:
                 sts = sts.reshape(-1, sts.shape[2])
-                if "states" in f:
-                    del f["states"]
-                f.create_dataset("states", data=sts, chunks=True)
+                if "states" in g:
+                    del g["states"]
+                g.create_dataset("states", data=sts, chunks=True)
 
                 ts = ts.ravel()
                 next_sts = []
@@ -201,28 +212,30 @@ def main(argv):
                 ):
                     if ts[i] == 0:
                         next_sts.append(jnp.zeros(sts.shape[1]))
-                    next_sts.append(sts[i])
+                    else:
+                        next_sts.append(sts[i])
+                next_sts.append(jnp.zeros(sts.shape[1]))
 
                 next_sts = jnp.stack(next_sts)
 
-                if "next_states" in f:
-                    del f["next_states"]
-                f.create_dataset("next_states", data=next_sts, chunks=True)
+                if "next_states" in g:
+                    del g["next_states"]
+                g.create_dataset("next_states", data=next_sts, chunks=True)
 
                 acts = acts.reshape(-1, acts.shape[2])
-                if "actions" in f:
-                    del f["actions"]
-                f.create_dataset("actions", data=acts, chunks=True)
+                if "actions" in g:
+                    del g["actions"]
+                g.create_dataset("actions", data=acts, chunks=True)
 
                 am = am.ravel()
-                if "attn_mask" in f:
-                    del f["attn_mask"]
-                f.create_dataset("attn_mask", data=am, chunks=True)
+                if "attn_mask" in g:
+                    del g["attn_mask"]
+                g.create_dataset("attn_mask", data=am, chunks=True)
 
                 rewards = rewards.ravel()
-                if "rewards" in f:
-                    del f["rewards"]
-                f.create_dataset("rewards", data=rewards, chunks=True)
+                if "rewards" in g:
+                    del g["rewards"]
+                g.create_dataset("rewards", data=rewards, chunks=True)
 
                 if args.ep_returns:
                     R = 0.0
@@ -239,15 +252,15 @@ def main(argv):
                             R = 0.0
                     ep_rtns = jnp.array(ep_rtns)
 
-                    if "ep_returns" in f:
-                        del f["ep_returns"]
-                    f.create_dataset("ep_returns", data=ep_rtns, chunks=True)
+                    if "ep_returns" in g:
+                        del g["ep_returns"]
+                    g.create_dataset("ep_returns", data=ep_rtns, chunks=True)
 
                     max_ep_length = jnp.max(ts)
 
-                    if "max_ep_length" in f:
-                        del f["max_ep_length"]
-                    f.create_dataset("max_ep_length", data=max_ep_length, chunks=True)
+                    if "max_ep_length" in g:
+                        del g["max_ep_length"]
+                    g.create_dataset("max_ep_length", data=max_ep_length)
     sys.exit(0)
 
 
