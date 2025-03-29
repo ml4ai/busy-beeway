@@ -39,8 +39,8 @@ def main(argv):
         "-e",
         "--eval_settings",
         type=int,
-        default=[1, 10, 500,0],
-        nargs=3,
+        default=[1, 10, 500, 0],
+        nargs=4,
         help="Eval settings (period, number of episodes, eval_type). \neval_type == 0 for Busy Beeway, 1 for AntMaze_Medium-v4",
     )
     parser.add_argument(
