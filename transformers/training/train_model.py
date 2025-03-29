@@ -558,7 +558,6 @@ def train_IQL(
     actor_args = [
         state_dim,
         hidden_dims[-1],
-        hidden_dims[:-1],
         action_dim,
         kwargs.get("state_dependent_std", True),
         kwargs.get("dropout_rate", None),
@@ -567,11 +566,11 @@ def train_IQL(
         kwargs.get("log_std_max", 2.0),
         kwargs.get("tanh_squash_distribution", True),
         seed,
-    ]
+    ] + hidden_dims[:-1]
     actor = NormalTanhPolicy(
         state_dim=actor_args[0],
         mlp_output_dim=actor_args[1],
-        hidden_dims=actor_args[2],
+        hidden_dims=hidden_dims[:-1],
         action_dim=actor_args[3],
         state_dependent_std=actor_args[4],
         dropout_rate=actor_args[5],
@@ -605,6 +604,8 @@ def train_IQL(
     else:
         eval_sim = bb_run_episode_IQL
 
+    if dropout_rate is None:
+        actor_args[4] = -1
     actor_args = np.array(actor_args)
 
     trainer = IQLTrainer(
