@@ -99,7 +99,7 @@ def main(argv):
     )
     parser.add_argument(
         "-a",
-        "--normalized_returns",
+        "--normalized_rewards",
         action="store_true",
         help="Uses normalized returns for training. \nWorks with a learned reward function only!",
     )
@@ -129,8 +129,8 @@ def main(argv):
     workers = args.workers
 
     try:
-        data = IQL_H5Dataset(data, normalized_rewards=args.normalized_returns)
-        train_dt(
+        data = IQL_H5Dataset(data, normalized_rewards=args.normalized_rewards)
+        train_IQL(
             data,
             r_model,
             move_stats,
