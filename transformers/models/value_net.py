@@ -44,7 +44,7 @@ class MLP(nnx.Module):
                 rngs=rngs,
             )
         ]
-        self.dropout_layers = [init_dropout_layer(self.dropout_rate, rngs=rngs)]
+        self.dropout_layers = [init_dropout_layer(dropout_rate, rngs=rngs)]
         for i in range(1, self.hidden_dims):
             self.layers.append(
                 nnx.Linear(
@@ -54,7 +54,7 @@ class MLP(nnx.Module):
                     rngs=rngs,
                 )
             )
-            self.dropout_layers.append(init_dropout_layer(self.dropout_rate, rngs=rngs))
+            self.dropout_layers.append(init_dropout_layer(dropout_rate, rngs=rngs))
 
         self.output_layer = nnx.Linear(
             hidden_dims[-1],
@@ -65,7 +65,7 @@ class MLP(nnx.Module):
         self.activations = activations
         if activation_final:
             self.final_activation = activations
-            self.final_dropout = init_dropout_layer(self.dropout_rate, rngs=rngs)
+            self.final_dropout = init_dropout_layer(dropout_rate, rngs=rngs)
         else:
             self.final_activation = Identity()
             self.final_dropout = Identity()
