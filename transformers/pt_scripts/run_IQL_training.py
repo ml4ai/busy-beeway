@@ -71,7 +71,7 @@ def main(argv):
     parser.add_argument(
         "-d",
         "--hidden_dims",
-        type=float,
+        type=int,
         default=[256, 256],
         nargs="*",
         help="Learning Rate for actor, value critic, and q critic",

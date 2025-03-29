@@ -1,4 +1,4 @@
-from typing import Callable,Optional, Sequence, Tuple
+from typing import Callable, Optional, Sequence, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -36,8 +36,6 @@ class MLP(nnx.Module):
         dropout_rate: Optional[float] = None,
         rngs: nnx.Rngs = nnx.Rngs(0, params=1, dropout=2),
     ):
-        print(input_dim)
-        print(hidden_dims[0])
         self.layers = [
             nnx.Linear(
                 input_dim,
@@ -144,10 +142,6 @@ class DoubleCritic(nnx.Module):
     def __call__(
         self, states: jax.Array, actions: jax.Array
     ) -> Tuple[jax.Array, jax.Array]:
-        critic1 = self.critic1(
-            states, actions
-        )
-        critic2 = self.critic2(
-            states, actions
-        )
+        critic1 = self.critic1(states, actions)
+        critic2 = self.critic2(states, actions)
         return critic1, critic2
