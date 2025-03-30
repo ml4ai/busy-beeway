@@ -649,7 +649,6 @@ def train_IQL(
                         batch["states"],
                         batch["next_states"],
                         batch["actions"],
-                        batch["timesteps"],
                         batch["attn_mask"],
                         batch["rewards"],
                     ) = t_data
