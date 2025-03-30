@@ -45,7 +45,7 @@ def closest_point_on_line(ax, ay, bx, by, px, py, thres):
     cond = ab2 < (thres**2)
     apab = apx * abx + apy * aby
     if isinstance(cond, bool):
-        t = apab / ab2
+        t = np.asarray(apab) / np.asarray(ab2)
         t = np.where(np.isnan(t), 0.0, t)
         t = np.where(t < 0, 0.0, t)
         t = np.where(t > 1, 1.0, t)
@@ -798,7 +798,8 @@ def bb_run_episode_IQL(
             jnp.array([True, False, False]), jnp.clip(action, 0.0), action
         )
         action = jnp.where(
-            jnp.array([False, True, False]), jnp.clip(action, 0.0, 360.0), action)
+            jnp.array([False, True, False]), jnp.clip(action, 0.0, 360.0), action
+        )
         action = jnp.where(
             jnp.array([False, False, True]), jnp.round(jnp.clip(action, 0, 1)), action
         )
