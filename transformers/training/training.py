@@ -198,7 +198,7 @@ def _train_IQL_step(
     q_state.update(qq_grads)
 
     t_p_state = nnx.state(tCritic, nnx.Param)
-    q_p_state = nnx.state(qCritic, nnx.Param)
+    q_p_state = nnx.state(q_state.model, nnx.Param)
     new_t_p_state = jax.tree.map(
         lambda x, y: y * tau + x * (1 - tau), t_p_state, q_p_state
     )
