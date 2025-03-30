@@ -203,7 +203,7 @@ def _train_IQL_step(
         lambda x, y: y * tau + x * (1 - tau), t_p_state, q_p_state
     )
     nnx.update(tCritic, new_t_p_state)
-    jax.debug.print({loss},loss=v_loss + act_loss + qq_loss)
+    jax.debug.print("{loss}", loss=v_loss + act_loss + qq_loss)
     return dict(training_loss=v_loss + act_loss + qq_loss)
 
 
