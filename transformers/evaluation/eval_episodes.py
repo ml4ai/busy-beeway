@@ -1,10 +1,11 @@
 import jax
 import jax.numpy as jnp
+import minari
 import numpy as np
 import pandas as pd
 from flax import nnx
 from tqdm import tqdm
-import minari
+
 from transformers.models.policy import sample_actions
 
 
@@ -125,8 +126,8 @@ def bb_run_episode(
         if np.all(((p_samp[0] - O_posX[0]) ** 2) + ((p_samp[1] - O_posY[0]) ** 2) > 1):
             break
 
-    p_posX = p_samp[0]
-    p_posY = p_samp[1]
+    p_posX = float(p_samp[0])
+    p_posY = float(p_samp[1])
 
     p_angle = rng.uniform(0.0, 360.0)
 
@@ -377,8 +378,8 @@ def bb_record_episode(
         if np.all(((p_samp[0] - O_posX[0]) ** 2) + ((p_samp[1] - O_posY[0]) ** 2) > 1):
             break
 
-    p_posX = p_samp[0]
-    p_posY = p_samp[1]
+    p_posX = float(p_samp[0])
+    p_posY = float(p_samp[1])
 
     p_angle = rng.uniform(0.0, 360.0)
 
@@ -673,8 +674,8 @@ def bb_run_episode_IQL(
         if np.all(((p_samp[0] - O_posX[0]) ** 2) + ((p_samp[1] - O_posY[0]) ** 2) > 1):
             break
 
-    p_posX = p_samp[0]
-    p_posY = p_samp[1]
+    p_posX = float(p_samp[0])
+    p_posY = float(p_samp[1])
 
     p_angle = rng.uniform(0.0, 360.0)
 
@@ -794,10 +795,12 @@ def bb_run_episode_IQL(
     for i in tqdm(range(max_horizon), desc="Timesteps"):
         action = sample_actions(policy, s[-1, -1], 0.0, rngs)
         action = jnp.where(
-            jnp.array([False, False, True]), jnp.round(jnp.clip(action, 0, 1)), action
+            jnp.array([True, False, False]), jnp.clip(action, 0.0), action
         )
         action = jnp.where(
-            jnp.array([False, True, False]), jnp.clip(action, 0.0, 360.0), action
+            jnp.array([False, True, False]), jnp.clip(action, 0.0, 360.0), action)
+        action = jnp.where(
+            jnp.array([False, False, True]), jnp.round(jnp.clip(action, 0, 1)), action
         )
         a = jnp.concat([a, action.reshape(1, 1, -1)], axis=1)
         a = a[:, -context_length:, :]
@@ -917,8 +920,8 @@ def bb_record_episode_IQL(
         if np.all(((p_samp[0] - O_posX[0]) ** 2) + ((p_samp[1] - O_posY[0]) ** 2) > 1):
             break
 
-    p_posX = p_samp[0]
-    p_posY = p_samp[1]
+    p_posX = float(p_samp[0])
+    p_posY = float(p_samp[1])
 
     p_angle = rng.uniform(0.0, 360.0)
 
@@ -1053,6 +1056,9 @@ def bb_record_episode_IQL(
 
     for i in tqdm(range(max_horizon), desc="Timesteps"):
         action = sample_actions(policy, s[-1, -1], 0.0, rngs)
+        action = jnp.where(
+            jnp.array([True, False, False]), jnp.clip(action, 0.0), action
+        )
         action = jnp.where(
             jnp.array([False, False, True]), jnp.round(jnp.clip(action, 0, 1)), action
         )
