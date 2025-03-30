@@ -6,8 +6,8 @@ from functools import partial
 import h5py
 import jax
 import jax.numpy as jnp
-import numpy as np
 import minari
+import numpy as np
 import orbax.checkpoint as ocp
 from flax import nnx
 from tqdm import tqdm
@@ -63,22 +63,10 @@ def main(argv):
         help="Compute Raw Episode Returns (from unnormalized returns). \nDoes nothing if no external reward function is given.",
     )
     parser.add_argument(
-        "-r",
-        "--returns",
-        action="store_true",
-        help="Compute Raw Trajectory returns (from unnormalized returns) \nand Raw Episode Returns (overwrites --ep_returns flag).\nDoes nothing if no external reward function is given.",
-    )
-    parser.add_argument(
         "-t",
         "--task_ep_returns",
         action="store_true",
         help="Compute Task Episode Returns",
-    )
-    parser.add_argument(
-        "-a",
-        "--task_returns",
-        action="store_true",
-        help="Compute Task Trajectory Returns",
     )
     args = parser.parse_args(argv)
     save_file = args.save_file
@@ -190,7 +178,7 @@ def main(argv):
                     training=False,
                 )
                 seq_length = sts.shape[1]
-                rewards = rewards["value"].reshape(-1, seq_length)
+                rewards = rewards["value"].ravel()
 
                 states.append(sts)
                 next_states.append(next_sts)
@@ -232,97 +220,43 @@ def main(argv):
                 del f["task_rewards"]
             f.create_dataset("task_rewards", data=t_rwd, chunks=True)
 
-            if args.ep_returns or args.returns:
-                rwd = rwd.ravel()
-                r_attn_mask = attn_mask.ravel()
-                r_timesteps = timesteps.ravel()
-                if args.returns:
-                    returns = jnp.zeros_like(rwd, dtype=float)
-                    R = 0.0
-                    ep_rtns = []
-                    for i in tqdm(
-                        reversed(range(rwd.shape[0])),
-                        total=rwd.shape[0],
-                        desc="Raw Returns",
-                    ):
-                        if r_attn_mask[i] != 0:
-                            R = R + rwd[i]
-                            returns = returns.at[i].set(R)
-                        if r_timesteps[i] == 0:
-                            ep_rtns.append(R)
-                            R = 0.0
-                    returns = returns.reshape(attn_mask.shape[0], attn_mask.shape[1])
-                    ep_rtns = jnp.array(ep_rtns)
+            if args.ep_returns:
+                R = 0.0
+                ep_rtns = []
+                for i in tqdm(
+                    reversed(range(rwd.shape[0])),
+                    total=rwd.shape[0],
+                    desc="Episode Returns",
+                ):
+                    if attn_mask[i] != 0:
+                        R = R + rwd[i]
+                    if timesteps[i] == 0:
+                        ep_rtns.append(R)
+                        R = 0.0
+                ep_rtns = jnp.array(ep_rtns)
 
-                    if "raw_returns" in f:
-                        del f["raw_returns"]
-                    f.create_dataset("raw_returns", data=returns, chunks=True)
+            if "ep_returns" in f:
+                del f["ep_returns"]
+            f.create_dataset("ep_returns", data=ep_rtns, chunks=True)
 
-                else:
-                    R = 0.0
-                    ep_rtns = []
-                    for i in tqdm(
-                        reversed(range(rwd.shape[0])),
-                        total=rwd.shape[0],
-                        desc="Raw Episode Returns",
-                    ):
-                        if r_attn_mask[i] != 0:
-                            R = R + rwd[i]
-                        if r_timesteps[i] == 0:
-                            ep_rtns.append(R)
-                            R = 0.0
-                    ep_rtns = jnp.array(ep_rtns)
+            if args.task_ep_returns:
+                t_R = 0.0
+                t_ep_rtns = []
+                for i in tqdm(
+                    reversed(range(t_rwd.shape[0])),
+                    total=t_rwd.shape[0],
+                    desc="Task Episode Returns",
+                ):
+                    if attn_mask[i] != 0:
+                        t_R = t_R + t_rwd[i]
+                    if timesteps[i] == 0:
+                        t_ep_rtns.append(t_R)
+                        t_R = 0.0
+                t_ep_rtns = jnp.array(t_ep_rtns)
 
-                if "raw_ep_returns" in f:
-                    del f["raw_ep_returns"]
-                f.create_dataset("raw_ep_returns", data=ep_rtns, chunks=True)
-
-            if args.task_ep_returns or args.task_returns:
-                t_rwd = t_rwd.ravel()
-                r_attn_mask = attn_mask.ravel()
-                r_timesteps = timesteps.ravel()
-                if args.task_returns:
-                    t_returns = jnp.zeros_like(t_rwd, dtype=float)
-                    t_R = 0.0
-                    t_ep_rtns = []
-                    for i in tqdm(
-                        reversed(range(t_rwd.shape[0])),
-                        total=t_rwd.shape[0],
-                        desc="Task Returns",
-                    ):
-                        if r_attn_mask[i] != 0:
-                            t_R = t_R + t_rwd[i]
-                            t_returns = t_returns.at[i].set(t_R)
-                        if r_timesteps[i] == 0:
-                            t_ep_rtns.append(t_R)
-                            t_R = 0.0
-                    t_returns = t_returns.reshape(
-                        attn_mask.shape[0], attn_mask.shape[1]
-                    )
-                    t_ep_rtns = jnp.array(t_ep_rtns)
-
-                    if "task_returns" in f:
-                        del f["task_returns"]
-                    f.create_dataset("task_returns", data=t_returns, chunks=True)
-
-                else:
-                    t_R = 0.0
-                    t_ep_rtns = []
-                    for i in tqdm(
-                        reversed(range(t_rwd.shape[0])),
-                        total=t_rwd.shape[0],
-                        desc="Task Episode Returns",
-                    ):
-                        if r_attn_mask[i] != 0:
-                            t_R = t_R + t_rwd[i]
-                        if r_timesteps[i] == 0:
-                            t_ep_rtns.append(t_R)
-                            t_R = 0.0
-                    t_ep_rtns = jnp.array(t_ep_rtns)
-
-                if "task_ep_returns" in f:
-                    del f["task_ep_returns"]
-                f.create_dataset("task_ep_returns", data=t_ep_rtns, chunks=True)
+            if "task_ep_returns" in f:
+                del f["task_ep_returns"]
+            f.create_dataset("task_ep_returns", data=t_ep_rtns, chunks=True)
     else:
         episodes = dataset.iterate_episodes()
         states = []
@@ -352,6 +286,22 @@ def main(argv):
                         ((0, fill_size - len(ep)), (0, 0)),
                         constant_values=0,
                     )
+
+                    next_sts = np.concatenate(
+                        [
+                            ep.observations["desired_goal"][1:, ...],
+                            ep.observations["achieved_goal"][1:, ...],
+                            ep.observations["observation"][1:, ...],
+                        ],
+                        axis=1,
+                    )
+
+                    next_sts = np.pad(
+                        next_sts,
+                        ((0, fill_size - len(ep)), (0, 0)),
+                        constant_values=0,
+                    )
+                    
                     acts = np.pad(
                         ep.actions,
                         ((0, fill_size - len), (0, 0)),
@@ -377,6 +327,15 @@ def main(argv):
                         axis=1,
                     )
 
+                    next_sts = np.concatenate(
+                        [
+                            ep.observations["desired_goal"][1 : fill_size + 1, ...],
+                            ep.observations["achieved_goal"][1 : fill_size + 1, ...],
+                            ep.observations["observation"][1 : fill_size + 1, ...],
+                        ],
+                        axis=1,
+                    )
+                    
                     acts = ep.actions[:fill_size, ...]
 
                     ts = np.arange(fill_size)
@@ -386,19 +345,15 @@ def main(argv):
 
                     t_r = ep.rewards[:fill_size]
 
-                sts = sts.reshape((n_splits, args.query_len, sts.shape[1]))
-                acts = acts.reshape((n_splits, args.query_len, acts.shape[1]))
-                ts = ts.reshape((n_splits, args.query_len))
-                am = am.reshape((n_splits, args.query_len))
-                t_r = t_r.reshape((n_splits, args.query_len))
-
                 states.append(sts)
+                next_states.append(next_sts)
                 actions.append(acts)
                 timesteps.append(ts)
                 attn_mask.append(am)
                 t_rwd.append(t_r)
 
             states = jnp.concatenate(states)
+            next_states = jnp.concatenate(next_states)
             actions = jnp.concatenate(actions)
             timesteps = jnp.concatenate(timesteps)
             attn_mask = jnp.concatenate(attn_mask)
@@ -408,13 +363,13 @@ def main(argv):
                 del f["states"]
             f.create_dataset("states", data=states, chunks=True)
 
+            if "next_states" in f:
+                del f["next_states"]
+            f.create_dataset("next_states", data=next_states, chunks=True)
+
             if "actions" in f:
                 del f["actions"]
             f.create_dataset("actions", data=actions, chunks=True)
-
-            if "timesteps" in f:
-                del f["timesteps"]
-            f.create_dataset("timesteps", data=timesteps, chunks=True)
 
             if "attn_mask" in f:
                 del f["attn_mask"]
@@ -424,52 +379,24 @@ def main(argv):
                 del f["task_rewards"]
             f.create_dataset("task_rewards", data=t_rwd, chunks=True)
 
-            if args.task_ep_returns or args.task_returns:
-                t_rwd = t_rwd.ravel()
-                r_attn_mask = attn_mask.ravel()
-                r_timesteps = timesteps.ravel()
-                if args.task_returns:
-                    t_returns = jnp.zeros_like(t_rwd, dtype=float)
-                    t_R = 0.0
-                    t_ep_rtns = []
-                    for i in tqdm(
-                        reversed(range(t_rwd.shape[0])),
-                        total=t_rwd.shape[0],
-                        desc="Task Returns",
-                    ):
-                        if r_attn_mask[i] != 0:
-                            t_R = t_R + t_rwd[i]
-                            t_returns = t_returns.at[i].set(t_R)
-                        if r_timesteps[i] == 0:
-                            t_ep_rtns.append(t_R)
-                            t_R = 0.0
-                    t_returns = t_returns.reshape(
-                        attn_mask.shape[0], attn_mask.shape[1]
-                    )
-                    t_ep_rtns = jnp.array(t_ep_rtns)
+            if args.task_ep_returns:
+                t_R = 0.0
+                t_ep_rtns = []
+                for i in tqdm(
+                    reversed(range(t_rwd.shape[0])),
+                    total=t_rwd.shape[0],
+                    desc="Task Episode Returns",
+                ):
+                    if attn_mask[i] != 0:
+                        t_R = t_R + t_rwd[i]
+                    if timesteps[i] == 0:
+                        t_ep_rtns.append(t_R)
+                        t_R = 0.0
+                t_ep_rtns = jnp.array(t_ep_rtns)
 
-                    if "task_returns" in f:
-                        del f["task_returns"]
-                    f.create_dataset("task_returns", data=t_returns, chunks=True)
-
-                else:
-                    t_R = 0.0
-                    t_ep_rtns = []
-                    for i in tqdm(
-                        reversed(range(t_rwd.shape[0])),
-                        total=t_rwd.shape[0],
-                        desc="Task Episode Returns",
-                    ):
-                        if r_attn_mask[i] != 0:
-                            t_R = t_R + t_rwd[i]
-                        if r_timesteps[i] == 0:
-                            t_ep_rtns.append(t_R)
-                            t_R = 0.0
-                    t_ep_rtns = jnp.array(t_ep_rtns)
-
-                if "task_ep_returns" in f:
-                    del f["task_ep_returns"]
-                f.create_dataset("task_ep_returns", data=t_ep_rtns, chunks=True)
+            if "task_ep_returns" in f:
+                del f["task_ep_returns"]
+            f.create_dataset("task_ep_returns", data=t_ep_rtns, chunks=True)
     sys.exit(0)
 
 
