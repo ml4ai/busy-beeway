@@ -34,12 +34,6 @@ def sin_plus(degrees):
 
 # Find closest point on line a-b to point p
 def closest_point_on_line(ax, ay, bx, by, px, py, thres):
-    ax = np.asarray(ax)
-    ay = np.asarray(ay)
-    bx = np.asarray(bx)
-    by = np.asarray(by)
-    px = np.asarray(px)
-    py = np.asarray(py)
     apx = px - ax
     apy = py - ay
     abx = bx - ax
