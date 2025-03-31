@@ -559,12 +559,12 @@ def train_IQL(
         state_dim,
         hidden_dims[-1],
         action_dim,
-        kwargs.get("state_dependent_std", True),
+        kwargs.get("state_dependent_std", False),
         kwargs.get("dropout_rate", None),
-        kwargs.get("log_std_scale", 1.0),
-        kwargs.get("log_std_min", -10.0),
+        kwargs.get("log_std_scale", 1e-3),
+        kwargs.get("log_std_min", -5.0),
         kwargs.get("log_std_max", 2.0),
-        kwargs.get("tanh_squash_distribution", True),
+        kwargs.get("tanh_squash_distribution", False),
         seed,
     ] + hidden_dims[:-1]
     actor = NormalTanhPolicy(
@@ -618,8 +618,8 @@ def train_IQL(
         actor_lr=kwargs.get("actor_lr", 3e-4),
         value_lr=kwargs.get("value_lr", 3e-4),
         critic_lr=kwargs.get("critic_lr", 3e-4),
-        expectile=kwargs.get("expectile", 0.8),
-        temperature=kwargs.get("temperature", 0.1),
+        expectile=kwargs.get("expectile", 0.9),
+        temperature=kwargs.get("temperature", 10.0),
         discount=kwargs.get("discount", 0.99),
         tau=kwargs.get("tau", 0.005),
     )
