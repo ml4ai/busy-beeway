@@ -197,19 +197,19 @@ def _train_IQL_step(
     v_loss, v_grads = nnx.value_and_grad(val_loss)(
         v_state.model, tCritic, expectile, batch
     )
-    breakpoint_if_nonfinite(v_loss)
+
     v_state.update(v_grads)
 
     act_loss, act_grads = nnx.value_and_grad(actor_loss)(
         actor_state.model, v_state.model, tCritic, temperature, batch
     )
-    breakpoint_if_nonfinite(act_loss)
+
     actor_state.update(act_grads)
 
     qq_loss, qq_grads = nnx.value_and_grad(q_loss)(
         q_state.model, v_state.model, discount, batch
     )
-    breakpoint_if_nonfinite(qq_loss)
+
     q_state.update(qq_grads)
 
     t_p_state = nnx.state(tCritic, nnx.Param)
@@ -218,7 +218,6 @@ def _train_IQL_step(
         lambda x, y: y * tau + x * (1 - tau), t_p_state, q_p_state
     )
     nnx.update(tCritic, new_t_p_state)
-    jax.debug.print("{loss}", loss=v_loss + act_loss + qq_loss)
     return dict(training_loss=v_loss + act_loss + qq_loss)
 
 
