@@ -146,12 +146,16 @@ def _train_A_Fdec_step(state, batch):
 
 
 def breakpoint_if_nonfinite(x):
-  is_finite = jnp.isfinite(x).all()
-  def true_fn(x):
-    pass
-  def false_fn(x):
-    jax.debug.breakpoint()
-  lax.cond(is_finite, true_fn, false_fn, x)
+    is_finite = jnp.isfinite(x).all()
+
+    def true_fn(x):
+        pass
+
+    def false_fn(x):
+        jax.debug.breakpoint()
+
+    jax.lax.cond(is_finite, true_fn, false_fn, x)
+
 
 class IQLTrainer(object):
 
