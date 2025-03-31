@@ -201,12 +201,12 @@ class Dec_H5Dataset(torch.utils.data.Dataset):
 
 
 class IQL_H5Dataset(torch.utils.data.Dataset):
-    # combined = true means this is a virtual dataset of combined data files
-    # the data tag is used for return_to_go if there are multiple in the file.
-    def __init__(self, file_path, normalized_rewards=True):
+    # The task rewards flag overwrite normalized_rewards flag
+    def __init__(self, file_path, normalized_rewards=True, task_rewards=False):
         super(IQL_H5Dataset, self).__init__()
         self.file_path = file_path
         self.normalized_rewards = normalized_rewards
+        self.task_rewards = task_rewards
         with h5py.File(self.file_path, "r") as f:
             self._sts_shape = f["states"].shape
             self._acts_shape = f["actions"].shape
@@ -217,10 +217,13 @@ class IQL_H5Dataset(torch.utils.data.Dataset):
         self.next_states = self.h5_file["next_states"]
         self.actions = self.h5_file["actions"]
         self.attn_mask = self.h5_file["attn_mask"]
-        if self.normalized_rewards:
-            self.rewards = self.h5_file["n_rewards"]
+        if self.task_rewards:
+            self.rewards = self.h5_file["task_rewards"]
         else:
-            self.rewards = self.h5_file["rewards"]
+            if self.normalized_rewards:
+                self.rewards = self.h5_file["n_rewards"]
+            else:
+                self.rewards = self.h5_file["rewards"]
 
     def __getitem__(self, index):
         if not hasattr(self, "h5_file"):

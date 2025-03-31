@@ -112,10 +112,10 @@ def main(argv):
         r_model = load_PT(reward_function, checkpointer, on_cpu=True)
         r_model = nnx.jit(r_model, static_argnums=4)
         checkpointer.close()
-        task_returns = False
+        task_rewards = False
     else:
         r_model = None
-        task_returns = True
+        task_rewards = True
     if args.move_stats:
         move_stats = load_stats(args.move_stats)
     else:
@@ -129,7 +129,7 @@ def main(argv):
     workers = args.workers
 
     try:
-        data = IQL_H5Dataset(data, normalized_rewards=args.normalized_rewards)
+        data = IQL_H5Dataset(data, normalized_rewards=args.normalized_rewards,task_rewards=task_rewards)
         train_IQL(
             data,
             r_model,
