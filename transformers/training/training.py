@@ -218,7 +218,7 @@ def _train_IQL_step(
         lambda x, y: y * tau + x * (1 - tau), t_p_state, q_p_state
     )
     nnx.update(tCritic, new_t_p_state)
-    return dict(training_loss=v_loss + act_loss + qq_loss)
+    return dict(actor_loss=act_loss,value_loss=v_loss,critic_loss=qq_loss)
 
 
 # class MentorTransformerTrainer(object):
