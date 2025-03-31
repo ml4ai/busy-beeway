@@ -145,6 +145,14 @@ def _train_A_Fdec_step(state, batch):
     return dict(training_loss=loss)
 
 
+def breakpoint_if_nonfinite(x):
+  is_finite = jnp.isfinite(x).all()
+  def true_fn(x):
+    pass
+  def false_fn(x):
+    jax.debug.breakpoint()
+  lax.cond(is_finite, true_fn, false_fn, x)
+
 class IQLTrainer(object):
 
     def __init__(self, actor, vCritic, qCritic, tCritic, **kwargs):
@@ -185,16 +193,19 @@ def _train_IQL_step(
     v_loss, v_grads = nnx.value_and_grad(val_loss)(
         v_state.model, tCritic, expectile, batch
     )
+    breakpoint_if_nonfinite(v_loss)
     v_state.update(v_grads)
 
     act_loss, act_grads = nnx.value_and_grad(actor_loss)(
         actor_state.model, v_state.model, tCritic, temperature, batch
     )
+    breakpoint_if_nonfinite(act_loss)
     actor_state.update(act_grads)
 
     qq_loss, qq_grads = nnx.value_and_grad(q_loss)(
         q_state.model, v_state.model, discount, batch
     )
+    breakpoint_if_nonfinite(qq_loss)
     q_state.update(qq_grads)
 
     t_p_state = nnx.state(tCritic, nnx.Param)
