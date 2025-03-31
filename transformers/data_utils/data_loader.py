@@ -202,7 +202,9 @@ class Dec_H5Dataset(torch.utils.data.Dataset):
 
 class IQL_H5Dataset(torch.utils.data.Dataset):
     # The task rewards flag overwrite normalized_rewards flag
-    def __init__(self, file_path, normalized_rewards=True, task_rewards=False):
+    # Some environment developers recommended adjusting the task reward function by some constant, 
+    # this can be set through reward_adjustment. 
+    def __init__(self, file_path, normalized_rewards=True, task_rewards=False, reward_adjustment=0.0):
         super(IQL_H5Dataset, self).__init__()
         self.file_path = file_path
         self.normalized_rewards = normalized_rewards
@@ -233,7 +235,7 @@ class IQL_H5Dataset(torch.utils.data.Dataset):
             self.next_states[index, ...],
             self.actions[index, ...],
             self.attn_mask[index, ...],
-            self.rewards[index, ...],
+            self.rewards[index, ...] + reward_adjustment,
         )
 
     def __len__(self):
