@@ -390,7 +390,7 @@ def actor_loss(actor, vCritic, tCritic, temperature, batch):
     exp_a = jnp.minimum(exp_a, 100.0)
     dist = actor(batch["states"], training=True)
     log_probs = dist.log_prob(batch["actions"])
-    return -(exp_a * log_probs).mean()
+    return (exp_a * -log_probs).mean()
 
 
 def q_loss(qCritic, vCritic, discount, batch):
