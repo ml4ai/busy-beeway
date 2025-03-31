@@ -99,6 +99,13 @@ def main(argv):
     )
     parser.add_argument(
         "-a",
+        "--reward_adjustment",
+        type=float,
+        default=0.0,
+        help="Adjust reward value by some constant",
+    )
+    parser.add_argument(
+        "-i",
         "--normalized_rewards",
         action="store_true",
         help="Uses normalized returns for training. \nWorks with a learned reward function only!",
@@ -129,7 +136,9 @@ def main(argv):
     workers = args.workers
 
     try:
-        data = IQL_H5Dataset(data, normalized_rewards=args.normalized_rewards,task_rewards=task_rewards)
+        data = IQL_H5Dataset(
+            data, normalized_rewards=args.normalized_rewards, task_rewards=task_rewards, reward_adjustment = args.reward_adjustment
+        )
         train_IQL(
             data,
             r_model,

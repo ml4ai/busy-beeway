@@ -632,7 +632,9 @@ def train_IQL(
         metrics = {
             "epoch": epoch,
             "train_time": np.nan,
-            "training_loss": [],
+            "actor_loss": [],
+            "value_loss": [],
+            "critic_loss": [],
             "eval_metric": [],
             "best_epoch": c_best_epoch,
             f"{criteria_key}_best": c_criteria_key,
@@ -660,7 +662,9 @@ def train_IQL(
             metrics["train_time"] = train_timer()
         else:
             # for using early stopping with train loss.
-            metrics["training_loss"] = np.nan
+            metrics["actor_loss"] = np.nan
+            metrics["value_loss"] = np.nan
+            metrics["critic_loss"] = np.nan
 
         # eval phase
         if epoch % eval_settings[0] == 0:
