@@ -260,90 +260,37 @@ def main(argv):
     else:
         episodes = dataset.iterate_episodes()
         states = []
+        next_states = []
         actions = []
         timesteps = []
         attn_mask = []
-        rwd = []
         t_rwd = []
         with h5py.File(save_file, "a") as f:
             for ep in tqdm(episodes):
-                if len(ep) % args.query_len == 0:
-                    fill_size = len(ep)
-                else:
-                    fill_size = len(ep) + (args.query_len - (len(ep) % args.query_len))
-                n_splits = int(fill_size / args.query_len)
-                if fill_size > len(ep):
-                    sts = np.concatenate(
-                        [
-                            ep.observations["desired_goal"][:-1, ...],
-                            ep.observations["achieved_goal"][:-1, ...],
-                            ep.observations["observation"][:-1, ...],
-                        ],
-                        axis=1,
-                    )
-                    sts = np.pad(
-                        sts,
-                        ((0, fill_size - len(ep)), (0, 0)),
-                        constant_values=0,
-                    )
+                sts = np.concatenate(
+                    [
+                        ep.observations["desired_goal"][:-1, ...],
+                        ep.observations["achieved_goal"][:-1, ...],
+                        ep.observations["observation"][:-1, ...],
+                    ],
+                    axis=1,
+                )
 
-                    next_sts = np.concatenate(
-                        [
-                            ep.observations["desired_goal"][1:, ...],
-                            ep.observations["achieved_goal"][1:, ...],
-                            ep.observations["observation"][1:, ...],
-                        ],
-                        axis=1,
-                    )
+                next_sts = np.concatenate(
+                    [
+                        ep.observations["desired_goal"][1:, ...],
+                        ep.observations["achieved_goal"][1:, ...],
+                        ep.observations["observation"][1:, ...],
+                    ],
+                    axis=1,
+                )
 
-                    next_sts = np.pad(
-                        next_sts,
-                        ((0, fill_size - len(ep)), (0, 0)),
-                        constant_values=0,
-                    )
-                    
-                    acts = np.pad(
-                        ep.actions,
-                        ((0, fill_size - len), (0, 0)),
-                        constant_values=0,
-                    )
+                acts = ep.actions
 
-                    ts = np.arange(fill_size)
-                    am = np.zeros(fill_size)
-                    am[: len(ep)] = 1
+                ts = np.arange(len(ep))
+                am = np.ones(len(ep))
 
-                    t_r = np.pad(
-                        ep.rewards,
-                        (0, fill_size - len(ep)),
-                        constant_values=0,
-                    )
-                else:
-                    sts = np.concatenate(
-                        [
-                            ep.observations["desired_goal"][:fill_size, ...],
-                            ep.observations["achieved_goal"][:fill_size, ...],
-                            ep.observations["observation"][:fill_size, ...],
-                        ],
-                        axis=1,
-                    )
-
-                    next_sts = np.concatenate(
-                        [
-                            ep.observations["desired_goal"][1 : fill_size + 1, ...],
-                            ep.observations["achieved_goal"][1 : fill_size + 1, ...],
-                            ep.observations["observation"][1 : fill_size + 1, ...],
-                        ],
-                        axis=1,
-                    )
-                    
-                    acts = ep.actions[:fill_size, ...]
-
-                    ts = np.arange(fill_size)
-
-                    am = np.zeros(fill_size)
-                    am[: len(ep)] = 1
-
-                    t_r = ep.rewards[:fill_size]
+                t_r = ep.rewards
 
                 states.append(sts)
                 next_states.append(next_sts)
