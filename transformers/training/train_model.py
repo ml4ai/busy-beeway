@@ -538,7 +538,9 @@ def train_IQL(
     gen1 = torch.Generator().manual_seed(int(t_keys[0]))
     np_rng = np.random.default_rng(int(t_keys[1]))
 
-    sampler = RandomSampler(dataset, replacement=True, num_samples=max_steps, generator=gen1)
+    sampler = RandomSampler(
+        data, replacement=True, num_samples=max_steps, generator=gen1
+    )
     batch_sampler = BatchSampler(sampler, batch_size=batch_size, drop_last=False)
     training_data_loader = DataLoader(
         data,
@@ -626,7 +628,9 @@ def train_IQL(
         best_met = -np.inf
     else:
         best_met = np.inf
-    for i, t_data in tqdm(enumerate(training_data_loader),total=max_steps,desc="Training Steps"):
+    for i, t_data in tqdm(
+        enumerate(training_data_loader), total=max_steps, desc="Training Steps"
+    ):
         metrics = {
             "step": i,
             "train_time": np.nan,
@@ -661,15 +665,17 @@ def train_IQL(
                 total=eval_settings[1],
                 desc=f"Evaluation Step {i}",
             ):
-                met.append(eval_sim(
-                    actor,
-                    r_model,
-                    move_stats,
-                    eval_settings[2],
-                    rngs=rngs,
-                ))
+                met.append(
+                    eval_sim(
+                        actor,
+                        r_model,
+                        move_stats,
+                        eval_settings[2],
+                        rngs=rngs,
+                    )
+                )
             metrics["eval_metric"] = np.mean(met)
-                 
+
             if criteria_type == "max":
                 if metrics["eval_metric"] >= best_met:
                     c_best_step = i
