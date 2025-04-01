@@ -539,7 +539,7 @@ def train_IQL(
     np_rng = np.random.default_rng(int(t_keys[1]))
 
     sampler = RandomSampler(
-        data, replacement=True, num_samples=max_steps, generator=gen1
+        data, replacement=True, num_samples=max_steps*batch_size, generator=gen1
     )
     batch_sampler = BatchSampler(sampler, batch_size=batch_size, drop_last=False)
     training_data_loader = DataLoader(
