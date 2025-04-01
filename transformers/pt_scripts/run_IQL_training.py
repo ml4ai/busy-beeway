@@ -148,7 +148,7 @@ def main(argv):
             seed,
             batch_size=batch_size,
             num_workers=workers,
-            max_steps=max_steps,
+            max_steps=args.max_steps,
             eval_settings=eval_settings,
             save_dir=output_dir,
             actor_lr=learning_rate[0],
