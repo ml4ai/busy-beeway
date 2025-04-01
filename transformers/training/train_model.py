@@ -6,7 +6,7 @@ import numpy as np
 import orbax.checkpoint as ocp
 import torch
 from flax import nnx
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, random_split, RandomSampler, BatchSampler
 from tqdm import tqdm
 from transformers.evaluation.eval_episodes import (
     bb_run_episode,
@@ -511,9 +511,8 @@ def train_IQL(
     seed,
     batch_size=64,
     num_workers=2,
-    n_epochs=50,
+    max_steps=1e6,
     eval_settings=[1, 10, 500, 0],
-    criteria_key="eval_metric",
     criteria_type="max",
     save_dir="~/busy-beeway/transformers/logs",
     save=True,
@@ -538,16 +537,15 @@ def train_IQL(
     t_keys = jax.random.randint(rng_subkey, 2, 0, 10000)
     gen1 = torch.Generator().manual_seed(int(t_keys[0]))
     np_rng = np.random.default_rng(int(t_keys[1]))
+
+    sampler = RandomSampler(dataset, replacement=True, num_samples=max_steps, generator=gen1)
+    batch_sampler = BatchSampler(sampler, batch_size=batch_size, drop_last=False)
     training_data_loader = DataLoader(
         data,
-        batch_size=batch_size,
-        shuffle=True,
+        batch_sampler=batch_sampler,
         num_workers=num_workers,
-        generator=gen1,
         pin_memory=True,
     )
-
-    interval = len(training_data_loader)
 
     rng_subkey1, rng_subkey2, rng_subkey3, rng_subkey4 = jax.random.split(rng_key, 4)
     rngs = nnx.Rngs(
@@ -614,7 +612,7 @@ def train_IQL(
         qCritic,
         tCritic,
         opt_decay_schedule=kwargs.get("opt_decay_schedule", "cosine"),
-        max_steps=kwargs.get("max_steps", int(1e6)),
+        max_steps=n_epochs,
         actor_lr=kwargs.get("actor_lr", 3e-4),
         value_lr=kwargs.get("value_lr", 3e-4),
         critic_lr=kwargs.get("critic_lr", 3e-4),
@@ -623,86 +621,70 @@ def train_IQL(
         discount=kwargs.get("discount", 0.99),
         tau=kwargs.get("tau", 0.005),
     )
-    c_best_epoch = 0
+    c_best_step = 0
     if criteria_type == "max":
-        c_criteria_key = -np.inf
+        best_met = -np.inf
     else:
-        c_criteria_key = np.inf
-    for epoch in range(n_epochs + 1):
+        best_met = np.inf
+    for i, t_data in tqdm(enumerate(training_data_loader),total=max_steps,desc="Training Steps"):
         metrics = {
-            "epoch": epoch,
+            "step": i,
             "train_time": np.nan,
-            "actor_loss": [],
-            "value_loss": [],
-            "critic_loss": [],
-            "eval_metric": [],
-            "best_epoch": c_best_epoch,
-            f"{criteria_key}_best": c_criteria_key,
+            "actor_loss": np.nan,
+            "value_loss": np.nan,
+            "critic_loss": np.nan,
+            "eval_metric": np.nan,
+            "best_step": c_best_step,
+            "eval_metric_best": best_met,
         }
-        if epoch:
-            with Timer() as train_timer:
-                for i, t_data in tqdm(
-                    enumerate(training_data_loader),
-                    total=interval,
-                    desc=f"Training Epoch {epoch}",
-                ):
-                    batch = {}
-                    (
-                        batch["states"],
-                        batch["next_states"],
-                        batch["actions"],
-                        batch["attn_mask"],
-                        batch["rewards"],
-                    ) = t_data
-                    for k in batch:
-                        batch[k] = jnp.asarray(batch[k])
-                    batch = batch_to_jax(batch)
-                    for key, val in trainer.train(batch).items():
-                        metrics[key].append(val)
+        with Timer() as train_timer:
+            batch = {}
+            (
+                batch["states"],
+                batch["next_states"],
+                batch["actions"],
+                batch["attn_mask"],
+                batch["rewards"],
+            ) = t_data
+            for k in batch:
+                batch[k] = jnp.asarray(batch[k])
+            batch = batch_to_jax(batch)
+            for key, val in trainer.train(batch).items():
+                metrics[key] = val
             metrics["train_time"] = train_timer()
-        else:
-            # for using early stopping with train loss.
-            metrics["actor_loss"] = np.nan
-            metrics["value_loss"] = np.nan
-            metrics["critic_loss"] = np.nan
 
         # eval phase
-        if epoch % eval_settings[0] == 0:
-            for i in tqdm(
+        if i % eval_settings[0] == 0:
+            met = []
+            for j in tqdm(
                 range(eval_settings[1]),
                 total=eval_settings[1],
-                desc=f"Evaluation Epoch {epoch}",
+                desc=f"Evaluation Step {i}",
             ):
-                met = eval_sim(
+                met.append(eval_sim(
                     actor,
                     r_model,
                     move_stats,
                     eval_settings[2],
                     rngs=rngs,
-                )
-                metrics["eval_metric"].append(met)
-            criteria = np.mean(metrics[criteria_key])
+                ))
+            metrics["eval_metric"] = np.mean(met)
+                 
             if criteria_type == "max":
-                if criteria >= c_criteria_key:
-                    c_best_epoch = epoch
-                    c_criteria_key = criteria
-                    metrics["best_epoch"] = c_best_epoch
-                    metrics[f"{criteria_key}_best"] = c_criteria_key
+                if metrics["eval_metric"] >= best_met:
+                    c_best_step = i
+                    best_met = metrics["eval_metric"]
+                    metrics["best_step"] = c_best_step
+                    metrics["eval_metric_best"] = best_met
                     save_model(actor, actor_args, "best_actor", save_dir, checkpointer)
             else:
-                if criteria <= c_criteria_key:
-                    c_best_epoch = epoch
-                    c_criteria_key = criteria
-                    metrics["best_epoch"] = c_best_epoch
-                    metrics[f"{criteria_key}_best"] = c_criteria_key
+                if metrics["eval_metric"] <= best_met:
+                    c_best_step = i
+                    best_met = metrics["eval_metric"]
+                    metrics["best_step"] = c_best_step
+                    metrics["eval_metric_best"] = best_met
                     save_model(actor, actor_args, "best_actor", save_dir, checkpointer)
 
-        for key, val in metrics.items():
-            if isinstance(val, list):
-                if len(val):
-                    metrics[key] = np.mean(val)
-                else:
-                    metrics[key] = np.nan
         logger.record_dict(metrics)
         logger.dump_tabular(with_prefix=False, with_timestamp=False)
     if save:

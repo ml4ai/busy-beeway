@@ -51,7 +51,7 @@ def main(argv):
         help="Batch size. Powers of 2 work best.",
     )
     parser.add_argument(
-        "-n", "--n_epochs", type=int, default=10, help="Number of training epochs."
+        "-n", "--max_steps", type=int, default=1e6, help="Number of gradient steps."
     )
     parser.add_argument(
         "-s",
@@ -129,7 +129,6 @@ def main(argv):
         move_stats = None
     batch_size = args.batch_size
     eval_settings = args.eval_settings
-    n_epochs = args.n_epochs
     seed = args.seed
     learning_rate = args.learning_rate
     output_dir = os.path.expanduser(args.output_dir)
@@ -137,7 +136,10 @@ def main(argv):
 
     try:
         data = IQL_H5Dataset(
-            data, normalized_rewards=args.normalized_rewards, task_rewards=task_rewards, reward_adjustment = args.reward_adjustment
+            data,
+            normalized_rewards=args.normalized_rewards,
+            task_rewards=task_rewards,
+            reward_adjustment=args.reward_adjustment,
         )
         train_IQL(
             data,
@@ -146,7 +148,7 @@ def main(argv):
             seed,
             batch_size=batch_size,
             num_workers=workers,
-            n_epochs=n_epochs,
+            max_steps=max_steps,
             eval_settings=eval_settings,
             save_dir=output_dir,
             actor_lr=learning_rate[0],
