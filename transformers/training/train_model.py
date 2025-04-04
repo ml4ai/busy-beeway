@@ -98,7 +98,7 @@ def train_pt(
         kwargs.get("attn_dropout", 0.1),
         kwargs.get("resid_dropout", 0.1),
         kwargs.get("intermediate_dim", 4 * embd_dim),
-        kwargs.get("num_layers", 3),
+        kwargs.get("num_layers", 1),
         kwargs.get("embd_dropout", 0.1),
         kwargs.get("max_pos", max_pos),
         kwargs.get("eps", 0.1),
@@ -128,7 +128,7 @@ def train_pt(
         trans,
         init_value=kwargs.get("init_value", 0),
         peak_value=kwargs.get("peak_value", 1e-4),
-        warmup_steps=kwargs.get("warmup_steps", int(n_epochs * interval * 0.1)),
+        warmup_steps=kwargs.get("warmup_steps", int(n_epochs * interval * 0.05)),
         decay_steps=kwargs.get("decay_steps", int(n_epochs * interval)),
         end_value=kwargs.get("end_value", 0),
     )
@@ -539,7 +539,7 @@ def train_IQL(
     np_rng = np.random.default_rng(int(t_keys[1]))
 
     sampler = RandomSampler(
-        data, replacement=True, num_samples=max_steps*batch_size, generator=gen1
+        data, replacement=True, num_samples=max_steps * batch_size, generator=gen1
     )
     batch_sampler = BatchSampler(sampler, batch_size=batch_size, drop_last=False)
     training_data_loader = DataLoader(
@@ -613,7 +613,7 @@ def train_IQL(
         vCritic,
         qCritic,
         tCritic,
-        opt_decay_schedule=kwargs.get("opt_decay_schedule", "cosine"),
+        opt_decay_schedule=kwargs.get("opt_decay_schedule", None),
         max_steps=max_steps,
         actor_lr=kwargs.get("actor_lr", 3e-4),
         value_lr=kwargs.get("value_lr", 3e-4),
