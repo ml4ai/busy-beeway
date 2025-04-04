@@ -171,7 +171,7 @@ def main(argv):
                 save_d_pref = save_pref + f"{p_id}.hdf5"
                 create_state_data(
                     F,
-                    state_features=11 + 5*n_min_obstacles,
+                    state_features=8 + 3*n_min_obstacles,
                     split_size=split_size,
                     save_data=save_d_pref,
                 )
@@ -207,7 +207,7 @@ def main(argv):
                 save_d_pref = save_pref + f"{p_id}.hdf5"
                 create_state_data(
                     F,
-                    state_features=11 + 5*n_min_obstacles,
+                    state_features=8 + 3*n_min_obstacles,
                     split_size=split_size,
                     save_data=save_d_pref,
                 )
@@ -244,7 +244,7 @@ def main(argv):
             save_d_pref = save_pref + f"{p_id}.hdf5"
             create_state_data(
                 F,
-                state_features=11 + 5*n_min_obstacles,
+                state_features=8 + 3*n_min_obstacles,
                 split_size=split_size,
                 save_data=save_d_pref,
             )
@@ -281,7 +281,7 @@ def main(argv):
         save_d_pref = save_pref + f"{p_id}.hdf5"
         create_state_data(
             F,
-            state_features=11 + 5*n_min_obstacles,
+            state_features=8 + 3*n_min_obstacles,
             split_size=split_size,
             save_data=save_d_pref,
         )

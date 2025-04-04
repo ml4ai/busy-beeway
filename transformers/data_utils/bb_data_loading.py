@@ -48,10 +48,6 @@ def load_attempt_data(
                     "posX",
                     "posY",
                     "angle",
-                    "velocityX",
-                    "velocityY",
-                    "controlX",
-                    "controlY",
                     "userControl",
                 ],
             )
@@ -68,7 +64,7 @@ def load_attempt_data(
             o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
             try:
                 o = pd.read_csv(
-                    o_file, usecols=["posX", "posY", "angle", "velocityX", "velocityY"]
+                    o_file, usecols=["posX", "posY", "angle"]
                 )
             except:
                 raise FileNotFoundError(
@@ -220,10 +216,6 @@ def load_attempt_data(
                         "posX",
                         "posY",
                         "angle",
-                        "velocityX",
-                        "velocityY",
-                        "controlX",
-                        "controlY",
                         "userControl",
                     ],
                 )
@@ -241,7 +233,7 @@ def load_attempt_data(
                 try:
                     o = pd.read_csv(
                         o_file,
-                        usecols=["posX", "posY", "angle", "velocityX", "velocityY"],
+                        usecols=["posX", "posY", "angle"],
                     )
                 except:
                     raise FileNotFoundError(
@@ -451,10 +443,6 @@ def load_attempt_data(
                         "posX",
                         "posY",
                         "angle",
-                        "velocityX",
-                        "velocityY",
-                        "controlX",
-                        "controlY",
                         "userControl",
                     ],
                 )
@@ -472,7 +460,7 @@ def load_attempt_data(
                 try:
                     o = pd.read_csv(
                         o_file,
-                        usecols=["posX", "posY", "angle", "velocityX", "velocityY"],
+                        usecols=["posX", "posY", "angle"],
                     )
                 except:
                     raise FileNotFoundError(
@@ -903,10 +891,6 @@ def load_attempt_data_p(f):
                     "posX",
                     "posY",
                     "angle",
-                    "velocityX",
-                    "velocityY",
-                    "controlX",
-                    "controlY",
                     "userControl",
                 ],
             )
@@ -922,7 +906,7 @@ def load_attempt_data_p(f):
         for i in range(obs_start, obs_end + 1):
             o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
             try:
-                o = pd.read_csv(o_file, usecols=["posX", "posY", "angle","velocityX","velocityY"])
+                o = pd.read_csv(o_file, usecols=["posX", "posY", "angle"])
             except:
                 raise FileNotFoundError(
                     f"Could not find data for entity (obstacle) {i} for level {lvl}, attempt {attempt}!"
@@ -1072,10 +1056,6 @@ def load_attempt_data_p(f):
                     "posX",
                     "posY",
                     "angle",
-                    "velocityX",
-                    "velocityY",
-                    "controlX",
-                    "controlY",
                     "userControl",
                 ],
                 )
@@ -1091,7 +1071,7 @@ def load_attempt_data_p(f):
             for i in range(obs_start, obs_end + 1):
                 o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
                 try:
-                    o = pd.read_csv(o_file, usecols=["posX", "posY", "angle", "velocityX","velocityY"])
+                    o = pd.read_csv(o_file, usecols=["posX", "posY", "angle"])
                 except:
                     raise FileNotFoundError(
                         f"Could not find data for entity (obstacle) {i} for level {lvl}, attempt {attempt}!"
@@ -1299,10 +1279,6 @@ def load_attempt_data_p(f):
                     "posX",
                     "posY",
                     "angle",
-                    "velocityX",
-                    "velocityY",
-                    "controlX",
-                    "controlY",
                     "userControl",
                 ],
                 )
@@ -1318,7 +1294,7 @@ def load_attempt_data_p(f):
             for i in range(obs_start, obs_end + 1):
                 o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
                 try:
-                    o = pd.read_csv(o_file, usecols=["posX", "posY", "angle","velocityX","velocityY"])
+                    o = pd.read_csv(o_file, usecols=["posX", "posY", "angle"])
                 except:
                     raise FileNotFoundError(
                         f"Could not find data for entity (obstacle) {i} for level {lvl}, attempt {attempt}!"

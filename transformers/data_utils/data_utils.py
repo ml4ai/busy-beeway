@@ -117,9 +117,6 @@ def compute_run_features(p_df, g, O, day=None, n_min_obstacles=6):
     features = {}
     features["posX"] = p_df["posX"].to_numpy()
     features["posY"] = p_df["posY"].to_numpy()
-    features["angle"] = p_df["angle"].to_numpy()
-    feature["velocityX"] = p_df["velocityX"].to_numpy()
-    feature["velocityY"] = p_df["velocityY"].to_numpy()
 
     for i in range(n_min_obstacles):
 
@@ -129,17 +126,12 @@ def compute_run_features(p_df, g, O, day=None, n_min_obstacles=6):
 
         features[f"O_{i}_angle"] = np.repeat(0.0, p_df.shape[0])
 
-        features[f"O_{i}_velocityX"] = np.repeat(0.0, p_df.shape[0])
-
-        features[f"O_{i}_veloctiyX"] = np.repeat(0.0, p_df.shape[0])
 
     for index, row in p_df.iterrows():
         o_t = O[O["t"] == row["t"]]
         o_t_X = o_t["posX"].to_numpy()
         o_t_Y = o_t["posY"].to_numpy()
         o_t_A = o_t["angle"].to_numpy()
-        o_t_vX = o_t["velocityX"].to_numpy()
-        o_t_vY = o_t["velocityY"].to_numpy()
         obs_distances = point_dist(
             o_t_X,
             o_t_Y,
@@ -154,9 +146,6 @@ def compute_run_features(p_df, g, O, day=None, n_min_obstacles=6):
     
             features[f"O_{i}_angle"][index] = o_t_A[min_dist_obs[i]]
     
-            features[f"O_{i}_velocityX"][index] = o_t_vX[min_dist_obs[i]]
-    
-            features[f"O_{i}_veloctiyX"][index] = o_t_vY[min_dist_obs[i]]
     features["goalX"] = np.repeat(g[0], p_df.shape[0])
     features["goalY"] = np.repeat(g[1], p_df.shape[0])
     features["level"] = p_df["level"].to_numpy()
@@ -164,8 +153,8 @@ def compute_run_features(p_df, g, O, day=None, n_min_obstacles=6):
     features["attempt"] = p_df["attempt"].to_numpy()
     if day is not None:
         features["day"] = np.repeat(day, p_df.shape[0])
-    features["controlX"] = p_df["controlX"].to_numpy()
-    features["controlY"] = p_df["controlY"].to_numpy()
+    features["speed"] = np.append(np.sqrt(np.diff(p_df["posX"].to_numpy()) ** 2 + np.diff(p_df["posY"].to_numpy()) ** 2), 0.0)
+    features["angle"] = p_df["angle"].to_numpy()
     features["t"] = p_df["t"].to_numpy()
     return pd.DataFrame(features)
 
@@ -198,9 +187,6 @@ def compute_run_features_p(d):
     features = {}
     features["posX"] = p_df["posX"].to_numpy()
     features["posY"] = p_df["posY"].to_numpy()
-    features["angle"] = p_df["angle"].to_numpy()
-    feature["velocityX"] = p_df["velocityX"].to_numpy()
-    feature["velocityY"] = p_df["velocityY"].to_numpy()
 
     for i in range(n_min_obstacles):
 
@@ -210,17 +196,13 @@ def compute_run_features_p(d):
 
         features[f"O_{i}_angle"] = np.repeat(0.0, p_df.shape[0])
 
-        features[f"O_{i}_velocityX"] = np.repeat(0.0, p_df.shape[0])
-
-        features[f"O_{i}_veloctiyX"] = np.repeat(0.0, p_df.shape[0])
 
     for index, row in p_df.iterrows():
         o_t = O[O["t"] == row["t"]]
         o_t_X = o_t["posX"].to_numpy()
         o_t_Y = o_t["posY"].to_numpy()
         o_t_A = o_t["angle"].to_numpy()
-        o_t_vX = o_t["velocityX"].to_numpy()
-        o_t_vY = o_t["velocityY"].to_numpy()
+        
         obs_distances = point_dist(
             o_t_X,
             o_t_Y,
@@ -234,10 +216,6 @@ def compute_run_features_p(d):
             features[f"O_{i}_posY"][index] = o_t_Y[min_dist_obs[i]]
     
             features[f"O_{i}_angle"][index] = o_t_A[min_dist_obs[i]]
-    
-            features[f"O_{i}_velocityX"][index] = o_t_vX[min_dist_obs[i]]
-    
-            features[f"O_{i}_veloctiyX"][index] = o_t_vY[min_dist_obs[i]]
             
     features["goalX"] = np.repeat(g[0], p_df.shape[0])
     features["goalY"] = np.repeat(g[1], p_df.shape[0])
@@ -246,8 +224,8 @@ def compute_run_features_p(d):
     features["attempt"] = p_df["attempt"].to_numpy()
     if day is not None:
         features["day"] = np.repeat(day, p_df.shape[0])
-    features["controlX"] = p_df["controlX"].to_numpy()
-    features["controlY"] = p_df["controlY"].to_numpy()
+    features["speed"] = np.append(np.sqrt(np.diff(p_df["posX"].to_numpy()) ** 2 + np.diff(p_df["posY"].to_numpy()) ** 2), 0.0)
+    features["angle"] = p_df["angle"].to_numpy()
     features["t"] = p_df["t"].to_numpy()
     df = pd.DataFrame(features)
     if save_data:
@@ -320,7 +298,7 @@ def pad_run_features(f, fill_size=500):
 
 
 # Takes feature dataframe and transforms into np arrays with padding. Returns tuple of features matrix and timestep array for a state sequence
-def run_to_np(f, state_features=41, fill_size=500, with_attn_mask=True):
+def run_to_np(f, state_features=26, fill_size=500, with_attn_mask=True):
     p_f = pad_run_features(f, fill_size)
     nf = p_f.to_numpy()
     if with_attn_mask:
@@ -361,7 +339,7 @@ def create_preference_data(
     F_2,
     split_size=100,
     gh_idx=1,
-    state_features=41,
+    state_features=26,
     labels=("states", "actions", "timesteps", "attn_mask"),
     with_attn_mask=True,
     save_data=None,
@@ -506,7 +484,7 @@ def create_preference_data(
 def create_state_data(
     F,
     split_size=100,
-    state_features=41,
+    state_features=26,
     labels=("states", "actions", "timesteps", "attn_mask"),
     with_attn_mask=True,
     save_data=None,
