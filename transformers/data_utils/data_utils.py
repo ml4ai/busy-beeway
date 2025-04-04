@@ -94,6 +94,7 @@ def points_in_arc(cx, cy, xs, ys, sa, ea, r=100.0):
             ((a > sa) | np.isclose(a, sa)) | ((a < ea) | np.isclose(a, ea))
         )
 
+
 def first_nth_argmins(arr, n):
     """
     Returns the indices of the 0 to nth minimum values in a NumPy array.
@@ -108,9 +109,10 @@ def first_nth_argmins(arr, n):
     """
     if n < 0 or n > arr.size:
         return np.array([])
-    
+
     indices = np.argpartition(arr, np.arange(n))[:n]
     return indices
+
 
 # n_min_obstacles is number of obstacles to include in features per state starting from closest obstacle to the n_min_obstacles-th closest obstacle
 def compute_run_features(p_df, g, O, day=None, n_min_obstacles=6):
@@ -126,7 +128,6 @@ def compute_run_features(p_df, g, O, day=None, n_min_obstacles=6):
 
         features[f"O_{i}_angle"] = np.repeat(0.0, p_df.shape[0])
 
-
     for index, row in p_df.iterrows():
         o_t = O[O["t"] == row["t"]]
         o_t_X = o_t["posX"].to_numpy()
@@ -141,11 +142,11 @@ def compute_run_features(p_df, g, O, day=None, n_min_obstacles=6):
         min_dist_obs = first_nth_argmins(obs_distances, n_min_obstacles)
         for i in range(n_min_obstacles):
             features[f"O_{i}_posX"][index] = o_t_X[min_dist_obs[i]]
-    
+
             features[f"O_{i}_posY"][index] = o_t_Y[min_dist_obs[i]]
-    
+
             features[f"O_{i}_angle"][index] = o_t_A[min_dist_obs[i]]
-    
+
     features["goalX"] = np.repeat(g[0], p_df.shape[0])
     features["goalY"] = np.repeat(g[1], p_df.shape[0])
     features["level"] = p_df["level"].to_numpy()
@@ -153,21 +154,27 @@ def compute_run_features(p_df, g, O, day=None, n_min_obstacles=6):
     features["attempt"] = p_df["attempt"].to_numpy()
     if day is not None:
         features["day"] = np.repeat(day, p_df.shape[0])
-    features["speed"] = np.append(np.sqrt(np.diff(p_df["posX"].to_numpy()) ** 2 + np.diff(p_df["posY"].to_numpy()) ** 2), 0.0)
+    features["speed"] = np.append(
+        np.sqrt(
+            np.diff(p_df["posX"].to_numpy()) ** 2
+            + np.diff(p_df["posY"].to_numpy()) ** 2
+        ),
+        0.0,
+    )
     features["angle"] = p_df["angle"].to_numpy()
     features["t"] = p_df["t"].to_numpy()
     return pd.DataFrame(features)
 
 
 # save_dir is a string containing the path to the directory where we want feature files saved.
-def compute_features(D, day=None, n_min_obstacles=6,save_dir=None):
+def compute_features(D, day=None, n_min_obstacles=6, save_dir=None):
     dat = []
     if save_dir is None:
         for d in D:
             p_df = d["player"]
             g = d["goal"]
             O = d["obstacles"]
-            dat.append(compute_run_features(p_df, g, O, day,n_min_obstacles))
+            dat.append(compute_run_features(p_df, g, O, day, n_min_obstacles))
         return dat
     else:
         dir_path = os.path.expanduser(save_dir)
@@ -176,14 +183,14 @@ def compute_features(D, day=None, n_min_obstacles=6,save_dir=None):
             p_df = d["player"]
             g = d["goal"]
             O = d["obstacles"]
-            res = compute_run_features(p_df, g, O, day,n_min_obstacles)
+            res = compute_run_features(p_df, g, O, day, n_min_obstacles)
             res.to_parquet(f"{dir_path}/sequence_{i}.parquet")
             dat.append(res)
         return dat
 
 
 def compute_run_features_p(d):
-    p_df, g, O, day, n_min_obstacles,save_data = d
+    p_df, g, O, day, n_min_obstacles, save_data = d
     features = {}
     features["posX"] = p_df["posX"].to_numpy()
     features["posY"] = p_df["posY"].to_numpy()
@@ -196,13 +203,12 @@ def compute_run_features_p(d):
 
         features[f"O_{i}_angle"] = np.repeat(0.0, p_df.shape[0])
 
-
     for index, row in p_df.iterrows():
         o_t = O[O["t"] == row["t"]]
         o_t_X = o_t["posX"].to_numpy()
         o_t_Y = o_t["posY"].to_numpy()
         o_t_A = o_t["angle"].to_numpy()
-        
+
         obs_distances = point_dist(
             o_t_X,
             o_t_Y,
@@ -212,11 +218,11 @@ def compute_run_features_p(d):
         min_dist_obs = first_nth_argmins(obs_distances, n_min_obstacles)
         for i in range(n_min_obstacles):
             features[f"O_{i}_posX"][index] = o_t_X[min_dist_obs[i]]
-    
+
             features[f"O_{i}_posY"][index] = o_t_Y[min_dist_obs[i]]
-    
+
             features[f"O_{i}_angle"][index] = o_t_A[min_dist_obs[i]]
-            
+
     features["goalX"] = np.repeat(g[0], p_df.shape[0])
     features["goalY"] = np.repeat(g[1], p_df.shape[0])
     features["level"] = p_df["level"].to_numpy()
@@ -224,7 +230,13 @@ def compute_run_features_p(d):
     features["attempt"] = p_df["attempt"].to_numpy()
     if day is not None:
         features["day"] = np.repeat(day, p_df.shape[0])
-    features["speed"] = np.append(np.sqrt(np.diff(p_df["posX"].to_numpy()) ** 2 + np.diff(p_df["posY"].to_numpy()) ** 2), 0.0)
+    features["speed"] = np.append(
+        np.sqrt(
+            np.diff(p_df["posX"].to_numpy()) ** 2
+            + np.diff(p_df["posY"].to_numpy()) ** 2
+        ),
+        0.0,
+    )
     features["angle"] = p_df["angle"].to_numpy()
     features["t"] = p_df["t"].to_numpy()
     df = pd.DataFrame(features)
@@ -233,7 +245,7 @@ def compute_run_features_p(d):
     return df
 
 
-def compute_features_p(D, day=None, n_min_obstacles=6,save_dir=None, cores=None):
+def compute_features_p(D, day=None, n_min_obstacles=6, save_dir=None, cores=None):
     if cores is None:
         cores = os.cpu_count()
     with Pool(cores) as p:
@@ -241,7 +253,17 @@ def compute_features_p(D, day=None, n_min_obstacles=6,save_dir=None, cores=None)
             dat = list(
                 p.map(
                     compute_run_features_p,
-                    [(d["player"], d["goal"], d["obstacles"], day, n_min_obstacles,None) for d in D],
+                    [
+                        (
+                            d["player"],
+                            d["goal"],
+                            d["obstacles"],
+                            day,
+                            n_min_obstacles,
+                            None,
+                        )
+                        for d in D
+                    ],
                 )
             )
         else:
@@ -358,7 +380,12 @@ def create_preference_data(
         ams_2 = []
         lbs = []
         for i, f in enumerate(F_1):
-            fill_size = F_2[i].shape[0] + (split_size - (F_2[i].shape[0] % split_size))
+            if F_2[i].shape[0] % split_size == 0:
+                fill_size = F_2[i].shape[0]
+            else:
+                fill_size = F_2[i].shape[0] + (
+                    split_size - (F_2[i].shape[0] % split_size)
+                )
             n_splits = int(fill_size / split_size)
             s, a, t, am = run_to_np(f, state_features, fill_size, with_attn_mask)
             s = s.reshape((n_splits, split_size, s.shape[1]))
@@ -427,7 +454,10 @@ def create_preference_data(
     ts_2 = []
     lbs = []
     for i, f in enumerate(F_1):
-        fill_size = F_2[i].shape[0] + (split_size - (F_2[i].shape[0] % split_size))
+        if F_2[i].shape[0] % split_size == 0:
+            fill_size = F_2[i].shape[0]
+        else:
+            fill_size = F_2[i].shape[0] + (split_size - (F_2[i].shape[0] % split_size))
         n_splits = int(fill_size / split_size)
         s, a, t = run_to_np(f, state_features, fill_size, with_attn_mask)
         s = s.reshape((n_splits, split_size, s.shape[1]))
@@ -497,7 +527,10 @@ def create_state_data(
         ams = []
         lbs = []
         for f in F:
-            fill_size = f.shape[0] + (split_size - (f.shape[0] % split_size))
+            if f.shape[0] % split_size == 0:
+                fill_size = f.shape[0]
+            else:
+                fill_size = f.shape[0] + (split_size - (f.shape[0] % split_size))
             n_splits = int(fill_size / split_size)
             s, a, t, am = run_to_np(f, state_features, fill_size, with_attn_mask)
             s = s.reshape((n_splits, split_size, s.shape[1]))
@@ -542,7 +575,10 @@ def create_state_data(
     ts = []
     lbs = []
     for f in F:
-        fill_size = f.shape[0] + (split_size - (f.shape[0] % split_size))
+        if f.shape[0] % split_size == 0:
+            fill_size = f.shape[0]
+        else:
+            fill_size = f.shape[0] + (split_size - (f.shape[0] % split_size))
         n_splits = int(fill_size / split_size)
         s, a, t = run_to_np(f, state_features, fill_size, with_attn_mask)
         s = s.reshape((n_splits, split_size, s.shape[1]))

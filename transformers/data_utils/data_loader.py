@@ -85,8 +85,8 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
                             np.max(g["timesteps"][m, :]), self._max_episode_length
                         )
 
-                    m_static = g["states"][m, 0, 11:16]
-                    t_static = f["states"][:, 0, 11:16]
+                    m_static = g["states"][m, 0, -4:]
+                    t_static = f["states"][:, 0, -4:]
                     matches = np.argwhere(np.all(t_static == m_static, axis=1))[:, 0]
                     if matches.shape[0] > 0:
                         self.m_idxs.append(rng.choice(matches))
