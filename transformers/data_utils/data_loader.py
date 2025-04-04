@@ -1,13 +1,5 @@
 from collections import defaultdict
-
-import h5py
-import jax.numpy as jnp
-import jax
-import numpy as np
-import torch
-from torch.utils.data import Subset
 from typing import (
-    cast,
     Dict,
     Generic,
     Iterable,
@@ -17,7 +9,15 @@ from typing import (
     Tuple,
     TypeVar,
     Union,
+    cast,
 )
+
+import h5py
+import jax
+import jax.numpy as jnp
+import numpy as np
+import torch
+from torch.utils.data import Subset
 
 
 class JaxDataset(torch.utils.data.Dataset[Tuple[jax.Array, ...]]):
@@ -49,12 +49,21 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
     # combined = true means this is a virtual dataset of combined data files
     # batch size is set my target participant data
     # Randomly matches indexes of mixed participants to target participant
-    def __init__(self, target_p_file, mixed_p_file, rng=np.random.default_rng()):
+    def __init__(
+        self,
+        target_p_file,
+        mixed_p_file,
+        rng=np.random.default_rng(),
+        max_episode_length=None,
+    ):
         super(Pref_H5Dataset, self).__init__()
         self.target_p_file = target_p_file
         self.mixed_p_file = mixed_p_file
         with h5py.File(self.target_p_file, "r") as f:
-            self._max_episode_length = np.max(f["timesteps"][:])
+            if max_episode_length is None:
+                self._max_episode_length = np.max(f["timesteps"][:])
+            else:
+                self._max_episode_length = max_episode_length
             # if combined:
             #     self._c_idx = {}
             #     for key, val in f.attrs.items():
@@ -71,9 +80,10 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
                 # self.labels = []
                 self.m_idxs = []
                 for m in range(m_size):
-                    self._max_episode_length = max(
-                        np.max(g["timesteps"][m, :]), self._max_episode_length
-                    )
+                    if max_episode_length is None:
+                        self._max_episode_length = max(
+                            np.max(g["timesteps"][m, :]), self._max_episode_length
+                        )
 
                     m_static = g["states"][m, 0, 11:16]
                     t_static = f["states"][:, 0, 11:16]
@@ -144,6 +154,63 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
     # # 1 if not a combined dataset
     # def c_num(self):
     #     return self._c_n
+
+
+class Pref_H5Dataset_minari(torch.utils.data.Dataset):
+    # combined = true means this is a virtual dataset of combined data files
+    # batch size is set my target participant data
+    # Randomly matches indexes of mixed participants to target participant
+    def __init__(self, datafile, max_episode_length=None):
+        super(Pref_H5Dataset_minari, self).__init__()
+        self.datafile = datafile
+        with h5py.File(self.datafile, "r") as f:
+            if max_episode_length is None:
+                self._max_episode_length = max(
+                    np.max(f["timesteps"][:]), np.max(f["timesteps_2"][:])
+                )
+            else:
+                self._max_episode_length = max_episode_length
+
+            self._sts_shape = f["states"].shape
+            self._acts_shape = f["actions"].shape
+
+    # Target data is denoted with a 2, since the labels are all 1 for the target
+    def open_hdf5(self):
+        self.h5_file = h5py.File(self.datafile, "r")
+        self.states = self.h5_file["states"]
+        self.actions = self.h5_file["actions"]
+        self.timesteps = self.h5_file["timesteps"]
+        self.attn_mask = self.h5_file["attn_mask"]
+
+        self.states_2 = self.h5_file["states_2"]
+        self.actions_2 = self.h5_file["actions_2"]
+        self.timesteps_2 = self.h5_file["timesteps_2"]
+        self.attn_mask_2 = self.h5_file["attn_mask_2"]
+        self.labels = self.h5_file["labels"]
+
+    def __getitem__(self, index):
+        if not hasattr(self, "h5_file"):
+            self.open_hdf5()
+        return (
+            self.states[index, ...],
+            self.actions[index, ...],
+            self.timesteps[index, ...],
+            self.attn_mask[index, ...],
+            self.states_2[index, ...],
+            self.actions_2[index, ...],
+            self.timesteps_2[index, ...],
+            self.attn_mask_2[index, ...],
+            self.labels[index],
+        )
+
+    def __len__(self):
+        return self._sts_shape[0]
+
+    def shapes(self):
+        return self._sts_shape, self._acts_shape
+
+    def max_episode_length(self):
+        return self._max_episode_length
 
 
 class Dec_H5Dataset(torch.utils.data.Dataset):
