@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import numpy as np
 from argformat import StructuredFormatter
 
-from transformers.data_utils.data_loader import Pref_H5Dataset
+from transformers.data_utils.data_loader import Pref_H5Dataset, Pref_H5Dataset_minari
 from transformers.training.train_model import train_pt
 import torch.multiprocessing as multiprocessing
 
@@ -23,13 +23,14 @@ def main(argv):
         "data_1",
         metavar="D",
         type=str,
-        help="HDF5 file containing data. \nThe file must have the datasets \n'Observations',timesteps',etc.",
+        help="HDF5 file containing data. \nThe file must have the datasets \n'Observations',timesteps',etc. \nThis assumes that a comparison set is included, \nif no data_2 is given",
     )
     parser.add_argument(
-        "data_2",
-        metavar="A",
+        "-a",
+        "--data_2",
         type=str,
-        help="HDF5 file containing data. \nThe file must have the datasets \n'Observations',timesteps',etc.",
+        default=None,
+        help="HDF5 file containing comparison data for dataset 1. ",
     )
     parser.add_argument(
         "-t",
@@ -91,11 +92,18 @@ def main(argv):
         default="~/busy-beeway/transformers/logs",
         help="Output directory for training logs and pickled models",
     )
-
+    parser.add_argument(
+        "-m",
+        "--max_episode_length",
+        type=int,
+        default=None,
+        help="Pre-known max episode length",
+    )
     multiprocessing.set_start_method("forkserver")
     args = parser.parse_args(argv)
     data_1 = os.path.expanduser(args.data_1)
-    data_2 = os.path.expanduser(args.data_2)
+    if args.data_2 is not None:
+        data_2 = os.path.expanduser(args.data_2)
     train_split = args.training_split
     batch_size = args.batch_size
     eval_period = args.eval_period
@@ -109,9 +117,12 @@ def main(argv):
     dim = args.dim
     workers = args.workers
     rng = np.random.default_rng(seed)
-    seed, _ = rng.integers(0,10000,2)
+    seed, _ = rng.integers(0, 10000, 2)
     try:
-        data = Pref_H5Dataset(data_1,data_2,rng)
+        if args.data_2 is not None:
+            data = Pref_H5Dataset(data_1, data_2, rng, args.max_episode_length)
+        else:
+            data = Pref_H5Dataset_minari(data_1, args.max_episode_length)
         train_pt(
             data,
             seed,
