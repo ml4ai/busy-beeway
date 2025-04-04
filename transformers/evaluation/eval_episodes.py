@@ -88,34 +88,42 @@ def find_direction(x1, y1, x2, y2):
     return degs * 1
 
 
+def first_nth_argmins(arr, n):
+    """
+    Returns the indices of the 0 to nth minimum values in a NumPy array.
+
+    Parameters:
+    arr (numpy.ndarray): The input NumPy array.
+    n (int): The number of minimum values to consider (inclusive of 0th minimum).
+
+    Returns:
+    numpy.ndarray: An array containing the indices of the 0 to nth minimum values.
+                   Returns an empty array if n is negative or greater than or equal to the array size.
+    """
+    if n < 0 or n > arr.size:
+        return np.array([])
+
+    indices = np.argpartition(arr, np.arange(n))[:n]
+    return indices
+
+
 def bb_run_episode(
     d_model,
     r_model,
     move_stats,
+    n_min_obstacles=6,
     context_length=100,
     target_return=100.0,
     max_horizon=500,
     days=153,
     rng=np.random.default_rng(),
 ):
-    n_obstacles = rng.choice([50, 100, 150])
-    ai = rng.choice(4)
-    p_attempt = rng.choice(4)
+    level = rng.choice([9, 10, 11])
+    n_obstacles = 50 if level == 9 else 100 if level == 10 else 150
+    ai = rng.choice([1, 2, 3, 4])
+    attempt = rng.choice(4)
     if days is not None:
         day = rng.choice(days)
-    match ai:
-        case 0:
-            sig = 55
-            repel = 72
-        case 1:
-            sig = 62
-            repel = 98
-        case 2:
-            sig = 140
-            repel = 98
-        case 3:
-            sig = 100
-            repel = 75
 
     O_posX, O_posY = rand_circle(50, n_obstacles, rng=rng)
 
@@ -129,8 +137,6 @@ def bb_run_episode(
     p_posX = float(p_samp[0])
     p_posY = float(p_samp[1])
 
-    p_angle = rng.uniform(0.0, 360.0)
-
     while True:
         g_h = rng.uniform(0.0, 360.0)
         g_r = rng.normal(30)
@@ -142,113 +148,44 @@ def bb_run_episode(
             break
 
     def create_new_state():
-        goal_distances = point_dist(g[0], g[1], p_posX, p_posY)
-        goal_headings = cos_plus(find_direction(p_posX, p_posY, g[0], g[1]) - p_angle)
-
+        s = [p_posX, p_posY]
         obs_distances = point_dist(
             O_posX,
             O_posY,
             p_posX,
             p_posY,
         )
-        min_dist_obs = np.argmin(obs_distances)
-        min_obstacle_distances = obs_distances[min_dist_obs]
 
-        obs_headings = (
-            cos_plus(
-                find_direction(
-                    p_posX,
-                    p_posY,
-                    O_posX,
-                    O_posY,
-                )
-                - p_angle
-            )
-            + 2
-        )
-        min_distance_obstacle_headings = obs_headings[min_dist_obs]
+        min_dist_obs = first_nth_argmins(obs_distances, n_min_obstacles)
 
-        max_heading_obs = np.argmax(obs_headings)
-        max_obstacle_headings = obs_headings[max_heading_obs]
+        for i in range(n_min_obstacles):
+            s += [
+                O_posX[min_dist_obs[i]],
+                O_posY[min_dist_obs[i]],
+                O_angle[min_dist_obs[i]],
+            ]
 
-        max_heading_obstacle_distances = obs_distances[max_heading_obs]
+        s += [g[0], g[1]]
 
-        op_headings = (
-            cos_plus(find_direction(O_posX, O_posY, p_posX, p_posY) - O_angle) + 2
-        )
+        s.append(level * 1.0)
+        s.append(ai * 1.0)
+        s.append(attempt * 1.0)
 
-        max_heading_op = np.argmax(op_headings)
-
-        max_op_headings = op_headings[max_heading_op]
-
-        min_distance_op_headings = op_headings[min_dist_obs]
-
-        max_heading_obstacle_op_headings = op_headings[max_heading_obs]
-
-        max_heading_op_distances = obs_distances[max_heading_op]
-
-        max_heading_op_obstacle_headings = obs_headings[max_heading_op]
-
-        obstacle_count = n_obstacles * 1.0
-
-        sigma = sig * 1.0
-
-        repel_factor = repel * 1.0
-
-        attempt = p_attempt * 1.0
         if days is not None:
-            s = jnp.array(
-                [
-                    goal_distances,
-                    goal_headings,
-                    min_obstacle_distances,
-                    min_distance_obstacle_headings,
-                    max_obstacle_headings,
-                    max_heading_obstacle_distances,
-                    max_op_headings,
-                    min_distance_op_headings,
-                    max_heading_obstacle_op_headings,
-                    max_heading_op_distances,
-                    max_heading_op_obstacle_headings,
-                    obstacle_count,
-                    sigma,
-                    repel_factor,
-                    attempt,
-                    day,
-                ]
-            )
-        else:
-            s = jnp.array(
-                [
-                    goal_distances,
-                    goal_headings,
-                    min_obstacle_distances,
-                    min_distance_obstacle_headings,
-                    max_obstacle_headings,
-                    max_heading_obstacle_distances,
-                    max_op_headings,
-                    min_distance_op_headings,
-                    max_heading_obstacle_op_headings,
-                    max_heading_op_distances,
-                    max_heading_op_obstacle_headings,
-                    obstacle_count,
-                    sigma,
-                    repel_factor,
-                    attempt,
-                ]
-            )
-        return s
+            s.append(day * 1.0)
+
+        return jnp.asarray(s)
 
     R = jnp.array(target_return).reshape(1, 1, -1)
 
     s = create_new_state().reshape(1, 1, -1)
 
-    a = jnp.zeros((1, 0, 3))
+    a = jnp.zeros((1, 0, 2))
     t = jnp.zeros((1, 1), dtype=jnp.int32)
     d_model = nnx.jit(d_model, static_argnums=5)
     episode_return = 0
     for i in tqdm(range(max_horizon), desc="Timesteps"):
-        a = jnp.concat([a, jnp.zeros((1, 1, 3))], axis=1)
+        a = jnp.concat([a, jnp.zeros((1, 1, 2))], axis=1)
         a = a[:, -context_length:, :]
         _, _, action = d_model(
             R,
@@ -260,6 +197,7 @@ def bb_run_episode(
         )
 
         action = action[-1][-1]
+        action = jnp.where(jnp.array([True, False]), jnp.clip(action, 0.0), action)
         a = a.at[-1, -1].set(action)
 
         reward, _ = r_model(
@@ -312,7 +250,6 @@ def bb_run_episode(
             g[1],
             radius_2=1.0,
         )
-        p_angle = float(action[1])
 
         s = jnp.concat([s, create_new_state().reshape(1, 1, -1)], axis=1)
 
@@ -334,40 +271,30 @@ def bb_record_episode(
     d_model,
     r_model,
     move_stats,
+    n_min_obstacles=6,
     context_length=100,
     target_return=100.0,
     max_horizon=500,
     days=153,
-    n_obstacles=None,
+    level=None,
     ai=None,
-    p_attempt=None,
+    attempt=None,
     day=None,
     rng=np.random.default_rng(),
 ):
 
-    if n_obstacles is None:
-        n_obstacles = rng.choice([50, 100, 150])
+    if level is None:
+        level = rng.choice([9, 10, 11])
+
+    n_obstacles = 50 if level == 9 else 100 if level == 10 else 150
 
     if ai is None:
-        ai = rng.choice(4)
-    if p_attempt is None:
-        p_attempt = rng.choice(4)
+        ai = rng.choice([1, 2, 3, 4])
+    if attempt is None:
+        attempt = rng.choice(4)
     if days is not None:
         if day is None:
             day = rng.choice(days)
-    match ai:
-        case 0:
-            sig = 55
-            repel = 72
-        case 1:
-            sig = 62
-            repel = 98
-        case 2:
-            sig = 140
-            repel = 98
-        case 3:
-            sig = 100
-            repel = 75
 
     O_posX, O_posY = rand_circle(50, n_obstacles, rng=rng)
 
@@ -381,8 +308,6 @@ def bb_record_episode(
     p_posX = float(p_samp[0])
     p_posY = float(p_samp[1])
 
-    p_angle = rng.uniform(0.0, 360.0)
-
     while True:
         g_h = rng.uniform(0.0, 360.0)
         g_r = rng.normal(30)
@@ -394,106 +319,37 @@ def bb_record_episode(
             break
 
     def create_new_state():
-        goal_distances = point_dist(g[0], g[1], p_posX, p_posY)
-        goal_headings = cos_plus(find_direction(p_posX, p_posY, g[0], g[1]) - p_angle)
-
+        s = [p_posX, p_posY]
         obs_distances = point_dist(
             O_posX,
             O_posY,
             p_posX,
             p_posY,
         )
-        min_dist_obs = np.argmin(obs_distances)
-        min_obstacle_distances = obs_distances[min_dist_obs]
 
-        obs_headings = (
-            cos_plus(
-                find_direction(
-                    p_posX,
-                    p_posY,
-                    O_posX,
-                    O_posY,
-                )
-                - p_angle
-            )
-            + 2
-        )
-        min_distance_obstacle_headings = obs_headings[min_dist_obs]
+        min_dist_obs = first_nth_argmins(obs_distances, n_min_obstacles)
 
-        max_heading_obs = np.argmax(obs_headings)
-        max_obstacle_headings = obs_headings[max_heading_obs]
+        for i in range(n_min_obstacles):
+            s += [
+                O_posX[min_dist_obs[i]],
+                O_posY[min_dist_obs[i]],
+                O_angle[min_dist_obs[i]],
+            ]
 
-        max_heading_obstacle_distances = obs_distances[max_heading_obs]
+        s += [g[0], g[1]]
 
-        op_headings = (
-            cos_plus(find_direction(O_posX, O_posY, p_posX, p_posY) - O_angle) + 2
-        )
+        s.append(level * 1.0)
+        s.append(ai * 1.0)
+        s.append(attempt * 1.0)
 
-        max_heading_op = np.argmax(op_headings)
-
-        max_op_headings = op_headings[max_heading_op]
-
-        min_distance_op_headings = op_headings[min_dist_obs]
-
-        max_heading_obstacle_op_headings = op_headings[max_heading_obs]
-
-        max_heading_op_distances = obs_distances[max_heading_op]
-
-        max_heading_op_obstacle_headings = obs_headings[max_heading_op]
-
-        obstacle_count = n_obstacles * 1.0
-
-        sigma = sig * 1.0
-
-        repel_factor = repel * 1.0
-
-        attempt = p_attempt * 1.0
         if days is not None:
-            s = jnp.array(
-                [
-                    goal_distances,
-                    goal_headings,
-                    min_obstacle_distances,
-                    min_distance_obstacle_headings,
-                    max_obstacle_headings,
-                    max_heading_obstacle_distances,
-                    max_op_headings,
-                    min_distance_op_headings,
-                    max_heading_obstacle_op_headings,
-                    max_heading_op_distances,
-                    max_heading_op_obstacle_headings,
-                    obstacle_count,
-                    sigma,
-                    repel_factor,
-                    attempt,
-                    day,
-                ]
-            )
-        else:
-            s = jnp.array(
-                [
-                    goal_distances,
-                    goal_headings,
-                    min_obstacle_distances,
-                    min_distance_obstacle_headings,
-                    max_obstacle_headings,
-                    max_heading_obstacle_distances,
-                    max_op_headings,
-                    min_distance_op_headings,
-                    max_heading_obstacle_op_headings,
-                    max_heading_op_distances,
-                    max_heading_op_obstacle_headings,
-                    obstacle_count,
-                    sigma,
-                    repel_factor,
-                    attempt,
-                ]
-            )
-        return s
+            s.append(day * 1.0)
+
+        return jnp.asarray(s)
 
     R = jnp.array(target_return).reshape(1, 1, -1)
     s = create_new_state().reshape(1, 1, -1)
-    a = jnp.zeros((1, 0, 3))
+    a = jnp.zeros((1, 0, 2))
     t = jnp.zeros((1, 1), dtype=jnp.int32)
 
     episode_return, episode_length = 0.0, 0
@@ -514,7 +370,7 @@ def bb_record_episode(
     success = False
     d_model = nnx.jit(d_model, static_argnums=5)
     for i in tqdm(range(max_horizon), desc="Timesteps"):
-        a = jnp.concat([a, jnp.zeros((1, 1, 3))], axis=1)
+        a = jnp.concat([a, jnp.zeros((1, 1, 2))], axis=1)
         a = a[:, -context_length:, :]
         _, _, action = d_model(
             R,
@@ -526,6 +382,7 @@ def bb_record_episode(
         )
 
         action = action[-1][-1]
+        action = jnp.where(jnp.array([True, False]), jnp.clip(action, 0.0), action)
         a = a.at[-1, -1].set(action)
 
         reward, _ = r_model(
@@ -579,7 +436,7 @@ def bb_record_episode(
             g[1],
             radius_2=1.0,
         )
-        p_angle = float(action[1])
+
         s = jnp.concat([s, create_new_state().reshape(1, 1, -1)], axis=1)
         s = s[:, -context_length:, :]
 
@@ -638,6 +495,7 @@ def bb_run_episode_IQL(
     policy,
     r_model,
     move_stats,
+    n_min_obstacles=6,
     max_horizon=500,
     days=153,
     context_length=100,
@@ -646,24 +504,12 @@ def bb_run_episode_IQL(
     key = rngs.sample()
     t_keys = jax.random.randint(key, 2, 0, 10000)
     rng = np.random.default_rng(int(t_keys[0]))
-    n_obstacles = rng.choice([50, 100, 150])
-    ai = rng.choice(4)
-    p_attempt = rng.choice(4)
+    level = rng.choice([9, 10, 11])
+    n_obstacles = 50 if level == 9 else 100 if level == 10 else 150
+    ai = rng.choice([1,2,3,4])
+    attempt = rng.choice(4)
     if days is not None:
         day = rng.choice(days)
-    match ai:
-        case 0:
-            sig = 55
-            repel = 72
-        case 1:
-            sig = 62
-            repel = 98
-        case 2:
-            sig = 140
-            repel = 98
-        case 3:
-            sig = 100
-            repel = 75
 
     O_posX, O_posY = rand_circle(50, n_obstacles, rng=rng)
 
@@ -677,8 +523,6 @@ def bb_run_episode_IQL(
     p_posX = float(p_samp[0])
     p_posY = float(p_samp[1])
 
-    p_angle = rng.uniform(0.0, 360.0)
-
     while True:
         g_h = rng.uniform(0.0, 360.0)
         g_r = rng.normal(30)
@@ -690,118 +534,43 @@ def bb_run_episode_IQL(
             break
 
     def create_new_state():
-        goal_distances = point_dist(g[0], g[1], p_posX, p_posY)
-        goal_headings = cos_plus(find_direction(p_posX, p_posY, g[0], g[1]) - p_angle)
-
+        s = [p_posX, p_posY]
         obs_distances = point_dist(
             O_posX,
             O_posY,
             p_posX,
             p_posY,
         )
-        min_dist_obs = np.argmin(obs_distances)
-        min_obstacle_distances = obs_distances[min_dist_obs]
 
-        obs_headings = (
-            cos_plus(
-                find_direction(
-                    p_posX,
-                    p_posY,
-                    O_posX,
-                    O_posY,
-                )
-                - p_angle
-            )
-            + 2
-        )
-        min_distance_obstacle_headings = obs_headings[min_dist_obs]
+        min_dist_obs = first_nth_argmins(obs_distances, n_min_obstacles)
 
-        max_heading_obs = np.argmax(obs_headings)
-        max_obstacle_headings = obs_headings[max_heading_obs]
+        for i in range(n_min_obstacles):
+            s += [
+                O_posX[min_dist_obs[i]],
+                O_posY[min_dist_obs[i]],
+                O_angle[min_dist_obs[i]],
+            ]
 
-        max_heading_obstacle_distances = obs_distances[max_heading_obs]
+        s += [g[0], g[1]]
 
-        op_headings = (
-            cos_plus(find_direction(O_posX, O_posY, p_posX, p_posY) - O_angle) + 2
-        )
+        s.append(level * 1.0)
+        s.append(ai * 1.0)
+        s.append(attempt * 1.0)
 
-        max_heading_op = np.argmax(op_headings)
-
-        max_op_headings = op_headings[max_heading_op]
-
-        min_distance_op_headings = op_headings[min_dist_obs]
-
-        max_heading_obstacle_op_headings = op_headings[max_heading_obs]
-
-        max_heading_op_distances = obs_distances[max_heading_op]
-
-        max_heading_op_obstacle_headings = obs_headings[max_heading_op]
-
-        obstacle_count = n_obstacles * 1.0
-
-        sigma = sig * 1.0
-
-        repel_factor = repel * 1.0
-
-        attempt = p_attempt * 1.0
         if days is not None:
-            s = jnp.array(
-                [
-                    goal_distances,
-                    goal_headings,
-                    min_obstacle_distances,
-                    min_distance_obstacle_headings,
-                    max_obstacle_headings,
-                    max_heading_obstacle_distances,
-                    max_op_headings,
-                    min_distance_op_headings,
-                    max_heading_obstacle_op_headings,
-                    max_heading_op_distances,
-                    max_heading_op_obstacle_headings,
-                    obstacle_count,
-                    sigma,
-                    repel_factor,
-                    attempt,
-                    day,
-                ]
-            )
-        else:
-            s = jnp.array(
-                [
-                    goal_distances,
-                    goal_headings,
-                    min_obstacle_distances,
-                    min_distance_obstacle_headings,
-                    max_obstacle_headings,
-                    max_heading_obstacle_distances,
-                    max_op_headings,
-                    min_distance_op_headings,
-                    max_heading_obstacle_op_headings,
-                    max_heading_op_distances,
-                    max_heading_op_obstacle_headings,
-                    obstacle_count,
-                    sigma,
-                    repel_factor,
-                    attempt,
-                ]
-            )
-        return s
+            s.append(day * 1.0)
+
+        return jnp.asarray(s)
 
     s = create_new_state().reshape(1, 1, -1)
-    a = jnp.zeros((1, 0, 3))
+    a = jnp.zeros((1, 0, 2))
     t = jnp.zeros((1, 1), dtype=jnp.int32)
 
     episode_return = 0
     for i in tqdm(range(max_horizon), desc="Timesteps"):
         action = sample_actions(policy, s[-1, -1], 0.0, rngs)
         action = jnp.where(
-            jnp.array([True, False, False]), jnp.clip(action, 0.0), action
-        )
-        action = jnp.where(
-            jnp.array([False, True, False]), jnp.clip(action, 0.0, 360.0), action
-        )
-        action = jnp.where(
-            jnp.array([False, False, True]), jnp.round(jnp.clip(action, 0, 1)), action
+            jnp.array([True, False]), jnp.clip(action, 0.0), action
         )
         a = jnp.concat([a, action.reshape(1, 1, -1)], axis=1)
         a = a[:, -context_length:, :]
@@ -856,7 +625,6 @@ def bb_run_episode_IQL(
             g[1],
             radius_2=1.0,
         )
-        p_angle = float(action[1])
 
         s = jnp.concat([s, create_new_state().reshape(1, 1, -1)], axis=1)
 
@@ -877,9 +645,9 @@ def bb_record_episode_IQL(
     move_stats,
     max_horizon=500,
     days=153,
-    n_obstacles=None,
+    level=None,
     ai=None,
-    p_attempt=None,
+    attempt=None,
     day=None,
     context_length=100,
     rngs=nnx.Rngs(sample=4),
@@ -888,29 +656,18 @@ def bb_record_episode_IQL(
     key = rngs.sample()
     t_keys = jax.random.randint(key, 2, 0, 10000)
     rng = np.random.default_rng(int(t_keys[0]))
-    if n_obstacles is None:
-        n_obstacles = rng.choice([50, 100, 150])
+    if level is None:
+        level = rng.choice([9, 10, 11])
+
+    n_obstacles = 50 if level == 9 else 100 if level == 10 else 150
 
     if ai is None:
-        ai = rng.choice(4)
-    if p_attempt is None:
-        p_attempt = rng.choice(4)
+        ai = rng.choice([1,2,3,4])
+    if attempt is None:
+        attempt = rng.choice(4)
     if days is not None:
         if day is None:
             day = rng.choice(days)
-    match ai:
-        case 0:
-            sig = 55
-            repel = 72
-        case 1:
-            sig = 62
-            repel = 98
-        case 2:
-            sig = 140
-            repel = 98
-        case 3:
-            sig = 100
-            repel = 75
 
     O_posX, O_posY = rand_circle(50, n_obstacles, rng=rng)
 
@@ -924,8 +681,6 @@ def bb_record_episode_IQL(
     p_posX = float(p_samp[0])
     p_posY = float(p_samp[1])
 
-    p_angle = rng.uniform(0.0, 360.0)
-
     while True:
         g_h = rng.uniform(0.0, 360.0)
         g_r = rng.normal(30)
@@ -937,105 +692,36 @@ def bb_record_episode_IQL(
             break
 
     def create_new_state():
-        goal_distances = point_dist(g[0], g[1], p_posX, p_posY)
-        goal_headings = cos_plus(find_direction(p_posX, p_posY, g[0], g[1]) - p_angle)
-
+        s = [p_posX, p_posY]
         obs_distances = point_dist(
             O_posX,
             O_posY,
             p_posX,
             p_posY,
         )
-        min_dist_obs = np.argmin(obs_distances)
-        min_obstacle_distances = obs_distances[min_dist_obs]
 
-        obs_headings = (
-            cos_plus(
-                find_direction(
-                    p_posX,
-                    p_posY,
-                    O_posX,
-                    O_posY,
-                )
-                - p_angle
-            )
-            + 2
-        )
-        min_distance_obstacle_headings = obs_headings[min_dist_obs]
+        min_dist_obs = first_nth_argmins(obs_distances, n_min_obstacles)
 
-        max_heading_obs = np.argmax(obs_headings)
-        max_obstacle_headings = obs_headings[max_heading_obs]
+        for i in range(n_min_obstacles):
+            s += [
+                O_posX[min_dist_obs[i]],
+                O_posY[min_dist_obs[i]],
+                O_angle[min_dist_obs[i]],
+            ]
 
-        max_heading_obstacle_distances = obs_distances[max_heading_obs]
+        s += [g[0], g[1]]
 
-        op_headings = (
-            cos_plus(find_direction(O_posX, O_posY, p_posX, p_posY) - O_angle) + 2
-        )
+        s.append(level * 1.0)
+        s.append(ai * 1.0)
+        s.append(attempt * 1.0)
 
-        max_heading_op = np.argmax(op_headings)
-
-        max_op_headings = op_headings[max_heading_op]
-
-        min_distance_op_headings = op_headings[min_dist_obs]
-
-        max_heading_obstacle_op_headings = op_headings[max_heading_obs]
-
-        max_heading_op_distances = obs_distances[max_heading_op]
-
-        max_heading_op_obstacle_headings = obs_headings[max_heading_op]
-
-        obstacle_count = n_obstacles * 1.0
-
-        sigma = sig * 1.0
-
-        repel_factor = repel * 1.0
-
-        attempt = p_attempt * 1.0
         if days is not None:
-            s = jnp.array(
-                [
-                    goal_distances,
-                    goal_headings,
-                    min_obstacle_distances,
-                    min_distance_obstacle_headings,
-                    max_obstacle_headings,
-                    max_heading_obstacle_distances,
-                    max_op_headings,
-                    min_distance_op_headings,
-                    max_heading_obstacle_op_headings,
-                    max_heading_op_distances,
-                    max_heading_op_obstacle_headings,
-                    obstacle_count,
-                    sigma,
-                    repel_factor,
-                    attempt,
-                    day,
-                ]
-            )
-        else:
-            s = jnp.array(
-                [
-                    goal_distances,
-                    goal_headings,
-                    min_obstacle_distances,
-                    min_distance_obstacle_headings,
-                    max_obstacle_headings,
-                    max_heading_obstacle_distances,
-                    max_op_headings,
-                    min_distance_op_headings,
-                    max_heading_obstacle_op_headings,
-                    max_heading_op_distances,
-                    max_heading_op_obstacle_headings,
-                    obstacle_count,
-                    sigma,
-                    repel_factor,
-                    attempt,
-                ]
-            )
-        return s
+            s.append(day * 1.0)
+
+        return jnp.asarray(s)
 
     s = create_new_state().reshape(1, 1, -1)
-    a = jnp.zeros((1, 0, 3))
+    a = jnp.zeros((1, 0, 2))
     t = jnp.zeros((1, 1), dtype=jnp.int32)
 
     episode_return, episode_length = 0.0, 0
@@ -1058,13 +744,7 @@ def bb_record_episode_IQL(
     for i in tqdm(range(max_horizon), desc="Timesteps"):
         action = sample_actions(policy, s[-1, -1], 0.0, rngs)
         action = jnp.where(
-            jnp.array([True, False, False]), jnp.clip(action, 0.0), action
-        )
-        action = jnp.where(
-            jnp.array([False, False, True]), jnp.round(jnp.clip(action, 0, 1)), action
-        )
-        action = jnp.where(
-            jnp.array([False, True, False]), jnp.clip(action, 0.0, 360.0), action
+            jnp.array([True, False]), jnp.clip(action, 0.0), action
         )
         a = jnp.concat([a, action.reshape(1, 1, -1)], axis=1)
         a = a[:, -context_length:, :]
@@ -1120,7 +800,6 @@ def bb_record_episode_IQL(
             g[1],
             radius_2=1.0,
         )
-        p_angle = float(action[1])
 
         s = jnp.concat([s, create_new_state().reshape(1, 1, -1)], axis=1)
 
