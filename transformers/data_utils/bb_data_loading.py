@@ -29,20 +29,6 @@ def load_attempt_data(
         obs_start = 9
         final_goal = 1
         goal_inc = 2
-
-        match ai:
-            case 1:
-                sig = 55
-                repel = 72
-            case 2:
-                sig = 62
-                repel = 98
-            case 3:
-                sig = 140
-                repel = 98
-            case 4:
-                sig = 100
-                repel = 75
     else:
         match lvl:
             case 9:
@@ -54,35 +40,36 @@ def load_attempt_data(
         obs_start = 10
         final_goal = 2
         goal_inc = 3
-        # sig = std here
-        match ai:
-            case 1:
-                sig = 140
-                repel = 98
-            case 2:
-                sig = 100
-                repel = 75
     if control != 2 and control != 3:
         try:
-            p_df = pd.read_csv(p_file, usecols=["posX", "posY", "angle", "userControl"])
+            p_df = pd.read_csv(
+                p_file,
+                usecols=[
+                    "posX",
+                    "posY",
+                    "angle",
+                    "velocityX",
+                    "velocityY",
+                    "controlX",
+                    "controlY",
+                    "userControl",
+                ],
+            )
         except FileNotFoundError:
             raise FileNotFoundError(
                 f"Could not find player data for level {lvl}, attempt {attempt}. Check that directory {path} exists!"
             )
 
-        # adjusts negative angles to be within positive 0 to 360
-        p_angles = p_df["angle"].to_numpy()
-        p_angles = np.where(p_angles < 0, p_angles + 360.0, p_angles)
-        p_df["angle"] = p_angles
-        p_df["obstacle_count"] = (obs_end + 1) - obs_start
-        p_df["sigma"] = sig
-        p_df["repel_factor"] = repel
+        p_df["level"] = lvl
+        p_df["ai"] = ai
         p_df["attempt"] = attempt
         o_dfs = []
         for i in range(obs_start, obs_end + 1):
             o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
             try:
-                o = pd.read_csv(o_file, usecols=["posX", "posY", "angle"])
+                o = pd.read_csv(
+                    o_file, usecols=["posX", "posY", "angle", "velocityX", "velocityY"]
+                )
             except:
                 raise FileNotFoundError(
                     f"Could not find data for entity (obstacle) {i} for level {lvl}, attempt {attempt}!"
@@ -228,26 +215,34 @@ def load_attempt_data(
         if control == 2:
             try:
                 p_df = pd.read_csv(
-                    p_file, usecols=["posX", "posY", "angle", "userControl"]
+                    p_file,
+                    usecols=[
+                        "posX",
+                        "posY",
+                        "angle",
+                        "velocityX",
+                        "velocityY",
+                        "controlX",
+                        "controlY",
+                        "userControl",
+                    ],
                 )
             except FileNotFoundError:
                 raise FileNotFoundError(
                     f"Could not find player data for level {lvl}, attempt {attempt}. Check that directory {path} exists!"
                 )
 
-            # adjusts negative angles to be within positive 0 to 360
-            p_angles = p_df["angle"].to_numpy()
-            p_angles = np.where(p_angles < 0, p_angles + 360.0, p_angles)
-            p_df["angle"] = p_angles
-            p_df["obstacle_count"] = (obs_end + 1) - obs_start
-            p_df["sigma"] = sig
-            p_df["repel_factor"] = repel
+            p_df["level"] = lvl
+            p_df["ai"] = ai
             p_df["attempt"] = attempt
             o_dfs = []
             for i in range(obs_start, obs_end + 1):
                 o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
                 try:
-                    o = pd.read_csv(o_file, usecols=["posX", "posY", "angle"])
+                    o = pd.read_csv(
+                        o_file,
+                        usecols=["posX", "posY", "angle", "velocityX", "velocityY"],
+                    )
                 except:
                     raise FileNotFoundError(
                         f"Could not find data for entity (obstacle) {i} for level {lvl}, attempt {attempt}!"
@@ -451,26 +446,34 @@ def load_attempt_data(
         else:
             try:
                 p_df = pd.read_csv(
-                    p_file, usecols=["posX", "posY", "angle", "userControl"]
+                    p_file,
+                    usecols=[
+                        "posX",
+                        "posY",
+                        "angle",
+                        "velocityX",
+                        "velocityY",
+                        "controlX",
+                        "controlY",
+                        "userControl",
+                    ],
                 )
             except FileNotFoundError:
                 raise FileNotFoundError(
                     f"Could not find player data for level {lvl}, attempt {attempt}. Check that directory {path} exists!"
                 )
 
-            # adjusts negative angles to be within positive 0 to 360
-            p_angles = p_df["angle"].to_numpy()
-            p_angles = np.where(p_angles < 0, p_angles + 360.0, p_angles)
-            p_df["angle"] = p_angles
-            p_df["obstacle_count"] = (obs_end + 1) - obs_start
-            p_df["sigma"] = sig
-            p_df["repel_factor"] = repel
+            p_df["level"] = lvl
+            p_df["ai"] = ai
             p_df["attempt"] = attempt
             o_dfs = []
             for i in range(obs_start, obs_end + 1):
                 o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
                 try:
-                    o = pd.read_csv(o_file, usecols=["posX", "posY", "angle"])
+                    o = pd.read_csv(
+                        o_file,
+                        usecols=["posX", "posY", "angle", "velocityX", "velocityY"],
+                    )
                 except:
                     raise FileNotFoundError(
                         f"Could not find data for entity (obstacle) {i} for level {lvl}, attempt {attempt}!"
@@ -881,19 +884,6 @@ def load_attempt_data_p(f):
         obs_start = 9
         final_goal = 1
         goal_inc = 2
-        match ai:
-            case 1:
-                sig = 55
-                repel = 72
-            case 2:
-                sig = 62
-                repel = 98
-            case 3:
-                sig = 140
-                repel = 98
-            case 4:
-                sig = 100
-                repel = 75
     else:
         match lvl:
             case 9:
@@ -905,35 +895,34 @@ def load_attempt_data_p(f):
         obs_start = 10
         final_goal = 2
         goal_inc = 3
-        # sig = std here
-        match ai:
-            case 1:
-                sig = 140
-                repel = 98
-            case 2:
-                sig = 100
-                repel = 75
     if control != 2 and control != 3:
         try:
-            p_df = pd.read_csv(p_file, usecols=["posX", "posY", "angle", "userControl"])
+            p_df = pd.read_csv(
+                p_file,
+                usecols=[
+                    "posX",
+                    "posY",
+                    "angle",
+                    "velocityX",
+                    "velocityY",
+                    "controlX",
+                    "controlY",
+                    "userControl",
+                ],
+            )
         except FileNotFoundError:
             raise FileNotFoundError(
                 f"Could not find player data for level {lvl}, attempt {attempt}. Check that directory {path} exists!"
             )
 
-        # adjusts negative angles to be within positive 0 to 360
-        p_angles = p_df["angle"].to_numpy()
-        p_angles = np.where(p_angles < 0, p_angles + 360.0, p_angles)
-        p_df["angle"] = p_angles
-        p_df["obstacle_count"] = (obs_end + 1) - obs_start
-        p_df["sigma"] = sig
-        p_df["repel_factor"] = repel
+        p_df["level"] = lvl
+        p_df["ai"] = ai
         p_df["attempt"] = attempt
         o_dfs = []
         for i in range(obs_start, obs_end + 1):
             o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
             try:
-                o = pd.read_csv(o_file, usecols=["posX", "posY", "angle"])
+                o = pd.read_csv(o_file, usecols=["posX", "posY", "angle","velocityX","velocityY"])
             except:
                 raise FileNotFoundError(
                     f"Could not find data for entity (obstacle) {i} for level {lvl}, attempt {attempt}!"
@@ -1079,26 +1068,30 @@ def load_attempt_data_p(f):
         if control == 2:
             try:
                 p_df = pd.read_csv(
-                    p_file, usecols=["posX", "posY", "angle", "userControl"]
+                    p_file, usecols=[
+                    "posX",
+                    "posY",
+                    "angle",
+                    "velocityX",
+                    "velocityY",
+                    "controlX",
+                    "controlY",
+                    "userControl",
+                ],
                 )
             except FileNotFoundError:
                 raise FileNotFoundError(
                     f"Could not find player data for level {lvl}, attempt {attempt}. Check that directory {path} exists!"
                 )
 
-            # adjusts negative angles to be within positive 0 to 360
-            p_angles = p_df["angle"].to_numpy()
-            p_angles = np.where(p_angles < 0, p_angles + 360.0, p_angles)
-            p_df["angle"] = p_angles
-            p_df["obstacle_count"] = (obs_end + 1) - obs_start
-            p_df["sigma"] = sig
-            p_df["repel_factor"] = repel
+            p_df["level"] = lvl
+            p_df["ai"] = ai
             p_df["attempt"] = attempt
             o_dfs = []
             for i in range(obs_start, obs_end + 1):
                 o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
                 try:
-                    o = pd.read_csv(o_file, usecols=["posX", "posY", "angle"])
+                    o = pd.read_csv(o_file, usecols=["posX", "posY", "angle", "velocityX","velocityY"])
                 except:
                     raise FileNotFoundError(
                         f"Could not find data for entity (obstacle) {i} for level {lvl}, attempt {attempt}!"
@@ -1302,26 +1295,30 @@ def load_attempt_data_p(f):
         else:
             try:
                 p_df = pd.read_csv(
-                    p_file, usecols=["posX", "posY", "angle", "userControl"]
+                    p_file,usecols=[
+                    "posX",
+                    "posY",
+                    "angle",
+                    "velocityX",
+                    "velocityY",
+                    "controlX",
+                    "controlY",
+                    "userControl",
+                ],
                 )
             except FileNotFoundError:
                 raise FileNotFoundError(
                     f"Could not find player data for level {lvl}, attempt {attempt}. Check that directory {path} exists!"
                 )
 
-            # adjusts negative angles to be within positive 0 to 360
-            p_angles = p_df["angle"].to_numpy()
-            p_angles = np.where(p_angles < 0, p_angles + 360.0, p_angles)
-            p_df["angle"] = p_angles
-            p_df["obstacle_count"] = (obs_end + 1) - obs_start
-            p_df["sigma"] = sig
-            p_df["repel_factor"] = repel
+            p_df["level"] = lvl
+            p_df["ai"] = ai
             p_df["attempt"] = attempt
             o_dfs = []
             for i in range(obs_start, obs_end + 1):
                 o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
                 try:
-                    o = pd.read_csv(o_file, usecols=["posX", "posY", "angle"])
+                    o = pd.read_csv(o_file, usecols=["posX", "posY", "angle","velocityX","velocityY"])
                 except:
                     raise FileNotFoundError(
                         f"Could not find data for entity (obstacle) {i} for level {lvl}, attempt {attempt}!"

@@ -94,122 +94,91 @@ def points_in_arc(cx, cy, xs, ys, sa, ea, r=100.0):
             ((a > sa) | np.isclose(a, sa)) | ((a < ea) | np.isclose(a, ea))
         )
 
+def first_nth_argmins(arr, n):
+    """
+    Returns the indices of the 0 to nth minimum values in a NumPy array.
 
-# arc_sweep = (starting arc degree, ending arc degree, increase step for arc degree)
-# An arc is defined centered at the players current direction. For each incremented size of the arc, obstacle-based features are computed for obstacles included in the arc.
-def compute_run_features(p_df, g, O, day=None):
-    p_X = p_df["posX"].to_numpy()
-    p_Y = p_df["posY"].to_numpy()
-    p_A = p_df["angle"].to_numpy()
+    Parameters:
+    arr (numpy.ndarray): The input NumPy array.
+    n (int): The number of minimum values to consider (inclusive of 0th minimum).
+
+    Returns:
+    numpy.ndarray: An array containing the indices of the 0 to nth minimum values.
+                   Returns an empty array if n is negative or greater than or equal to the array size.
+    """
+    if n < 0 or n > arr.size:
+        return np.array([])
+    
+    indices = np.argpartition(arr, np.arange(n))[:n]
+    return indices
+
+# n_min_obstacles is number of obstacles to include in features per state starting from closest obstacle to the n_min_obstacles-th closest obstacle
+def compute_run_features(p_df, g, O, day=None, n_min_obstacles=6):
     features = {}
-    # ===GOAL RELATED FEATURES===
-    # 1. Players distance from goal
-    goal_distances = point_dist(p_X, p_Y, g[0], g[1])
+    features["posX"] = p_df["posX"].to_numpy()
+    features["posY"] = p_df["posY"].to_numpy()
+    features["angle"] = p_df["angle"].to_numpy()
+    feature["velocityX"] = p_df["velocityX"].to_numpy()
+    feature["velocityY"] = p_df["velocityY"].to_numpy()
 
-    goal_directions = find_direction(p_X, p_Y, g[0], g[1])
-    # 2. Cosine similarity between players direction and goal direction
-    goal_headings = cos_plus(goal_directions - p_A)
+    for i in range(n_min_obstacles):
 
-    features["goal_distances"] = goal_distances
-    features["goal_headings"] = goal_headings
+        features[f"O_{i}_posX"] = np.repeat(0.0, p_df.shape[0])
 
-    # ===MINIMUM DISTANCE OBSTACLE FEATURES===
+        features[f"O_{i}_posY"] = np.repeat(0.0, p_df.shape[0])
 
-    # 3. Minimum obstacle distance form player
-    features[f"min_obstacle_distances"] = np.repeat(0.0, p_df.shape[0])
+        features[f"O_{i}_angle"] = np.repeat(0.0, p_df.shape[0])
 
-    # 4. Cosine Similarity between players direction and minimum distance obstacle
-    features[f"min_distance_obstacle_headings"] = np.repeat(0.0, p_df.shape[0])
+        features[f"O_{i}_velocityX"] = np.repeat(0.0, p_df.shape[0])
 
-    # 5. cosine similarity between minimum distance obstacle direction and player
-    features[f"min_distance_op_headings"] = np.repeat(0.0, p_df.shape[0])
+        features[f"O_{i}_veloctiyX"] = np.repeat(0.0, p_df.shape[0])
 
-    # ===MAX COSINE SIMILARITY BETWEEN PLAYER AND OBSTACLES FEATURES===
-
-    # 6. max cosine similarity between player direction and obstacles
-    features[f"max_obstacle_headings"] = np.repeat(0.0, p_df.shape[0])
-
-    # 7. distance of obstacle with max cosine similarity between player direction and obstacles
-    features[f"max_heading_obstacle_distances"] = np.repeat(0.0, p_df.shape[0])
-
-    # 8. Cosine Similarity of obstacle direction to player for the obstacle that has the max cosine similarity between the player and that obstacle.
-    features[f"max_heading_obstacle_op_headings"] = np.repeat(0.0, p_df.shape[0])
-
-    # ===MAX COSINE SIMILARITY BETWEEN OBSTACLES AND PLAYER FEATURES===
-
-    # 9. max cosine similarity between obstacle direction and player
-    features[f"max_op_headings"] = np.repeat(0.0, p_df.shape[0])
-
-    # 10. Distance of obstacle with max cosine similarity of its direction and player
-    features[f"max_heading_op_distances"] = np.repeat(0.0, p_df.shape[0])
-
-    # 11. Cosine Similarity of player direction to obstacle for the obstacle that has the max cosine similarity between the obstacle direction and player.
-    features[f"max_heading_op_obstacle_headings"] = np.repeat(0.0, p_df.shape[0])
     for index, row in p_df.iterrows():
         o_t = O[O["t"] == row["t"]]
         o_t_X = o_t["posX"].to_numpy()
         o_t_Y = o_t["posY"].to_numpy()
         o_t_A = o_t["angle"].to_numpy()
+        o_t_vX = o_t["velocityX"].to_numpy()
+        o_t_vY = o_t["velocityY"].to_numpy()
         obs_distances = point_dist(
             o_t_X,
             o_t_Y,
             row["posX"],
             row["posY"],
         )
-        min_dist_obs = np.argmin(obs_distances)
-        features[f"min_obstacle_distances"][index] = obs_distances[min_dist_obs]
-
-        obs_directions = find_direction(row["posX"], row["posY"], o_t_X, o_t_Y)
-        obs_headings = cos_plus(obs_directions - row["angle"]) + 2
-
-        features[f"min_distance_obstacle_headings"][index] = obs_headings[min_dist_obs]
-
-        max_heading_obs = np.argmax(obs_headings)
-        features[f"max_obstacle_headings"][index] = obs_headings[max_heading_obs]
-
-        features[f"max_heading_obstacle_distances"][index] = obs_distances[
-            max_heading_obs
-        ]
-
-        op_directions = find_direction(o_t_X, o_t_Y, row["posX"], row["posY"])
-
-        op_headings = cos_plus(op_directions - o_t_A) + 2
-        max_heading_op = np.argmax(op_headings)
-        features[f"max_op_headings"][index] = op_headings[max_heading_op]
-
-        features[f"min_distance_op_headings"][index] = op_headings[min_dist_obs]
-
-        features[f"max_heading_obstacle_op_headings"][index] = op_headings[
-            max_heading_obs
-        ]
-
-        features[f"max_heading_op_distances"][index] = obs_distances[max_heading_op]
-
-        features[f"max_heading_op_obstacle_headings"][index] = obs_headings[
-            max_heading_op
-        ]
-    features["obstacle_count"] = p_df["obstacle_count"].to_numpy()
-    features["sigma"] = p_df["sigma"].to_numpy()
-    features["repel_factor"] = p_df["repel_factor"].to_numpy()
+        min_dist_obs = first_nth_argmins(obs_distances, n_min_obstacles)
+        for i in range(n_min_obstacles):
+            features[f"O_{i}_posX"][index] = o_t_X[min_dist_obs[i]]
+    
+            features[f"O_{i}_posY"][index] = o_t_Y[min_dist_obs[i]]
+    
+            features[f"O_{i}_angle"][index] = o_t_A[min_dist_obs[i]]
+    
+            features[f"O_{i}_velocityX"][index] = o_t_vX[min_dist_obs[i]]
+    
+            features[f"O_{i}_veloctiyX"][index] = o_t_vY[min_dist_obs[i]]
+    features["goalX"] = np.repeat(g[0], p_df.shape[0])
+    features["goalY"] = np.repeat(g[1], p_df.shape[0])
+    features["level"] = p_df["level"].to_numpy()
+    features["ai"] = p_df["ai"].to_numpy()
     features["attempt"] = p_df["attempt"].to_numpy()
     if day is not None:
-        features["day"] = day
-    features["speed"] = np.append(np.sqrt(np.diff(p_X) ** 2 + np.diff(p_Y) ** 2), 0.0)
-    features["angle"] = p_A
-    features["userControl"] = p_df["userControl"].to_numpy().astype(int)
+        features["day"] = np.repeat(day, p_df.shape[0])
+    features["controlX"] = p_df["controlX"].to_numpy()
+    features["controlY"] = p_df["controlY"].to_numpy()
     features["t"] = p_df["t"].to_numpy()
     return pd.DataFrame(features)
 
 
 # save_dir is a string containing the path to the directory where we want feature files saved.
-def compute_features(D, day=None, save_dir=None):
+def compute_features(D, day=None, n_min_obstacles=6,save_dir=None):
     dat = []
     if save_dir is None:
         for d in D:
             p_df = d["player"]
             g = d["goal"]
             O = d["obstacles"]
-            dat.append(compute_run_features(p_df, g, O, day))
+            dat.append(compute_run_features(p_df, g, O, day,n_min_obstacles))
         return dat
     else:
         dir_path = os.path.expanduser(save_dir)
@@ -218,113 +187,67 @@ def compute_features(D, day=None, save_dir=None):
             p_df = d["player"]
             g = d["goal"]
             O = d["obstacles"]
-            res = compute_run_features(p_df, g, O, day)
+            res = compute_run_features(p_df, g, O, day,n_min_obstacles)
             res.to_parquet(f"{dir_path}/sequence_{i}.parquet")
             dat.append(res)
         return dat
 
 
 def compute_run_features_p(d):
-    p_df, g, O, day, save_data = d
-    p_X = p_df["posX"].to_numpy()
-    p_Y = p_df["posY"].to_numpy()
-    p_A = p_df["angle"].to_numpy()
+    p_df, g, O, day, n_min_obstacles,save_data = d
     features = {}
-    # ===GOAL RELATED FEATURES===
-    # 1. Players distance from goal
-    goal_distances = point_dist(p_X, p_Y, g[0], g[1])
+    features["posX"] = p_df["posX"].to_numpy()
+    features["posY"] = p_df["posY"].to_numpy()
+    features["angle"] = p_df["angle"].to_numpy()
+    feature["velocityX"] = p_df["velocityX"].to_numpy()
+    feature["velocityY"] = p_df["velocityY"].to_numpy()
 
-    goal_directions = find_direction(p_X, p_Y, g[0], g[1])
-    # 2. Cosine similarity between players direction and goal direction
-    goal_headings = cos_plus(goal_directions - p_A)
+    for i in range(n_min_obstacles):
 
-    features["goal_distances"] = goal_distances
-    features["goal_headings"] = goal_headings
+        features[f"O_{i}_posX"] = np.repeat(0.0, p_df.shape[0])
 
-    # ===MINIMUM DISTANCE OBSTACLE FEATURES===
+        features[f"O_{i}_posY"] = np.repeat(0.0, p_df.shape[0])
 
-    # 3. Minimum obstacle distance form player
-    features[f"min_obstacle_distances"] = np.repeat(0.0, p_df.shape[0])
+        features[f"O_{i}_angle"] = np.repeat(0.0, p_df.shape[0])
 
-    # 4. Cosine Similarity between players direction and minimum distance obstacle
-    features[f"min_distance_obstacle_headings"] = np.repeat(0.0, p_df.shape[0])
+        features[f"O_{i}_velocityX"] = np.repeat(0.0, p_df.shape[0])
 
-    # 5. cosine similarity between minimum distance obstacle direction and player
-    features[f"min_distance_op_headings"] = np.repeat(0.0, p_df.shape[0])
+        features[f"O_{i}_veloctiyX"] = np.repeat(0.0, p_df.shape[0])
 
-    # ===MAX COSINE SIMILARITY BETWEEN PLAYER AND OBSTACLES FEATURES===
-
-    # 6. max cosine similarity between player direction and obstacles
-    features[f"max_obstacle_headings"] = np.repeat(0.0, p_df.shape[0])
-
-    # 7. distance of obstacle with max cosine similarity between player direction and obstacles
-    features[f"max_heading_obstacle_distances"] = np.repeat(0.0, p_df.shape[0])
-
-    # 8. Cosine Similarity of obstacle direction to player for the obstacle that has the max cosine similarity between the player and that obstacle.
-    features[f"max_heading_obstacle_op_headings"] = np.repeat(0.0, p_df.shape[0])
-
-    # ===MAX COSINE SIMILARITY BETWEEN OBSTACLES AND PLAYER FEATURES===
-
-    # 9. max cosine similarity between obstacle direction and player
-    features[f"max_op_headings"] = np.repeat(0.0, p_df.shape[0])
-
-    # 10. Distance of obstacle with max cosine similarity of its direction and player
-    features[f"max_heading_op_distances"] = np.repeat(0.0, p_df.shape[0])
-
-    # 11. Cosine Similarity of player direction to obstacle for the obstacle that has the max cosine similarity between the obstacle direction and player.
-    features[f"max_heading_op_obstacle_headings"] = np.repeat(0.0, p_df.shape[0])
     for index, row in p_df.iterrows():
         o_t = O[O["t"] == row["t"]]
         o_t_X = o_t["posX"].to_numpy()
         o_t_Y = o_t["posY"].to_numpy()
         o_t_A = o_t["angle"].to_numpy()
+        o_t_vX = o_t["velocityX"].to_numpy()
+        o_t_vY = o_t["velocityY"].to_numpy()
         obs_distances = point_dist(
             o_t_X,
             o_t_Y,
             row["posX"],
             row["posY"],
         )
-        min_dist_obs = np.argmin(obs_distances)
-        features[f"min_obstacle_distances"][index] = obs_distances[min_dist_obs]
-
-        obs_directions = find_direction(row["posX"], row["posY"], o_t_X, o_t_Y)
-        obs_headings = cos_plus(obs_directions - row["angle"]) + 2
-
-        features[f"min_distance_obstacle_headings"][index] = obs_headings[min_dist_obs]
-
-        max_heading_obs = np.argmax(obs_headings)
-        features[f"max_obstacle_headings"][index] = obs_headings[max_heading_obs]
-
-        features[f"max_heading_obstacle_distances"][index] = obs_distances[
-            max_heading_obs
-        ]
-
-        op_directions = find_direction(o_t_X, o_t_Y, row["posX"], row["posY"])
-
-        op_headings = cos_plus(op_directions - o_t_A) + 2
-        max_heading_op = np.argmax(op_headings)
-        features[f"max_op_headings"][index] = op_headings[max_heading_op]
-
-        features[f"min_distance_op_headings"][index] = op_headings[min_dist_obs]
-
-        features[f"max_heading_obstacle_op_headings"][index] = op_headings[
-            max_heading_obs
-        ]
-
-        features[f"max_heading_op_distances"][index] = obs_distances[max_heading_op]
-
-        features[f"max_heading_op_obstacle_headings"][index] = obs_headings[
-            max_heading_op
-        ]
-    features["obstacle_count"] = p_df["obstacle_count"].to_numpy()
-    features["sigma"] = p_df["sigma"].to_numpy()
-    features["repel_factor"] = p_df["repel_factor"].to_numpy()
+        min_dist_obs = first_nth_argmins(obs_distances, n_min_obstacles)
+        for i in range(n_min_obstacles):
+            features[f"O_{i}_posX"][index] = o_t_X[min_dist_obs[i]]
+    
+            features[f"O_{i}_posY"][index] = o_t_Y[min_dist_obs[i]]
+    
+            features[f"O_{i}_angle"][index] = o_t_A[min_dist_obs[i]]
+    
+            features[f"O_{i}_velocityX"][index] = o_t_vX[min_dist_obs[i]]
+    
+            features[f"O_{i}_veloctiyX"][index] = o_t_vY[min_dist_obs[i]]
+            
+    features["goalX"] = np.repeat(g[0], p_df.shape[0])
+    features["goalY"] = np.repeat(g[1], p_df.shape[0])
+    features["level"] = p_df["level"].to_numpy()
+    features["ai"] = p_df["ai"].to_numpy()
     features["attempt"] = p_df["attempt"].to_numpy()
     if day is not None:
-        features["day"] = day
-    features["speed"] = np.append(np.sqrt(np.diff(p_X) ** 2 + np.diff(p_Y) ** 2), 0.0)
-    features["angle"] = p_A
-    features["userControl"] = p_df["userControl"].to_numpy().astype(int)
+        features["day"] = np.repeat(day, p_df.shape[0])
+    features["controlX"] = p_df["controlX"].to_numpy()
+    features["controlY"] = p_df["controlY"].to_numpy()
     features["t"] = p_df["t"].to_numpy()
     df = pd.DataFrame(features)
     if save_data:
@@ -332,7 +255,7 @@ def compute_run_features_p(d):
     return df
 
 
-def compute_features_p(D, day=None, save_dir=None, cores=None):
+def compute_features_p(D, day=None, n_min_obstacles=6,save_dir=None, cores=None):
     if cores is None:
         cores = os.cpu_count()
     with Pool(cores) as p:
@@ -340,7 +263,7 @@ def compute_features_p(D, day=None, save_dir=None, cores=None):
             dat = list(
                 p.map(
                     compute_run_features_p,
-                    [(d["player"], d["goal"], d["obstacles"], day, None) for d in D],
+                    [(d["player"], d["goal"], d["obstacles"], day, n_min_obstacles,None) for d in D],
                 )
             )
         else:
@@ -355,6 +278,7 @@ def compute_features_p(D, day=None, save_dir=None, cores=None):
                             d["goal"],
                             d["obstacles"],
                             day,
+                            n_min_obstacles,
                             f"{dir_path}/sequence_{i}.parquet",
                         )
                         for i, d in enumerate(D)
@@ -396,7 +320,7 @@ def pad_run_features(f, fill_size=500):
 
 
 # Takes feature dataframe and transforms into np arrays with padding. Returns tuple of features matrix and timestep array for a state sequence
-def run_to_np(f, state_features=15, fill_size=500, with_attn_mask=True):
+def run_to_np(f, state_features=41, fill_size=500, with_attn_mask=True):
     p_f = pad_run_features(f, fill_size)
     nf = p_f.to_numpy()
     if with_attn_mask:
@@ -437,7 +361,7 @@ def create_preference_data(
     F_2,
     split_size=100,
     gh_idx=1,
-    state_features=15,
+    state_features=41,
     labels=("states", "actions", "timesteps", "attn_mask"),
     with_attn_mask=True,
     save_data=None,
@@ -582,7 +506,7 @@ def create_preference_data(
 def create_state_data(
     F,
     split_size=100,
-    state_features=16,
+    state_features=41,
     labels=("states", "actions", "timesteps", "attn_mask"),
     with_attn_mask=True,
     save_data=None,

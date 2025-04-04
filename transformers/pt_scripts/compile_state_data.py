@@ -81,6 +81,13 @@ def main(argv):
         help="Random seed used throughout the program.",
     )
     parser.add_argument(
+        "-n",
+        "--n_min_obstacles",
+        type=int,
+        default=6,
+        help="Number of closest obstacles to consider in state feature space",
+    )
+    parser.add_argument(
         "-p",
         "--parallel",
         action="store_true",
@@ -156,7 +163,7 @@ def main(argv):
 
                 F = itertools.chain.from_iterable(
                     [
-                        compute_features_p(D[key], day=i)
+                        compute_features_p(D[key], day=i,n_min_obstacles=args.n_min_obstacles)
                         for i, key in enumerate(day_list)
                         if key in D
                     ]
@@ -164,7 +171,7 @@ def main(argv):
                 save_d_pref = save_pref + f"{p_id}.hdf5"
                 create_state_data(
                     F,
-                    state_features=16,
+                    state_features=11 + 5*n_min_obstacles,
                     split_size=split_size,
                     save_data=save_d_pref,
                 )
@@ -191,7 +198,7 @@ def main(argv):
 
                 F = itertools.chain.from_iterable(
                     [
-                        compute_features_p(D[key], day=i)
+                        compute_features_p(D[key], day=i,n_min_obstacles=args.n_min_obstacles)
                         for i, key in enumerate(day_list)
                         if key in D
                     ]
@@ -200,7 +207,7 @@ def main(argv):
                 save_d_pref = save_pref + f"{p_id}.hdf5"
                 create_state_data(
                     F,
-                    state_features=16,
+                    state_features=11 + 5*n_min_obstacles,
                     split_size=split_size,
                     save_data=save_d_pref,
                 )
@@ -228,7 +235,7 @@ def main(argv):
 
             F = itertools.chain.from_iterable(
                 [
-                    compute_features_p(D[key], day=i)
+                    compute_features_p(D[key], day=i,n_min_obstacles=args.n_min_obstacles)
                     for i, key in enumerate(day_list)
                     if key in D
                 ]
@@ -237,7 +244,7 @@ def main(argv):
             save_d_pref = save_pref + f"{p_id}.hdf5"
             create_state_data(
                 F,
-                state_features=16,
+                state_features=11 + 5*n_min_obstacles,
                 split_size=split_size,
                 save_data=save_d_pref,
             )
@@ -265,7 +272,7 @@ def main(argv):
 
         F = itertools.chain.from_iterable(
             [
-                compute_features_p(D[key], day=i)
+                compute_features_p(D[key], day=i,n_min_obstacles=args.n_min_obstacles)
                 for i, key in enumerate(day_list)
                 if key in D
             ]
@@ -274,7 +281,7 @@ def main(argv):
         save_d_pref = save_pref + f"{p_id}.hdf5"
         create_state_data(
             F,
-            state_features=16,
+            state_features=11 + 5*n_min_obstacles,
             split_size=split_size,
             save_data=save_d_pref,
         )
