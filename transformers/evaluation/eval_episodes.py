@@ -506,7 +506,7 @@ def bb_run_episode_IQL(
     rng = np.random.default_rng(int(t_keys[0]))
     level = rng.choice([9, 10, 11])
     n_obstacles = 50 if level == 9 else 100 if level == 10 else 150
-    ai = rng.choice([1,2,3,4])
+    ai = rng.choice([1, 2, 3, 4])
     attempt = rng.choice(4)
     if days is not None:
         day = rng.choice(days)
@@ -569,9 +569,7 @@ def bb_run_episode_IQL(
     episode_return = 0
     for i in tqdm(range(max_horizon), desc="Timesteps"):
         action = sample_actions(policy, s[-1, -1], 0.0, rngs)
-        action = jnp.where(
-            jnp.array([True, False]), jnp.clip(action, 0.0), action
-        )
+        action = jnp.where(jnp.array([True, False]), jnp.clip(action, 0.0), action)
         a = jnp.concat([a, action.reshape(1, 1, -1)], axis=1)
         a = a[:, -context_length:, :]
 
@@ -662,7 +660,7 @@ def bb_record_episode_IQL(
     n_obstacles = 50 if level == 9 else 100 if level == 10 else 150
 
     if ai is None:
-        ai = rng.choice([1,2,3,4])
+        ai = rng.choice([1, 2, 3, 4])
     if attempt is None:
         attempt = rng.choice(4)
     if days is not None:
@@ -743,9 +741,7 @@ def bb_record_episode_IQL(
 
     for i in tqdm(range(max_horizon), desc="Timesteps"):
         action = sample_actions(policy, s[-1, -1], 0.0, rngs)
-        action = jnp.where(
-            jnp.array([True, False]), jnp.clip(action, 0.0), action
-        )
+        action = jnp.where(jnp.array([True, False]), jnp.clip(action, 0.0), action)
         a = jnp.concat([a, action.reshape(1, 1, -1)], axis=1)
         a = a[:, -context_length:, :]
 
@@ -868,8 +864,8 @@ def run_antmaze_medium(
 ):
     dataset = minari.load_dataset("D4RL/antmaze/medium-play-v1")
     env = dataset.recover_environment()
-
-    obs, info = env.reset()
+    m_seed = rng.integer(0, 10000)
+    obs, info = env.reset(seed=m_seed)
 
     episode_over = False
     d_model = nnx.jit(d_model, static_argnums=5)
@@ -983,18 +979,25 @@ def run_antmaze_medium(
 # normalized_score == True does nothing if compute_task_return != True
 def run_antmaze_medium_IQL(
     policy,
-    r_model,
-    move_stats,
+    r_model=None,
+    move_stats=None,
     max_horizon=500,
-    compute_task_return=False,
-    normalized_score=False,
+    compute_task_return=True,
+    normalized_score=True,
     context_length=100,
+    animate=False,
     rngs=nnx.Rngs(sample=4),
 ):
+    key = rngs.sample()
+    t_keys = jax.random.randint(key, 2, 0, 10000)
     dataset = minari.load_dataset("D4RL/antmaze/medium-play-v1")
-    env = dataset.recover_environment()
+    if animate:
+        env = dataset.recover_environment(render_mode="human")
+        env.unwrapped.ant_env.metadata["render_fps"] = 1
+    else:
+        env = dataset.recover_environment()
 
-    obs, info = env.reset()
+    obs, info = env.reset(seed=int(t_keys[0]))
 
     episode_over = False
     episode_return = 0
@@ -1072,7 +1075,7 @@ def run_antmaze_medium_IQL(
             return (
                 episode_return,
                 task_episode_return,
-                minari.get_normalized_score(dataset, task_episode_return),
+                100*minari.get_normalized_score(dataset, task_episode_return),
             )
         return episode_return, task_episode_return
     return episode_return
