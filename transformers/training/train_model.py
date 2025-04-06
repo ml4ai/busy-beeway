@@ -625,9 +625,11 @@ def train_IQL(
     )
     c_best_step = 0
     if criteria_type == "max":
-        best_met = -np.inf
+        best_met_mean = -np.inf
+        best_met_std = -np.inf
     else:
-        best_met = np.inf
+        best_met_mean = np.inf
+        best_met_std = np.inf
     for i, t_data in tqdm(
         enumerate(training_data_loader), total=max_steps, desc="Training Steps"
     ):
@@ -637,9 +639,11 @@ def train_IQL(
             "actor_loss": np.nan,
             "value_loss": np.nan,
             "critic_loss": np.nan,
-            "eval_metric": np.nan,
+            "eval_metric_mean": np.nan,
+            "eval_metric_std": np.nan,
             "best_step": c_best_step,
-            "eval_metric_best": best_met,
+            "eval_metric_best_mean": best_met_mean,
+            "eval_metric_best_std": best_met_std,
         }
         with Timer() as train_timer:
             batch = {}
@@ -674,21 +678,30 @@ def train_IQL(
                         rngs=rngs,
                     )
                 )
-            metrics["eval_metric"] = np.mean(met)
+            if eval_settings[3] == 1:
+                metrics["eval_metric_mean"] = np.mean(met[2])
+                metrics["eval_metric_std"] = np.std(met[2])
+            else:
+                metrics["eval_metric_mean"] = np.mean(met)
+                metrics["eval_metric_std"] = np.std(met)
 
             if criteria_type == "max":
-                if metrics["eval_metric"] >= best_met:
+                if metrics["eval_metric_mean"] >= best_met_mean:
                     c_best_step = i
-                    best_met = metrics["eval_metric"]
+                    best_met_mean = metrics["eval_metric_mean"]
+                    best_met_std = metrics["eval_metric_std"]
                     metrics["best_step"] = c_best_step
-                    metrics["eval_metric_best"] = best_met
+                    metrics["eval_metric_best_mean"] = best_met_mean
+                    metrics["eval_metric_best_std"] = best_met_std
                     save_model(actor, actor_args, "best_actor", save_dir, checkpointer)
             else:
-                if metrics["eval_metric"] <= best_met:
+                if metrics["eval_metric_mean"] <= best_met_mean:
                     c_best_step = i
-                    best_met = metrics["eval_metric"]
+                    best_met_mean = metrics["eval_metric_mean"]
+                    best_met_std = metrics["eval_metric_std"]
                     metrics["best_step"] = c_best_step
-                    metrics["eval_metric_best"] = best_met
+                    metrics["eval_metric_best_mean"] = best_met_mean
+                    metrics["eval_metric_best_std"] = best_met_std
                     save_model(actor, actor_args, "best_actor", save_dir, checkpointer)
 
         logger.record_dict(metrics)
