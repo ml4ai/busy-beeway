@@ -251,7 +251,7 @@ class PT(nnx.Module):
         query = ops.split_heads(query, num_heads, self.pref_attn_embd_dim)
         key = ops.split_heads(key, num_heads, self.pref_attn_embd_dim)
         value = ops.split_heads(value, num_heads, 1)
-
+        value = nnx.tanh(value)
         query_len, key_len = query.shape[-2], key.shape[-2]
         casual_mask = jnp.ones((1, 1, seq_length, seq_length))[
             :, :, key_len - query_len : key_len, :key_len
