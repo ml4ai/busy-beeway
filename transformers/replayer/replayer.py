@@ -606,3 +606,146 @@ def animate_run(d, interval=80, filename="run.gif"):
         fig=fig, func=update, frames=p_t.shape[0], interval=interval
     )
     ani.save(filename=filename, writer="pillow")
+
+
+# We assume segment is a an array of shape of (seq_length,num_state_feature)
+def animate_segment(
+    segment,
+    aux_data=None,
+    interval=80,
+    n_min_obstacles=6,
+    labels=["reward", "Importance Weight"],
+    filename="run.gif",
+):
+    if aux_data is None:
+        fig, ax = plt.subplots()
+        obs_offset = 2 + 3 * n_min_obstacles
+        g = segment[-1, obs_offset : obs_offset + 2]
+        o_x = segment[:, 2:obs_offset:3]
+        o_y = segment[:, 3:obs_offset:3]
+
+        scat1 = ax.scatter([], [], c="b", s=15, label="bee")
+        scat2 = ax.scatter([], [], c="r", s=15, label="wasps")
+        scat3 = ax.scatter([], [], c="g", s=65, label="goal")
+        ax.set(
+            xlim=[segment[0, 0] - 30, segment[0, 0] + 30],
+            ylim=[segment[0, 1] - 30, segment[0, 1] + 30],
+            xlabel="X",
+            ylabel="Y",
+        )
+        ax.legend(loc="upper right")
+
+        def update(frame):
+            scat1.set_offsets(segment[frame, 0:2])
+
+            o_data = np.stack([o_x[frame], o_y[frame]]).T
+            scat2.set_offsets(o_data)
+
+            scat3.set_offsets(g)
+
+            return scat1, scat2, scat3
+
+        ani = animation.FuncAnimation(
+            fig=fig, func=update, frames=segment.shape[0], interval=interval
+        )
+        ani.save(filename=filename, writer="pillow")
+    else:
+        if not isinstance(aux_data, list):
+            fig, (ax1, ax2) = plt.subplots(figsize=(10, 5), ncols=2)
+            obs_offset = 2 + 3 * n_min_obstacles
+            g = segment[-1, obs_offset : obs_offset + 2]
+            o_x = segment[:, 2:obs_offset:3]
+            o_y = segment[:, 3:obs_offset:3]
+
+            scat1 = ax1.scatter([], [], c="b", s=15, label="bee")
+            scat2 = ax1.scatter([], [], c="r", s=15, label="wasps")
+            scat3 = ax1.scatter([], [], c="g", s=65, label="goal")
+            ax1.set(
+                xlim=[segment[0, 0] - 30, segment[0, 0] + 30],
+                ylim=[segment[0, 1] - 30, segment[0, 1] + 30],
+                xlabel="X",
+                ylabel="Y",
+            )
+
+            ax2.set(
+                xlim=[0, aux_data.shape[0]],
+                ylim=[np.min(aux_data), np.max(aux_data)],
+                xlabel="Timesteps",
+                ylabel=labels[0],
+            )
+            ax1.legend(loc="upper right")
+
+            (p,) = ax2.plot([], [])
+
+            def update(frame):
+                scat1.set_offsets(segment[frame, 0:2])
+
+                o_data = np.stack([o_x[frame], o_y[frame]]).T
+                scat2.set_offsets(o_data)
+
+                scat3.set_offsets(g)
+
+                p.set_data(np.arange(frame), aux_data[:frame])
+
+                return scat1, scat2, scat3, p
+
+            ani = animation.FuncAnimation(
+                fig=fig, func=update, frames=segment.shape[0], interval=interval
+            )
+            ani.save(filename=filename, writer="pillow")
+        else:
+            assert len(aux_data) == 2
+            fig = plt.figure(figsize=(10, 5))
+            plt.subplots_adjust(hspace=0.4)
+            axs = fig.subplot_mosaic([["game", "aux_1"], ["game", "aux_2"]])
+            obs_offset = 2 + 3 * n_min_obstacles
+            g = segment[-1, obs_offset : obs_offset + 2]
+            o_x = segment[:, 2:obs_offset:3]
+            o_y = segment[:, 3:obs_offset:3]
+
+            scat1 = axs["game"].scatter([], [], c="b", s=15, label="bee")
+            scat2 = axs["game"].scatter([], [], c="r", s=15, label="wasps")
+            scat3 = axs["game"].scatter([], [], c="g", s=65, label="goal")
+            axs["game"].set(
+                xlim=[segment[0, 0] - 30, segment[0, 0] + 30],
+                ylim=[segment[0, 1] - 30, segment[0, 1] + 30],
+                xlabel="X",
+                ylabel="Y",
+            )
+            axs["game"].legend(loc="upper right")
+
+            axs["aux_1"].set(
+                xlim=[0, aux_data[0].shape[0]],
+                ylim=[np.min(aux_data[0]), np.max(aux_data[0])],
+                xlabel="Timestep",
+                ylabel=labels[0],
+            )
+
+            (p_1,) = axs["aux_1"].plot([], [])
+
+            axs["aux_2"].set(
+                xlim=[0, aux_data[1].shape[0]],
+                ylim=[np.min(aux_data[1]), np.max(aux_data[1])],
+                xlabel="Timestep",
+                ylabel=labels[1],
+            )
+
+            (p_2,) = axs["aux_2"].plot([], [])
+
+            def update(frame):
+                scat1.set_offsets(segment[frame, 0:2])
+
+                o_data = np.stack([o_x[frame], o_y[frame]]).T
+                scat2.set_offsets(o_data)
+
+                scat3.set_offsets(g)
+
+                p_1.set_data(np.arange(frame), aux_data[0][:frame])
+
+                p_2.set_data(np.arange(frame), aux_data[1][:frame])
+                return scat1, scat2, scat3, p_1, p_2
+
+            ani = animation.FuncAnimation(
+                fig=fig, func=update, frames=segment.shape[0], interval=interval
+            )
+            ani.save(filename=filename, writer="pillow")
