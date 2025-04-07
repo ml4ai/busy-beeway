@@ -4,7 +4,9 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from flax import nnx
+import orbax.checkpoint as ocp
 from tensorflow_probability.substrates import jax as tfp
+from transformers.training.utils import prng_to_raw, raw_to_prng
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
@@ -98,3 +100,53 @@ def sample_actions(
     dist = actor(states, temperature)
     key = rngs.sample()
     return dist.sample(seed=key)
+
+
+def load_IQLPolicy(model_dir, chkptr, on_cpu=False):
+    model_args = chkptr.restore(
+        model_dir,
+        args=ocp.args.Composite(
+            model_args=ocp.args.ArrayRestore(),
+        ),
+    )
+    model_args = model_args["model_args"]
+    rng_key = jax.random.key(int(model_args[9]))
+    rng_key, _ = jax.random.split(rng_key, 2)
+    rng_subkey1, rng_subkey2, rng_subkey3, rng_subkey4 = jax.random.split(rng_key, 4)
+    rngs = nnx.Rngs(
+        rng_subkey1, params=rng_subkey2, dropout=rng_subkey3, sample=rng_subkey4
+    )
+
+    model = NormalTanhPolicy(
+        state_dim=int(model_args[0]),
+        mlp_output_dim=int(model_args[1]),
+        hidden_dims=[int(x) for x in model_args[10:]],
+        action_dim=int(model_args[2]),
+        state_dependent_std=True if model_args[3] else False,
+        dropout_rate=None if model_args[4] == -1 else model_args[4],
+        log_std_scale=model_args[5],
+        log_std_min=model_args[6],
+        log_std_max=model_args[7],
+        tanh_squash_distribution=True if model_args[8] else False,
+        rngs=rngs,
+    )
+    prng_to_raw(model)
+    abstract_model = nnx.eval_shape(lambda: model)
+    graphdef, abstract_state = nnx.split(abstract_model)
+    # Loads onto first cpu found
+    if on_cpu:
+
+        def set_sharding(var):
+            var.sharding = jax.sharding.SingleDeviceSharding(jax.devices("cpu")[0])
+            return var
+
+        abstract_state = jax.tree.map(set_sharding, abstract_state)
+    model_state = chkptr.restore(
+        model_dir,
+        args=ocp.args.Composite(
+            model_state=ocp.args.StandardRestore(abstract_state),
+        ),
+    )
+    model = nnx.merge(graphdef, model_state["model_state"])
+    raw_to_prng(model)
+    return model
