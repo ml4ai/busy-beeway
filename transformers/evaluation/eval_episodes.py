@@ -1076,7 +1076,7 @@ def run_antmaze_medium_IQL(
             return (
                 episode_return,
                 task_episode_return,
-                100*minari.get_normalized_score(dataset, task_episode_return),
+                minari.get_normalized_score(dataset, task_episode_return),
             )
         return episode_return, task_episode_return
     return episode_return
