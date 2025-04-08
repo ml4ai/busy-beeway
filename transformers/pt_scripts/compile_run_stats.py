@@ -90,7 +90,7 @@ def main(argv):
             date = date[1] + "-" + date[2] + "-" + date[3]
             dates += [date] * len(D[i])
             for d in D[i]:
-                
+
                 p_X = d["player"]["posX"].to_numpy()
                 p_Y = d["player"]["posY"].to_numpy()
                 p_A = d["player"]["angle"].to_numpy()
@@ -99,30 +99,14 @@ def main(argv):
                 goal_headings = cos_plus(goal_directions - p_A)
                 mean_gh = np.mean(goal_headings)
                 average_gh.append(mean_gh)
-                std_gh.append(np.std(goal_headings,mean=mean_gh))
+                std_gh.append(np.std(goal_headings, mean=mean_gh))
                 max_goal_dist.append(np.max(goal_dist))
                 min_goal_dist.append(np.min(goal_dist))
                 control_frames.append(np.sum(d["player"]["userControl"].to_numpy()))
                 frames.append(d["player"].shape[0])
                 collisions.append(not (d["reached_goal"]))
-                oc = d["player"]["obstacle_count"][0]
-                sig = d["player"]["sigma"][0]
-                match oc:
-                    case 50:
-                        level.append(9)
-                    case 100:
-                        level.append(10)
-                    case 150:
-                        level.append(11)
-                match sig:
-                    case 55:
-                        ai.append(1)
-                    case 62:
-                        ai.append(2)
-                    case 140:
-                        ai.append(3)
-                    case 100:
-                        ai.append(4)
+                level.append(d["player"]["level"][0])
+                ai.append(d["player"]["ai"][0])
         subject_ids += [sl[sl["autoID"] == p_id]["subjectID"].to_numpy()[0]] * n_runs
     df = pd.DataFrame(
         {
@@ -133,8 +117,8 @@ def main(argv):
             "collision": collisions,
             "mean_gh": average_gh,
             "std_gh": std_gh,
-            "max_goal_distance" : max_goal_dist,
-            "min_goal_distance" : min_goal_dist,
+            "max_goal_distance": max_goal_dist,
+            "min_goal_distance": min_goal_dist,
             "subject_id": subject_ids,
             "date": dates,
         }
