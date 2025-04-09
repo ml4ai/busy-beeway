@@ -614,7 +614,7 @@ def train_IQL(
         qCritic,
         tCritic,
         opt_decay_schedule=kwargs.get("opt_decay_schedule", None),
-        max_steps=max_steps,
+        max_steps=int(n_epochs * interval)),
         actor_lr=kwargs.get("actor_lr", 3e-4),
         value_lr=kwargs.get("value_lr", 3e-4),
         critic_lr=kwargs.get("critic_lr", 3e-4),
