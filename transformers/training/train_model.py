@@ -511,7 +511,7 @@ def train_IQL(
     seed,
     batch_size=64,
     num_workers=2,
-    max_steps=1e6,
+    n_epochs=2000,
     eval_settings=[1, 10, 500, 0],
     criteria_type="max",
     save_dir="~/busy-beeway/transformers/logs",

@@ -51,7 +51,7 @@ def main(argv):
         help="Batch size. Powers of 2 work best.",
     )
     parser.add_argument(
-        "-n", "--max_steps", type=int, default=1e6, help="Number of gradient steps."
+        "-n", "--n_epochs", type=int, default=2000, help="Number of training epochs."
     )
     parser.add_argument(
         "-s",
@@ -148,7 +148,7 @@ def main(argv):
             seed,
             batch_size=batch_size,
             num_workers=workers,
-            max_steps=args.max_steps,
+            n_epochs=n_epochs,
             eval_settings=eval_settings,
             save_dir=output_dir,
             actor_lr=learning_rate[0],
