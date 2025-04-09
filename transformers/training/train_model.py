@@ -634,9 +634,9 @@ def train_IQL(
         metrics = {
             "epoch": epoch,
             "train_time": np.nan,
-            "actor_loss": np.nan,
-            "value_loss": np.nan,
-            "critic_loss": np.nan,
+            "actor_loss": [],
+            "value_loss": [],
+            "critic_loss": [],
             "eval_metric_mean": np.nan,
             "eval_metric_std": np.nan,
             "best_epoch": c_best_epoch,
