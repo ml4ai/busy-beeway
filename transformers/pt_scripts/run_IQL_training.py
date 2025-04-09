@@ -148,7 +148,7 @@ def main(argv):
             seed,
             batch_size=batch_size,
             num_workers=workers,
-            n_epochs=n_epochs,
+            n_epochs=args.n_epochs,
             eval_settings=eval_settings,
             save_dir=output_dir,
             actor_lr=learning_rate[0],
