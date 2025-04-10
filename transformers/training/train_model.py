@@ -677,15 +677,14 @@ def train_IQL(
                 total=eval_settings[1],
                 desc=f"Evaluation Step {epoch}",
             ):
-                met.append(
-                    eval_sim(
+                _,_,res= eval_sim(
                         actor,
                         r_model,
                         move_stats,
                         eval_settings[2],
                         rngs=rngs,
-                    )
-                )
+                        )
+                met.append(res)
             if eval_settings[3] == 1:
                 metrics["eval_metric_mean"] = np.mean(met[2])
                 metrics["eval_metric_std"] = np.std(met[2])

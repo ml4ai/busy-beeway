@@ -264,7 +264,7 @@ def bb_run_episode(
         episode_return += reward
         if coll:
             break
-    return episode_return
+    return -1,-1,episode_return
 
 
 def bb_record_episode(
@@ -634,7 +634,7 @@ def bb_run_episode_IQL(
         episode_return += reward
         if coll:
             break
-    return episode_return
+    return -1,-1,episode_return
 
 
 def bb_record_episode_IQL(
@@ -972,8 +972,8 @@ def run_antmaze_medium(
                 task_episode_return,
                 minari.get_normalized_score(dataset, task_episode_return),
             )
-        return episode_return, task_episode_return
-    return episode_return
+        return -1,episode_return, task_episode_return
+    return -1,-1,episode_return
 
 
 # If no r_model is given, then episode_return == task_episode_return (if set to True)
@@ -1078,5 +1078,5 @@ def run_antmaze_medium_IQL(
                 task_episode_return,
                 minari.get_normalized_score(dataset, task_episode_return),
             )
-        return episode_return, task_episode_return
-    return episode_return
+        return -1,episode_return, task_episode_return
+    return -1,-1,episode_return
