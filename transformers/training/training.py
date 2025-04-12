@@ -194,17 +194,11 @@ class IQLTrainer(object):
 def _train_IQL_step(
     actor_state, v_state, q_state, tCritic, expectile, temperature, discount, tau, batch
 ):
-    v_loss, v_grads = nnx.value_and_grad(val_loss)(
+    (v_loss, diff), v_grads = nnx.value_and_grad(val_loss, has_aux=True)(
         v_state.model, tCritic, expectile, batch
     )
 
     v_state.update(v_grads)
-
-    act_loss, act_grads = nnx.value_and_grad(actor_loss)(
-        actor_state.model, v_state.model, tCritic, temperature, batch
-    )
-
-    actor_state.update(act_grads)
 
     qq_loss, qq_grads = nnx.value_and_grad(q_loss)(
         q_state.model, v_state.model, discount, batch
@@ -218,7 +212,13 @@ def _train_IQL_step(
         lambda x, y: y * tau + x * (1 - tau), t_p_state, q_p_state
     )
     nnx.update(tCritic, new_t_p_state)
-    return dict(actor_loss=act_loss,value_loss=v_loss,critic_loss=qq_loss)
+
+    act_loss, act_grads = nnx.value_and_grad(actor_loss)(
+        actor_state.model, diff, temperature, batch
+    )
+
+    actor_state.update(act_grads)
+    return dict(value_loss=v_loss, critic_loss=qq_loss,actor_loss=act_loss)
 
 
 # class MentorTransformerTrainer(object):

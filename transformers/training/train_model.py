@@ -618,8 +618,8 @@ def train_IQL(
         actor_lr=kwargs.get("actor_lr", 3e-4),
         value_lr=kwargs.get("value_lr", 3e-4),
         critic_lr=kwargs.get("critic_lr", 3e-4),
-        expectile=kwargs.get("expectile", 0.9),
-        temperature=kwargs.get("temperature", 10.0),
+        expectile=kwargs.get("expectile", 0.7),
+        temperature=kwargs.get("temperature", 3.0),
         discount=kwargs.get("discount", 0.99),
         tau=kwargs.get("tau", 0.005),
     )
@@ -634,9 +634,9 @@ def train_IQL(
         metrics = {
             "epoch": epoch,
             "train_time": np.nan,
-            "actor_loss": [],
             "value_loss": [],
             "critic_loss": [],
+            "actor_loss": [],
             "eval_metric_mean": np.nan,
             "eval_metric_std": np.nan,
             "best_epoch": c_best_epoch,
