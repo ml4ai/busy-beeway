@@ -68,6 +68,19 @@ def main(argv):
         action="store_true",
         help="Compute Task Episode Returns",
     )
+    parser.add_argument(
+        "-n",
+        "--normalize_states",
+        action="store_true",
+        help="Normalize states",
+    )
+    parser.add_argument(
+        "-i",
+        "--eps",
+        type=float,
+        default=1e-3,
+        help="Ensures no zero division for normalizing states",
+    )
     args = parser.parse_args(argv)
     save_file = args.save_file
     dataset = minari.load_dataset(args.env_name)
@@ -196,6 +209,12 @@ def main(argv):
             rwd = jnp.concatenate(rwd)
             t_rwd = jnp.concatenate(t_rwd)
 
+            if args.normalize_states:
+                states = (states - states.mean(0)) / (states.std(0) + args.eps)
+                next_states = (next_states - next_states.mean(0)) / (
+                    next_states.std(0) + args.eps
+                )
+
             if "states" in f:
                 del f["states"]
             f.create_dataset("states", data=states, chunks=True)
@@ -305,6 +324,12 @@ def main(argv):
             timesteps = jnp.concatenate(timesteps)
             attn_mask = jnp.concatenate(attn_mask)
             t_rwd = jnp.concatenate(t_rwd)
+
+            if args.normalize_states:
+                states = (states - states.mean(0)) / (states.std(0) + args.eps)
+                next_states = (next_states - next_states.mean(0)) / (
+                    next_states.std(0) + args.eps
+                )
 
             if "states" in f:
                 del f["states"]
