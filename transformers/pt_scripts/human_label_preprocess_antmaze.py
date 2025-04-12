@@ -210,8 +210,6 @@ def main(argv):
         width, height = video_size["large"]
 
     rng = np.random.default_rng(args.random_seed)
-    m_seed = rng.integers(0, 10000)
-    dataset.set_seed(m_seed)
     states_1 = []
     states_2 = []
     actions_1 = []
@@ -222,7 +220,8 @@ def main(argv):
     attn_mask_2 = []
     goals_1 = []
     goals_2 = []
-    episodes = iter(dataset.sample_episodes(args.num_query * 2))
+    idx = rng.choice(dataset.episode_indices,args.num_query * 2,replace=True)
+    episodes = dataset.iterate_episodes(idx)
     for i in range(args.num_query):
         episode_1 = next(episodes)
         episode_2 = next(episodes)
