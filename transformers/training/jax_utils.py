@@ -390,8 +390,7 @@ def actor_loss(actor, diff, temperature, batch):
     return (exp_a * log_probs).mean()
 
 
-def q_loss(qCritic, vCritic, discount, batch):
-    next_v = vCritic(batch["next_states"])
+def q_loss(qCritic, next_v, discount, batch):
 
     target_q = batch["rewards"] + discount * batch["attn_mask"] * next_v
 
