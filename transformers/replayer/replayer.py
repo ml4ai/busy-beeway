@@ -612,6 +612,7 @@ def animate_run(d, interval=80, filename="run.gif"):
 def animate_segment(
     segment,
     aux_data=None,
+    ts=None,
     interval=80,
     n_min_obstacles=6,
     labels=["reward", "Importance Weight"],
@@ -666,13 +667,20 @@ def animate_segment(
                 xlabel="X",
                 ylabel="Y",
             )
-
-            ax2.set(
-                xlim=[0, aux_data.shape[0]],
-                ylim=[np.min(aux_data), np.max(aux_data)],
-                xlabel="Timesteps",
-                ylabel=labels[0],
-            )
+            if ts is None:
+                ax2.set(
+                    xlim=[0, aux_data.shape[0]],
+                    ylim=[np.min(aux_data), np.max(aux_data)],
+                    xlabel="Timesteps",
+                    ylabel=labels[0],
+                )
+            else:
+                ax2.set(
+                    xlim=[ts[0], ts[-1]],
+                    ylim=[np.min(aux_data), np.max(aux_data)],
+                    xlabel="Timesteps",
+                    ylabel=labels[0],
+                )
             ax1.legend(loc="upper right")
 
             (p,) = ax2.plot([], [])
@@ -684,8 +692,10 @@ def animate_segment(
                 scat2.set_offsets(o_data)
 
                 scat3.set_offsets(g)
-
-                p.set_data(np.arange(frame), aux_data[:frame])
+                if ts is None:
+                    p.set_data(np.arange(frame), aux_data[:frame])
+                else:
+                    p.set_data(ts[:frame], aux_data[:frame])
 
                 return scat1, scat2, scat3, p
 
@@ -712,23 +722,38 @@ def animate_segment(
                 xlabel="X",
                 ylabel="Y",
             )
-            axs["game"].legend(loc="upper right")
-
-            axs["aux_1"].set(
-                xlim=[0, aux_data[0].shape[0]],
-                ylim=[np.min(aux_data[0]), np.max(aux_data[0])],
-                xlabel="Timestep",
-                ylabel=labels[0],
-            )
+            # axs["game"].legend(loc="upper right")
+            if ts is None:
+                axs["aux_1"].set(
+                    xlim=[0, aux_data[0].shape[0]],
+                    ylim=[np.min(aux_data[0]), np.max(aux_data[0])],
+                    xlabel="Timestep",
+                    ylabel=labels[0],
+                )
+            else:
+                axs["aux_1"].set(
+                    xlim=[ts[0], ts[-1]],
+                    ylim=[np.min(aux_data[0]), np.max(aux_data[0])],
+                    xlabel="Timestep",
+                    ylabel=labels[0],
+                )
 
             (p_1,) = axs["aux_1"].plot([], [])
 
-            axs["aux_2"].set(
-                xlim=[0, aux_data[1].shape[0]],
-                ylim=[np.min(aux_data[1]), np.max(aux_data[1])],
-                xlabel="Timestep",
-                ylabel=labels[1],
-            )
+            if ts is None:
+                axs["aux_2"].set(
+                    xlim=[0, aux_data[1].shape[0]],
+                    ylim=[0, 1],
+                    xlabel="Timestep",
+                    ylabel=labels[1],
+                )
+            else:
+                axs["aux_2"].set(
+                    xlim=[ts[0], ts[-1]],
+                    ylim=[0, 1],
+                    xlabel="Timestep",
+                    ylabel=labels[1],
+                )                
 
             (p_2,) = axs["aux_2"].plot([], [])
 
@@ -739,10 +764,14 @@ def animate_segment(
                 scat2.set_offsets(o_data)
 
                 scat3.set_offsets(g)
+                if ts is None:
+                    p_1.set_data(np.arange(frame), aux_data[0][:frame])
 
-                p_1.set_data(np.arange(frame), aux_data[0][:frame])
+                    p_2.set_data(np.arange(frame), aux_data[1][:frame])
+                else:
+                    p_1.set_data(ts[:frame], aux_data[0][:frame])
 
-                p_2.set_data(np.arange(frame), aux_data[1][:frame])
+                    p_2.set_data(ts[:frame], aux_data[1][:frame])                    
                 return scat1, scat2, scat3, p_1, p_2
 
             ani = animation.FuncAnimation(
