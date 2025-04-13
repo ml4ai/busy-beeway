@@ -7,6 +7,7 @@ import orbax.checkpoint as ocp
 import torch
 from flax import nnx
 from torch.utils.data import DataLoader, random_split, RandomSampler, BatchSampler
+import torch
 from tqdm import tqdm
 from transformers.evaluation.eval_episodes import (
     bb_run_episode,
@@ -172,6 +173,8 @@ def train_pt(
                     batch = batch_to_jax(batch)
                     for key, val in model.train(batch).items():
                         metrics[key].append(val)
+                    del batch
+                    torch.cuda.empty_cache()
             metrics["train_time"] = train_timer()
         else:
             # for using early stopping with train loss.
@@ -201,6 +204,8 @@ def train_pt(
                 batch = batch_to_jax(batch)
                 for key, val in model.evaluation(batch).items():
                     metrics[key].append(val)
+                del batch
+                torch.cuda.empty_cache()
             criteria = np.mean(metrics[criteria_key])
 
             if criteria_type == "acc":
@@ -366,6 +371,8 @@ def train_dt(
                         batch = batch_to_jax(batch)
                         for key, val in model.train(batch).items():
                             metrics[key].append(val)
+                        del batch
+                        torch.cuda.empty_cache()
                 metrics["train_time"] = train_timer()
             else:
                 # for using early stopping with train loss.
@@ -449,6 +456,8 @@ def train_dt(
                         batch = batch_to_jax(batch)
                         for key, val in model.train(batch).items():
                             metrics[key].append(val)
+                        del batch
+                        torch.cuda.empty_cache()
                 metrics["train_time"] = train_timer()
             else:
                 # for using early stopping with train loss.
@@ -663,6 +672,8 @@ def train_IQL(
                     batch = batch_to_jax(batch)
                     for key, val in trainer.train(batch).items():
                         metrics[key].append(val)
+                    del batch
+                    torch.cuda.empty_cache()
             metrics["train_time"] = train_timer()
         else:
             # for using early stopping with train loss.
