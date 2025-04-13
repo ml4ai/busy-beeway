@@ -560,7 +560,7 @@ def train_IQL(
         hidden_dims[-1],
         action_dim,
         kwargs.get("state_dependent_std", False),
-        kwargs.get("dropout_rate", None),
+        kwargs.get("dropout_rate", 0.1),
         kwargs.get("log_std_scale", 1e-3),
         kwargs.get("log_std_min", -5.0),
         kwargs.get("log_std_max", 2.0),
@@ -677,13 +677,13 @@ def train_IQL(
                 total=eval_settings[1],
                 desc=f"Evaluation Step {epoch}",
             ):
-                _,_,res= eval_sim(
-                        actor,
-                        r_model,
-                        move_stats,
-                        eval_settings[2],
-                        rngs=rngs,
-                        )
+                _, _, res = eval_sim(
+                    actor,
+                    r_model,
+                    move_stats,
+                    eval_settings[2],
+                    rngs=rngs,
+                )
                 met.append(res)
             if eval_settings[3] == 1:
                 metrics["eval_metric_mean"] = np.mean(met[2])
