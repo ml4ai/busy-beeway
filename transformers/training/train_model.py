@@ -2,6 +2,7 @@ import os.path as osp
 
 import jax
 import jax.numpy as jnp
+from jax.dlpack import from_dlpack, to_dlpack
 import numpy as np
 import orbax.checkpoint as ocp
 import torch
@@ -169,8 +170,7 @@ def train_pt(
                         batch["labels"],
                     ) = t_data
                     for k in batch:
-                        batch[k] = jnp.asarray(batch[k])
-                    batch = batch_to_jax(batch)
+                        batch[k] = from_dlpack(batch[k].to_dlpack())
                     for key, val in model.train(batch).items():
                         metrics[key].append(val)
                     del batch
@@ -200,8 +200,7 @@ def train_pt(
                     batch["labels"],
                 ) = e_data
                 for k in batch:
-                    batch[k] = jnp.asarray(batch[k])
-                batch = batch_to_jax(batch)
+                    batch[k] = from_dlpack(batch[k].to_dlpack())
                 for key, val in model.evaluation(batch).items():
                     metrics[key].append(val)
                 del batch
@@ -367,8 +366,7 @@ def train_dt(
                             batch["returns"],
                         ) = t_data
                         for k in batch:
-                            batch[k] = jnp.asarray(batch[k])
-                        batch = batch_to_jax(batch)
+                            batch[k] = from_dlpack(batch[k].to_dlpack())
                         for key, val in model.train(batch).items():
                             metrics[key].append(val)
                         del batch
@@ -452,8 +450,7 @@ def train_dt(
                             batch["returns"],
                         ) = t_data
                         for k in batch:
-                            batch[k] = jnp.asarray(batch[k])
-                        batch = batch_to_jax(batch)
+                            batch[k] = from_dlpack(batch[k].to_dlpack())
                         for key, val in model.train(batch).items():
                             metrics[key].append(val)
                         del batch
@@ -668,8 +665,7 @@ def train_IQL(
                         batch["rewards"],
                     ) = t_data
                     for k in batch:
-                        batch[k] = jnp.asarray(batch[k])
-                    batch = batch_to_jax(batch)
+                        batch[k] = from_dlpack(batch[k].to_dlpack())
                     for key, val in trainer.train(batch).items():
                         metrics[key].append(val)
                     del batch
