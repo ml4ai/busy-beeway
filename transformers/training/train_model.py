@@ -170,7 +170,7 @@ def train_pt(
                         batch["labels"],
                     ) = t_data
                     for k in batch:
-                        batch[k] = from_dlpack(batch[k].to_dlpack())
+                        batch[k] = from_dlpack(batch[k])
                     for key, val in model.train(batch).items():
                         metrics[key].append(val)
                     del batch
@@ -200,7 +200,7 @@ def train_pt(
                     batch["labels"],
                 ) = e_data
                 for k in batch:
-                    batch[k] = from_dlpack(batch[k].to_dlpack())
+                    batch[k] = from_dlpack(batch[k])
                 for key, val in model.evaluation(batch).items():
                     metrics[key].append(val)
                 del batch
@@ -366,7 +366,7 @@ def train_dt(
                             batch["returns"],
                         ) = t_data
                         for k in batch:
-                            batch[k] = from_dlpack(batch[k].to_dlpack())
+                            batch[k] = from_dlpack(batch[k])
                         for key, val in model.train(batch).items():
                             metrics[key].append(val)
                         del batch
@@ -450,7 +450,7 @@ def train_dt(
                             batch["returns"],
                         ) = t_data
                         for k in batch:
-                            batch[k] = from_dlpack(batch[k].to_dlpack())
+                            batch[k] = from_dlpack(batch[k])
                         for key, val in model.train(batch).items():
                             metrics[key].append(val)
                         del batch
@@ -665,7 +665,7 @@ def train_IQL(
                         batch["rewards"],
                     ) = t_data
                     for k in batch:
-                        batch[k] = from_dlpack(batch[k].to_dlpack())
+                        batch[k] = from_dlpack(batch[k])
                     for key, val in trainer.train(batch).items():
                         metrics[key].append(val)
                     del batch
