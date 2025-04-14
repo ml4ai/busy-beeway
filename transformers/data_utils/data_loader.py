@@ -35,6 +35,7 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
         self.mixed_p_file = mixed_p_file
         self.m_idxs = m_idxs
         self._max_episode_length = max_episode_length
+        self.length = h5py.File(self.mixed_p_file, "r")["states"].shape[0]
 
     # Target data is denoted with a 2, since the labels are all 1 for the target
     def open_hdf5(self):
@@ -67,9 +68,7 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
         )
 
     def __len__(self):
-        if not hasattr(self, "h5_file"):
-            self.open_hdf5()
-        return self.states.shape[0]
+        return self.length
 
     def shapes(self):
         if not hasattr(self, "h5_file"):
@@ -83,14 +82,6 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
             return np.max([np.max(self.timesteps[:]), np.max(self.timesteps_2[:])])
         return self._max_episode_length
 
-    # # None if not a combined dataset
-    # def c_idx(self):
-    #     return self._c_idx
-
-    # # 1 if not a combined dataset
-    # def c_num(self):
-    #     return self._c_n
-
 
 class Pref_H5Dataset_minari(torch.utils.data.Dataset):
     # combined = true means this is a virtual dataset of combined data files
@@ -99,6 +90,7 @@ class Pref_H5Dataset_minari(torch.utils.data.Dataset):
     def __init__(self, datafile, max_episode_length=None):
         super(Pref_H5Dataset_minari, self).__init__()
         self.datafile = datafile
+        self.length = h5py.File(self.file_path, "r")["states"].shape[0]
 
     # Target data is denoted with a 2, since the labels are all 1 for the target
     def open_hdf5(self):
@@ -130,9 +122,7 @@ class Pref_H5Dataset_minari(torch.utils.data.Dataset):
         )
 
     def __len__(self):
-        if not hasattr(self, "h5_file"):
-            self.open_hdf5()
-        return self.states.shape[0]
+        return self.length
 
     def shapes(self):
         if not hasattr(self, "h5_file"):
@@ -154,6 +144,7 @@ class Dec_H5Dataset(torch.utils.data.Dataset):
         self.file_path = file_path
         self.normalized_returns = normalized_returns
         self.task_returns = task_returns
+        self.length = h5py.File(self.file_path, "r")["states"].shape[0]
 
     def open_hdf5(self):
         self.h5_file = h5py.File(self.file_path, "r")
@@ -181,9 +172,7 @@ class Dec_H5Dataset(torch.utils.data.Dataset):
         )
 
     def __len__(self):
-        if not hasattr(self, "h5_file"):
-            self.open_hdf5()
-        return self.states.shape[0]
+        return self.length
 
     def shapes(self):
         if not hasattr(self, "h5_file"):
@@ -212,6 +201,7 @@ class IQL_H5Dataset(torch.utils.data.Dataset):
         self.normalized_rewards = normalized_rewards
         self.task_rewards = task_rewards
         self.reward_adjustment = reward_adjustment
+        self.length = h5py.File(self.file_path, "r")["states"].shape[0]
 
     def open_hdf5(self):
         self.h5_file = h5py.File(self.file_path, "r")
@@ -239,9 +229,7 @@ class IQL_H5Dataset(torch.utils.data.Dataset):
         )
 
     def __len__(self):
-        if not hasattr(self, "h5_file"):
-            self.open_hdf5()
-        return self.states.shape[0]
+        return self.length
 
     def shapes(self):
         if not hasattr(self, "h5_file"):
