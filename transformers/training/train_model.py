@@ -8,7 +8,6 @@ import orbax.checkpoint as ocp
 import torch
 from flax import nnx
 from torch.utils.data import DataLoader, random_split, RandomSampler, BatchSampler
-import torch
 from tqdm import tqdm
 from transformers.evaluation.eval_episodes import (
     bb_run_episode,
@@ -170,7 +169,7 @@ def train_pt(
                         batch["labels"],
                     ) = t_data
                     for k in batch:
-                        batch[k] = from_dlpack(batch[k])
+                        batch[k] = from_dlpack(torch.utils.dlpack.to_dlpack(batch[k]))
                     for key, val in model.train(batch).items():
                         metrics[key].append(val)
                     del batch
@@ -200,7 +199,7 @@ def train_pt(
                     batch["labels"],
                 ) = e_data
                 for k in batch:
-                    batch[k] = from_dlpack(batch[k])
+                    batch[k] = from_dlpack(torch.utils.dlpack.to_dlpack(batch[k]))
                 for key, val in model.evaluation(batch).items():
                     metrics[key].append(val)
                 del batch
@@ -366,7 +365,7 @@ def train_dt(
                             batch["returns"],
                         ) = t_data
                         for k in batch:
-                            batch[k] = from_dlpack(batch[k])
+                            batch[k] = from_dlpack(torch.utils.dlpack.to_dlpack(batch[k]))
                         for key, val in model.train(batch).items():
                             metrics[key].append(val)
                         del batch
@@ -450,7 +449,7 @@ def train_dt(
                             batch["returns"],
                         ) = t_data
                         for k in batch:
-                            batch[k] = from_dlpack(batch[k])
+                            batch[k] = from_dlpack(torch.utils.dlpack.to_dlpack(batch[k]))
                         for key, val in model.train(batch).items():
                             metrics[key].append(val)
                         del batch
@@ -665,7 +664,7 @@ def train_IQL(
                         batch["rewards"],
                     ) = t_data
                     for k in batch:
-                        batch[k] = from_dlpack(batch[k])
+                        batch[k] = from_dlpack(torch.utils.dlpack.to_dlpack(batch[k]))
                     for key, val in trainer.train(batch).items():
                         metrics[key].append(val)
                     del batch
