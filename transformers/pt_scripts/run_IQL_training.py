@@ -110,7 +110,7 @@ def main(argv):
         action="store_true",
         help="Uses normalized returns for training. \nWorks with a learned reward function only!",
     )
-    multiprocessing.set_start_method("forkserver")
+    multiprocessing.set_start_method("spawn", force=True)
     args = parser.parse_args(argv)
     data = os.path.expanduser(args.data)
     if args.reward_function:
