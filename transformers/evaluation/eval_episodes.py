@@ -1079,3 +1079,84 @@ def run_antmaze_medium_IQL(
             )
         return -1, episode_return, task_episode_return
     return -1, -1, episode_return
+
+
+# If no r_model is given, then episode_return == task_episode_return (if set to True)
+# normalized_score == True does nothing if compute_task_return != True
+def run_pen_human_IQL(
+    policy,
+    r_model=None,
+    move_stats=None,
+    max_horizon=500,
+    compute_task_return=True,
+    normalized_score=True,
+    context_length=100,
+    animate=False,
+    rngs=nnx.Rngs(sample=4),
+):
+    key = rngs.sample()
+    t_keys = jax.random.randint(key, 2, 0, 10000)
+    dataset = minari.load_dataset("D4RL/pen/human-v2")
+    if animate:
+        env = dataset.recover_environment(render_mode="human")
+    else:
+        env = dataset.recover_environment()
+
+    obs, info = env.reset(seed=int(t_keys[0]))
+
+    episode_over = False
+    episode_return = 0
+    task_episode_return = 0
+    if r_model is None:
+        s = obs
+        while not episode_over:
+            action = sample_actions(policy, s, 0.0, rngs)
+            action = jnp.clip(action, -1.0, 1.0)
+
+            obs, reward, terminated, truncated, info = env.step(action)
+            s = obs
+            episode_over = terminated or truncated
+            episode_return += reward
+            task_episode_return += reward
+    else:
+        s = obs.reshape(1, 1, -1)
+        a = jnp.zeros((1, 0, env.action_space.shape[0]))
+        t = jnp.zeros((1, 1), dtype=jnp.int32)
+        while not episode_over:
+            action = sample_actions(policy, s[-1, -1], 0.0, rngs)
+            action = jnp.clip(action, -1.0, 1.0)
+            a = jnp.concat([a, action.reshape(1, 1, -1)], axis=1)
+            a = a[:, -context_length:, :]
+
+            reward, _ = r_model(
+                s,
+                a,
+                t,
+                jnp.ones((1, t.shape[1]), dtype=jnp.float32),
+                training=False,
+            )
+            reward = reward["value"][:, 0, -1]
+            obs, t_reward, terminated, truncated, info = env.step(action)
+            s = jnp.concatenate(
+                [
+                    s,
+                    obs.reshape(1, 1, -1),
+                ],
+                axis=1,
+            )
+            s = s[:, -context_length:, :]
+            t = jnp.concat([t, (t[-1][-1] + 1).reshape(1, -1)], axis=1)
+            t = t[:, -context_length:]
+            episode_over = terminated or truncated
+            episode_return += reward
+            task_episode_return += t_reward
+    env.close()
+    if compute_task_return:
+        if normalized_score:
+            return (
+                episode_return,
+                task_episode_return,
+                minari.get_normalized_score(dataset, task_episode_return),
+            )
+        return -1, episode_return, task_episode_return
+    return -1, -1, episode_return

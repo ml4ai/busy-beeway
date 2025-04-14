@@ -14,6 +14,7 @@ from transformers.evaluation.eval_episodes import (
     run_antmaze_medium,
     bb_run_episode_IQL,
     run_antmaze_medium_IQL,
+    run_pen_human_IQL,
 )
 from transformers.models.dec_transformer import DT
 from transformers.models.pref_transformer import PT
@@ -365,7 +366,9 @@ def train_dt(
                             batch["returns"],
                         ) = t_data
                         for k in batch:
-                            batch[k] = from_dlpack(torch.utils.dlpack.to_dlpack(batch[k]))
+                            batch[k] = from_dlpack(
+                                torch.utils.dlpack.to_dlpack(batch[k])
+                            )
                         for key, val in model.train(batch).items():
                             metrics[key].append(val)
                         del batch
@@ -449,7 +452,9 @@ def train_dt(
                             batch["returns"],
                         ) = t_data
                         for k in batch:
-                            batch[k] = from_dlpack(torch.utils.dlpack.to_dlpack(batch[k]))
+                            batch[k] = from_dlpack(
+                                torch.utils.dlpack.to_dlpack(batch[k])
+                            )
                         for key, val in model.train(batch).items():
                             metrics[key].append(val)
                         del batch
@@ -606,6 +611,8 @@ def train_IQL(
 
     if eval_settings[3] == 1:
         eval_sim = run_antmaze_medium_IQL
+    elif eval_settings[3] == 2:
+        eval_sim = run_pen_human_IQL
     else:
         eval_sim = bb_run_episode_IQL
 
@@ -623,7 +630,7 @@ def train_IQL(
         actor_lr=kwargs.get("actor_lr", 3e-4),
         value_lr=kwargs.get("value_lr", 3e-4),
         critic_lr=kwargs.get("critic_lr", 3e-4),
-        expectile=kwargs.get("expectile", 0.7),
+        expectile=kwargs.get("expectile", 0.8),
         temperature=kwargs.get("temperature", 3.0),
         discount=kwargs.get("discount", 0.99),
         tau=kwargs.get("tau", 0.005),
