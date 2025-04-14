@@ -7,6 +7,7 @@ import jax
 
 import jax.numpy as jnp
 import numpy as np
+import h5py
 from argformat import StructuredFormatter
 
 from transformers.data_utils.data_loader import Pref_H5Dataset, Pref_H5Dataset_minari
@@ -120,7 +121,19 @@ def main(argv):
     seed, _ = rng.integers(0, 10000, 2)
     try:
         if args.data_2 is not None:
-            data = Pref_H5Dataset(data_1, data_2, rng, args.max_episode_length)
+            m_idxs = []
+            with h5py.File(data_1, "r") as f:
+                with h5py.File(data_2, "r") as g:
+                    m_size = g["states"].shape[0]
+                    for m in range(m_size):
+                        m_static = g["states"][m, 0, -4:]
+                        t_static = f["states"][:, 0, -4:]
+                        matches = np.argwhere(np.all(t_static == m_static, axis=1))[:, 0]
+                        if matches.shape[0] > 0:
+                            m_idxs.append(rng.choice(matches))
+                        else:
+                            m_idxs.append(rng.choice(t_static.shape[0]))
+            data = Pref_H5Dataset(data_1, data_2, np.asarray(m_idxs), args.max_episode_length)
         else:
             data = Pref_H5Dataset_minari(data_1, args.max_episode_length)
         train_pt(
