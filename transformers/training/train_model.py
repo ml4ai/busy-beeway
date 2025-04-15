@@ -572,7 +572,7 @@ def train_IQL(
         kwargs.get("state_dependent_std", False),
         kwargs.get("dropout_rate", 0.1),
         kwargs.get("log_std_scale", 1e-3),
-        kwargs.get("log_std_min", -5.0),
+        kwargs.get("log_std_min", -20.0),
         kwargs.get("log_std_max", 2.0),
         kwargs.get("tanh_squash_distribution", False),
         seed,
