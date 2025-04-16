@@ -65,8 +65,8 @@ def main(argv):
                 max_ep_rtn = max(max_ep_rtn, np.max(f["ep_returns"][:]))
                 min_ep_rtn = min(min_ep_rtn, np.min(f["ep_returns"][:]))
                 if args.normalize_states:
-                    numeric_states.append(f["states"][:, -4:])
-                    numeric_next_states.append(f["next_states"][:, -4:])
+                    numeric_states.append(f["states"][:, :-4])
+                    numeric_next_states.append(f["next_states"][:, :-4])
         if args.normalize_states:
             numeric_states = np.concatenate(numeric_states)
             numeric_next_states = np.concatenate(numeric_next_states)
@@ -88,9 +88,9 @@ def main(argv):
 
                 if args.normalize_states:
                     states = f["states"][:]
-                    states[:, -4:] = (states[:, -4:] - mean_s) / std_s
+                    states[:, :-4] = (states[:, :-4] - mean_s) / std_s
                     next_states = f["next_states"][:]
-                    next_states[:, -4:] = (next_states[:, -4:] - mean_n_s) / std_n_s
+                    next_states[:, :-4] = (next_states[:, :-4] - mean_n_s) / std_n_s
 
                     if "states" in f:
                         del f["states"]
@@ -116,13 +116,13 @@ def main(argv):
 
             if args.normalize_states:
                 states = f["states"][:]
-                states[:, -4:] = (states[:, -4:] - states[:, -4:].mean(0)) / (
-                    states[:, -4:].std(0) + args.eps
+                states[:, :-4] = (states[:, :-4] - states[:, :-4].mean(0)) / (
+                    states[:, :-4].std(0) + args.eps
                 )
                 next_states = f["next_states"][:]
-                next_states[:, -4:] = (
-                    next_states[:, -4:] - next_states[:, -4:].mean(0)
-                ) / (next_states[:, -4:].std(0) + args.eps)
+                next_states[:, :-4] = (
+                    next_states[:, :-4] - next_states[:, :-4].mean(0)
+                ) / (next_states[:, :-4].std(0) + args.eps)
 
                 if "states" in f:
                     del f["states"]
