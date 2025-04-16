@@ -115,7 +115,7 @@ def bb_run_episode(
     target_return=100.0,
     max_horizon=500,
     n_min_obstacles=6,
-    days=153,
+    days=181,
     rng=np.random.default_rng(),
 ):
     level = rng.choice([9, 10, 11])
@@ -275,7 +275,7 @@ def bb_record_episode(
     target_return=100.0,
     max_horizon=500,
     n_min_obstacles=6,
-    days=153,
+    days=181,
     level=None,
     ai=None,
     attempt=None,
@@ -497,7 +497,7 @@ def bb_run_episode_IQL(
     move_stats,
     max_horizon=500,
     n_min_obstacles=6,
-    days=153,
+    days=181,
     context_length=100,
     rngs=nnx.Rngs(sample=4),
 ):
@@ -643,7 +643,7 @@ def bb_record_episode_IQL(
     move_stats,
     max_horizon=500,
     n_min_obstacles=6,
-    days=153,
+    days=181,
     level=None,
     ai=None,
     attempt=None,
