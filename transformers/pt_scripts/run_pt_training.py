@@ -125,6 +125,13 @@ def main(argv):
             with h5py.File(data_1, "r") as f:
                 with h5py.File(data_2, "r") as g:
                     m_size = g["states"].shape[0]
+                    if args.max_episode_length is None:
+                        mep = np.max(
+                        [np.max(f["timesteps"][:]), np.max(g["timesteps"][:])]
+                        )
+                    else:
+                        mep = args.max_episode_length
+                        
                     for m in range(m_size):
                         m_static = g["states"][m, 0, -4:]
                         t_static = f["states"][:, 0, -4:]
@@ -133,7 +140,7 @@ def main(argv):
                             m_idxs.append(rng.choice(matches))
                         else:
                             m_idxs.append(rng.choice(t_static.shape[0]))
-            data = Pref_H5Dataset(data_1, data_2, np.asarray(m_idxs), args.max_episode_length)
+            data = Pref_H5Dataset(data_1, data_2, np.asarray(m_idxs), mep)
         else:
             data = Pref_H5Dataset_minari(data_1, args.max_episode_length)
         train_pt(
