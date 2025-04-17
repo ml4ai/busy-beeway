@@ -28,6 +28,7 @@ from transformers.training.training import (
     IQLTrainer,
 )
 from transformers.training.utils import Timer, save_model
+from transformers.data_utils.data_loader import fast_loader
 
 
 def train_pt(
@@ -61,25 +62,17 @@ def train_pt(
     rng_key = jax.random.key(seed)
     rng_key, rng_subkey = jax.random.split(rng_key, 2)
     t_keys = jax.random.randint(rng_subkey, 2, 0, 10000)
-    gen1 = torch.Generator().manual_seed(int(t_keys[0]))
-    gen2 = torch.Generator().manual_seed(int(t_keys[1]))
+    torch.manual_seed(int(t_keys[0]))
     training_data, test_data = random_split(
-        data, [train_split, 1 - train_split], generator=gen1
+        data, [train_split, 1 - train_split]
     )
-    training_data_loader = DataLoader(
+    training_data_loader = fast_loader(
         training_data,
         batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-        generator=gen2,
-        pin_memory=True,
     )
-    test_data_loader = DataLoader(
+    test_data_loader = fast_loader(
         test_data,
         batch_size=batch_size,
-        num_workers=num_workers,
-        shuffle=False,
-        pin_memory=True,
     )
 
     interval = len(training_data_loader)
