@@ -174,7 +174,6 @@ def train_pt(
                     for key, val in model.train(batch).items():
                         metrics[key].append(val)
                     del batch
-                    torch.cuda.empty_cache()
             metrics["train_time"] = train_timer()
         else:
             # for using early stopping with train loss.
@@ -204,7 +203,6 @@ def train_pt(
                 for key, val in model.evaluation(batch).items():
                     metrics[key].append(val)
                 del batch
-                torch.cuda.empty_cache()
             criteria = np.mean(metrics[criteria_key])
 
             if criteria_type == "acc":
