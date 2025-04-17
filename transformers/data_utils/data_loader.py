@@ -40,7 +40,7 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
                 self._acts_shape = g["actions"].shape
                 if max_episode_length is None:
                     self._max_episode_length = np.max(
-                        [np.max(f["timesteps"][:]), np.max(f["timesteps_2"][:])]
+                        [np.max(f["timesteps"][:]), np.max(g["timesteps"][:])]
                     )
                 else:
                     self._max_episode_length = max_episode_length
