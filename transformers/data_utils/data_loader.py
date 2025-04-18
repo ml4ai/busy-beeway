@@ -17,6 +17,7 @@ import torch
 from torch.utils.data import DataLoader, Sampler, BatchSampler
 import h5py
 
+
 class RandomBatchSampler(Sampler):
     """Sampling class to create random sequential batches from a given dataset
     E.g. if data is [1,2,3,4] with bs=2. Then first batch, [[1,2], [3,4]] then shuffle batches -> [[3,4],[1,2]]
@@ -27,6 +28,7 @@ class RandomBatchSampler(Sampler):
     :type batch_size: int
     :returns: generator object of shuffled batch indices
     """
+
     def __init__(self, dataset, batch_size):
         self.batch_size = batch_size
         self.dataset_length = len(dataset)
@@ -42,11 +44,13 @@ class RandomBatchSampler(Sampler):
             for index in idx:
                 yield int(index)
         if int(self.n_batches) < self.n_batches:
-            idx = torch.arange(int(self.n_batches) * self.batch_size, self.dataset_length)
+            idx = torch.arange(
+                int(self.n_batches) * self.batch_size, self.dataset_length
+            )
             for index in idx:
                 yield int(index)
 
-
+#DOES WEAK SHUFFLING! CAN INTRODUCE BIAS IF NOT |data| >> batch_size  
 def fast_loader(dataset, batch_size=32, drop_last=False, transforms=None):
     """Implements fast loading by taking advantage of .h5 dataset
     The .h5 dataset has a speed bottleneck that scales (roughly) linearly with the number
@@ -66,77 +70,19 @@ def fast_loader(dataset, batch_size=32, drop_last=False, transforms=None):
     :rtype: torch.utils.data.DataLoader
     """
     return DataLoader(
-        dataset, batch_size=None,  # must be disabled when using samplers
-        sampler=BatchSampler(RandomBatchSampler(dataset, batch_size), batch_size=batch_size, drop_last=drop_last)
+        dataset,
+        batch_size=None,  # must be disabled when using samplers
+        sampler=BatchSampler(
+            RandomBatchSampler(dataset, batch_size),
+            batch_size=batch_size,
+            drop_last=drop_last,
+        ),
     )
 
+
 class Pref_H5Dataset(torch.utils.data.Dataset):
-    # combined = true means this is a virtual dataset of combined data files
-    # batch size is set my target participant data
-    # Randomly matches indexes of mixed participants to target participant
-    def __init__(
-        self,
-        target_p_file,
-        mixed_p_file,
-        m_idxs,
-        max_episode_length,
-    ):
-        super(Pref_H5Dataset, self).__init__()
-        self.target_p_file = target_p_file
-        self.mixed_p_file = mixed_p_file
-        self.m_idxs = m_idxs
-        self._max_episode_length = max_episode_length
-        with h5py.File(self.target_p_file, "r") as f:
-            with h5py.File(self.mixed_p_file, "r") as g:
-                self._sts_shape = g["states"].shape
-                self._acts_shape = g["actions"].shape
-
-    # Target data is denoted with a 2, since the labels are all 1 for the target
-    def open_hdf5(self):
-        self.h5_mixed_file = h5py.File(self.mixed_p_file, "r")
-        self.states = self.h5_mixed_file["states"]
-        self.actions = self.h5_mixed_file["actions"]
-        self.timesteps = self.h5_mixed_file["timesteps"]
-        self.attn_mask = self.h5_mixed_file["attn_mask"]
-
-        self.h5_target_file = h5py.File(self.target_p_file, "r")
-        self.states_2 = self.h5_target_file["states"]
-        self.actions_2 = self.h5_target_file["actions"]
-        self.timesteps_2 = self.h5_target_file["timesteps"]
-        self.attn_mask_2 = self.h5_target_file["attn_mask"]
-        self.labels = self.h5_target_file["labels"]
-
-    def __getitem__(self, index):
-        if not hasattr(self, "h5_mixed_file"):
-            self.open_hdf5()
-        return (
-            self.states[index, ...],
-            self.actions[index, ...],
-            self.timesteps[index, ...],
-            self.attn_mask[index, ...],
-            self.states_2[self.m_idxs[index], ...],
-            self.actions_2[self.m_idxs[index], ...],
-            self.timesteps_2[self.m_idxs[index], ...],
-            self.attn_mask_2[self.m_idxs[index], ...],
-            self.labels[self.m_idxs[index]],
-        )
-
-    def __len__(self):
-        return self._sts_shape[0]
-
-    def shapes(self):
-        return self._sts_shape, self._acts_shape
-
-    def max_episode_length(self):
-        return self._max_episode_length
-
-
-class Pref_H5Dataset_minari(torch.utils.data.Dataset):
-    # combined = true means this is a virtual dataset of combined data files
-    # batch size is set my target participant data
-    # Randomly matches indexes of mixed participants to target participant
     def __init__(self, datafile, max_episode_length=None):
-        super(Pref_H5Dataset_minari, self).__init__()
+        super(Pref_H5Dataset, self).__init__()
         self.datafile = datafile
         with h5py.File(self.datafile, "r") as f:
             if max_episode_length is None:

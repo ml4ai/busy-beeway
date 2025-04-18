@@ -2,33 +2,33 @@ import os.path as osp
 
 import jax
 import jax.numpy as jnp
-from jax.dlpack import from_dlpack, to_dlpack
 import numpy as np
 import orbax.checkpoint as ocp
 import torch
 from flax import nnx
-from torch.utils.data import DataLoader, random_split, RandomSampler, BatchSampler
+from jax.dlpack import from_dlpack, to_dlpack
+from torch.utils.data import BatchSampler, DataLoader, RandomSampler, random_split
 from tqdm import tqdm
+from transformers.data_utils.data_loader import fast_loader
 from transformers.evaluation.eval_episodes import (
     bb_run_episode,
-    run_antmaze_medium,
     bb_run_episode_IQL,
+    run_antmaze_medium,
     run_antmaze_medium_IQL,
     run_pen_human_IQL,
 )
 from transformers.models.dec_transformer import DT
-from transformers.models.pref_transformer import PT
 from transformers.models.policy import NormalTanhPolicy
-from transformers.models.value_net import ValueCritic, DoubleCritic
+from transformers.models.pref_transformer import PT
+from transformers.models.value_net import DoubleCritic, ValueCritic
 from transformers.training.jax_utils import batch_to_jax
 from transformers.training.logging_utils import logger, setup_logger
 from transformers.training.training import (
     DecTransformerTrainer,
-    PrefTransformerTrainer,
     IQLTrainer,
+    PrefTransformerTrainer,
 )
 from transformers.training.utils import Timer, save_model
-from transformers.data_utils.data_loader import fast_loader
 
 
 def train_pt(
@@ -54,7 +54,7 @@ def train_pt(
         base_log_dir=save_dir,
         include_exp_prefix_sub_dir=False,
     )
-
+    
     state_shape, action_shape = data.shapes()
     _, query_len, state_dim = state_shape
     action_dim = action_shape[2]
@@ -75,8 +75,17 @@ def train_pt(
         batch_size=batch_size,
     )
 
-    interval = len(training_data_loader)
-    eval_interval = len(test_data_loader)
+    interval = len(training_data) / batch_size
+    if int(interval) < interval:
+        interval = int(interval + 1)
+    else:
+        interval = int(interval)
+
+    eval_interval = len(test_data) / batch_size
+    if int(eval_interval) < eval_interval:
+        eval_interval = int(eval_interval + 1)
+    else:
+        eval_interval = int(eval_interval)
     rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
     rngs = nnx.Rngs(rng_subkey1, params=rng_subkey2, dropout=rng_subkey3)
     max_pos = 2048

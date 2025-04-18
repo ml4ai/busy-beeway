@@ -10,7 +10,7 @@ import numpy as np
 import h5py
 from argformat import StructuredFormatter
 
-from transformers.data_utils.data_loader import Pref_H5Dataset, Pref_H5Dataset_minari
+from transformers.data_utils.data_loader import Pref_H5Dataset
 from transformers.training.train_model import train_pt
 import torch.multiprocessing as multiprocessing
 
@@ -21,17 +21,10 @@ def main(argv):
         formatter_class=StructuredFormatter,
     )
     parser.add_argument(
-        "data_1",
+        "data",
         metavar="D",
         type=str,
-        help="HDF5 file containing data. \nThe file must have the datasets \n'Observations',timesteps',etc. \nThis assumes that a comparison set is included, \nif no data_2 is given",
-    )
-    parser.add_argument(
-        "-a",
-        "--data_2",
-        type=str,
-        default=None,
-        help="HDF5 file containing comparison data for dataset 1. ",
+        help="HDF5 file containing data. \nThe file must have the datasets \n'Observations',timesteps',etc along with \ncomparison sets denoted with _2.",
     )
     parser.add_argument(
         "-t",
@@ -102,9 +95,7 @@ def main(argv):
     )
     multiprocessing.set_start_method("forkserver")
     args = parser.parse_args(argv)
-    data_1 = os.path.expanduser(args.data_1)
-    if args.data_2 is not None:
-        data_2 = os.path.expanduser(args.data_2)
+    data = os.path.expanduser(args.data)
     train_split = args.training_split
     batch_size = args.batch_size
     eval_period = args.eval_period
@@ -117,32 +108,13 @@ def main(argv):
     end_value = learning_rate[2]
     dim = args.dim
     workers = args.workers
-    rng = np.random.default_rng(seed)
-    seed, _ = rng.integers(0, 10000, 2)
     try:
-        if args.data_2 is not None:
-            m_idxs = []
-            with h5py.File(data_1, "r") as f:
-                with h5py.File(data_2, "r") as g:
-                    m_size = g["states"].shape[0]
-                    if args.max_episode_length is None:
-                        mep = np.max(
-                        [np.max(f["timesteps"][:]), np.max(g["timesteps"][:])]
-                        )
-                    else:
-                        mep = args.max_episode_length
-                        
-                    for m in range(m_size):
-                        m_static = g["states"][m, 0, -4:]
-                        t_static = f["states"][:, 0, -4:]
-                        matches = np.argwhere(np.all(t_static == m_static, axis=1))[:, 0]
-                        if matches.shape[0] > 0:
-                            m_idxs.append(rng.choice(matches))
-                        else:
-                            m_idxs.append(rng.choice(t_static.shape[0]))
-            data = Pref_H5Dataset(data_1, data_2, np.asarray(m_idxs), mep)
-        else:
-            data = Pref_H5Dataset_minari(data_1, args.max_episode_length)
+        with h5py.File(data, "r") as f:
+            if args.max_episode_length is None:
+                mep = np.max([np.max(f["timesteps"][:]), np.max(f["timesteps_2"][:])])
+            else:
+                mep = args.max_episode_length
+        data = Pref_H5Dataset(data, mep)
         train_pt(
             data,
             seed,
