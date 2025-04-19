@@ -20,6 +20,7 @@ from torch import default_generator, Generator, randperm, Tensor
 from torch.utils.data import Dataset, DataLoader, Sampler, BatchSampler
 import h5py
 
+_T = TypeVar("_T")
 
 class RandomBatchSampler(Sampler):
     """Sampling class to create random sequential batches from a given dataset
