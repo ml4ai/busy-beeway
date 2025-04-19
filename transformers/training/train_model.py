@@ -67,12 +67,12 @@ def train_pt(
     training_data_loader = fast_loader(
         training_data,
         batch_size=batch_size,
-        pin_memory = True,
+        pin_memory=True,
     )
     test_data_loader = fast_loader(
         test_data,
         batch_size=batch_size,
-        pin_memory = True,
+        pin_memory=True,
     )
 
     interval = len(training_data) / batch_size
@@ -172,7 +172,7 @@ def train_pt(
                         batch["labels"],
                     ) = t_data
                     for k in batch:
-                        batch[k] = jnp.asarray(batch[k])
+                        batch[k] = from_dlpack(torch.utils.dlpack.to_dlpack(batch[k]))
                     for key, val in model.train(batch).items():
                         metrics[key].append(val)
                     del batch
@@ -201,7 +201,7 @@ def train_pt(
                     batch["labels"],
                 ) = e_data
                 for k in batch:
-                    batch[k] = jnp.asarray(batch[k])
+                    batch[k] = from_dlpack(torch.utils.dlpack.to_dlpack(batch[k]))
                 for key, val in model.evaluation(batch).items():
                     metrics[key].append(val)
                 del batch
