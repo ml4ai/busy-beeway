@@ -143,6 +143,8 @@ def train_pt(
         c_criteria_key = -np.inf
     else:
         c_criteria_key = np.inf
+
+    batch_keys = ["states","actions","timesteps","attn_mask","states_2","actions_2","timesteps_2","attn_mask_2","labels"]
     for epoch in range(n_epochs + 1):
         metrics = {
             "epoch": epoch,
@@ -162,19 +164,8 @@ def train_pt(
                     desc=f"Training Epoch {epoch}",
                 ):
                     batch = {}
-                    (
-                        batch["states"],
-                        batch["actions"],
-                        batch["timesteps"],
-                        batch["attn_mask"],
-                        batch["states_2"],
-                        batch["actions_2"],
-                        batch["timesteps_2"],
-                        batch["attn_mask_2"],
-                        batch["labels"],
-                    ) = t_data
-                    for k in batch:
-                        batch[k] = from_dlpack(torch.utils.dlpack.to_dlpack(batch[k]))
+                    for k, dat in enumerate(t_data):
+                        batch[batch_keys[k]] = jnp.asarray(dat)
                     for key, val in model.train(batch).items():
                         metrics[key].append(val)
                     del batch
@@ -191,19 +182,8 @@ def train_pt(
                 desc=f"Evaluation Epoch {epoch}",
             ):
                 batch = {}
-                (
-                    batch["states"],
-                    batch["actions"],
-                    batch["timesteps"],
-                    batch["attn_mask"],
-                    batch["states_2"],
-                    batch["actions_2"],
-                    batch["timesteps_2"],
-                    batch["attn_mask_2"],
-                    batch["labels"],
-                ) = e_data
-                for k in batch:
-                    batch[k] = from_dlpack(torch.utils.dlpack.to_dlpack(batch[k]))
+                for k, dat in enumerate(t_data):
+                    batch[batch_keys[k]] = jnp.asarray(dat)
                 for key, val in model.evaluation(batch).items():
                     metrics[key].append(val)
                 del batch
