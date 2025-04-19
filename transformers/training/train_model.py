@@ -144,7 +144,17 @@ def train_pt(
     else:
         c_criteria_key = np.inf
 
-    batch_keys = ["states","actions","timesteps","attn_mask","states_2","actions_2","timesteps_2","attn_mask_2","labels"]
+    batch_keys = [
+        "states",
+        "actions",
+        "timesteps",
+        "attn_mask",
+        "states_2",
+        "actions_2",
+        "timesteps_2",
+        "attn_mask_2",
+        "labels",
+    ]
     for epoch in range(n_epochs + 1):
         metrics = {
             "epoch": epoch,
@@ -182,7 +192,7 @@ def train_pt(
                 desc=f"Evaluation Epoch {epoch}",
             ):
                 batch = {}
-                for k, dat in enumerate(t_data):
+                for k, dat in enumerate(e_data):
                     batch[batch_keys[k]] = jnp.asarray(dat)
                 for key, val in model.evaluation(batch).items():
                     metrics[key].append(val)
