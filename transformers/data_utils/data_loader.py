@@ -57,7 +57,7 @@ class RandomBatchSampler(Sampler):
 
 
 # DOES WEAK SHUFFLING! CAN INTRODUCE BIAS IF NOT |data| >> batch_size
-def fast_loader(dataset, batch_size=32, drop_last=False, transforms=None):
+def fast_loader(dataset, batch_size=32, pin_memory=False, drop_last=False, transforms=None):
     """Implements fast loading by taking advantage of .h5 dataset
     The .h5 dataset has a speed bottleneck that scales (roughly) linearly with the number
     of calls made to it. This is because when queries are made to it, a search is made to find
@@ -83,6 +83,7 @@ def fast_loader(dataset, batch_size=32, drop_last=False, transforms=None):
             batch_size=batch_size,
             drop_last=drop_last,
         ),
+        pin_memory = pin_memory,
     )
 
 

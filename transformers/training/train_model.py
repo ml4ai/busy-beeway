@@ -67,10 +67,12 @@ def train_pt(
     training_data_loader = fast_loader(
         training_data,
         batch_size=batch_size,
+        pin_memory = True,
     )
     test_data_loader = fast_loader(
         test_data,
         batch_size=batch_size,
+        pin_memory = True,
     )
 
     interval = len(training_data) / batch_size
