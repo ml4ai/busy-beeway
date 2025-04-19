@@ -9,7 +9,7 @@ from flax import nnx
 from jax.dlpack import from_dlpack, to_dlpack
 from torch.utils.data import BatchSampler, DataLoader, RandomSampler, random_split
 from tqdm import tqdm
-from transformers.data_utils.data_loader import fast_loader
+from transformers.data_utils.data_loader import fast_loader, sorted_random_split
 from transformers.evaluation.eval_episodes import (
     bb_run_episode,
     bb_run_episode_IQL,
@@ -54,7 +54,7 @@ def train_pt(
         base_log_dir=save_dir,
         include_exp_prefix_sub_dir=False,
     )
-    
+
     state_shape, action_shape = data.shapes()
     _, query_len, state_dim = state_shape
     action_dim = action_shape[2]
@@ -63,9 +63,7 @@ def train_pt(
     rng_key, rng_subkey = jax.random.split(rng_key, 2)
     t_keys = jax.random.randint(rng_subkey, 2, 0, 10000)
     torch.manual_seed(int(t_keys[0]))
-    training_data, test_data = random_split(
-        data, [train_split, 1 - train_split]
-    )
+    training_data, test_data = sorted_random_split(data, [train_split, 1 - train_split])
     training_data_loader = fast_loader(
         training_data,
         batch_size=batch_size,
