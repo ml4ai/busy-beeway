@@ -170,7 +170,7 @@ def train_pt(
                         batch["labels"],
                     ) = t_data
                     for k in batch:
-                        batch[k] = from_dlpack(torch.utils.dlpack.to_dlpack(batch[k]))
+                        batch[k] = jnp.asarray(batch[k])
                     for key, val in model.train(batch).items():
                         metrics[key].append(val)
                     del batch
@@ -199,7 +199,7 @@ def train_pt(
                     batch["labels"],
                 ) = e_data
                 for k in batch:
-                    batch[k] = from_dlpack(torch.utils.dlpack.to_dlpack(batch[k]))
+                    batch[k] = jnp.asarray(batch[k])
                 for key, val in model.evaluation(batch).items():
                     metrics[key].append(val)
                 del batch
