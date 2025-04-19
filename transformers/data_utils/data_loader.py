@@ -17,7 +17,7 @@ from typing import (
 import numpy as np
 import torch
 from torch import default_generator, Generator, randperm, Tensor
-from torch.utils.data import DataLoader, Sampler, BatchSampler
+from torch.utils.data import Dataset, DataLoader, Sampler, BatchSampler
 import h5py
 
 
@@ -84,7 +84,7 @@ def fast_loader(dataset, batch_size=32, drop_last=False, transforms=None):
     )
 
 
-class Pref_H5Dataset(torch.utils.data.Dataset):
+class Pref_H5Dataset(Dataset):
     def __init__(self, datafile, max_episode_length=None):
         super(Pref_H5Dataset, self).__init__()
         self.datafile = datafile
@@ -138,7 +138,7 @@ class Pref_H5Dataset(torch.utils.data.Dataset):
         return self._max_episode_length
 
 
-class Dec_H5Dataset(torch.utils.data.Dataset):
+class Dec_H5Dataset(Dataset):
     # combined = true means this is a virtual dataset of combined data files
     # the data tag is used for return_to_go if there are multiple in the file.
     # The task returns flag overwrite normalized_returns flag
@@ -187,7 +187,7 @@ class Dec_H5Dataset(torch.utils.data.Dataset):
         return self._max_episode_length
 
 
-class IQL_H5Dataset(torch.utils.data.Dataset):
+class IQL_H5Dataset(Dataset):
     # The task rewards flag overwrite normalized_rewards flag
     # Some environment developers recommended adjusting the task reward function by some constant,
     # this can be set through reward_adjustment.
