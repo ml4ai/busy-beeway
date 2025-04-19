@@ -17,7 +17,7 @@ from typing import (
 import numpy as np
 import torch
 from torch import default_generator, Generator, randperm, Tensor
-from torch.utils.data import Dataset, Subset,DataLoader, Sampler, BatchSampler
+from torch.utils.data import Dataset, Subset, DataLoader, Sampler, BatchSampler
 import h5py
 
 _T = TypeVar("_T")
@@ -302,6 +302,6 @@ def sorted_random_split(
     indices = randperm(sum(lengths), generator=generator).tolist()  # type: ignore[arg-type, call-overload]
     lengths = cast(Sequence[int], lengths)
     return [
-        Subset(dataset, torch.sort(indices[offset - length : offset]))
+        Subset(dataset, np.sort(indices[offset - length : offset]))
         for offset, length in zip(itertools.accumulate(lengths), lengths)
     ]
