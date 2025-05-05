@@ -270,26 +270,28 @@ def train(config: TrainConfig):
                         c_criteria_key = criteria
                         metrics["best_epoch"] = c_best_epoch
                         metrics[f"{config.criteria_key}_best"] = c_criteria_key
-                        save_model(
-                            trans,
-                            model_args,
-                            "best_model",
-                            config.checkpoints_path,
-                            checkpointer,
-                        )
+                        if config.checkpoints_path is not None:
+                            save_model(
+                                trans,
+                                model_args,
+                                "best_model",
+                                config.checkpoints_path,
+                                checkpointer,
+                            )
                 else:
                     if criteria <= c_criteria_key:
                         c_best_epoch = epoch
                         c_criteria_key = criteria
                         metrics["best_epoch"] = c_best_epoch
                         metrics[f"{config.criteria_key}_best"] = c_criteria_key
-                        save_model(
-                            trans,
-                            model_args,
-                            "best_model",
-                            config.checkpoints_path,
-                            checkpointer,
-                        )
+                        if config.checkpoints_path is not None:
+                            save_model(
+                                trans,
+                                model_args,
+                                "best_model",
+                                config.checkpoints_path,
+                                checkpointer,
+                            )
             for key, val in metrics.items():
                 if isinstance(val, list):
                     if len(val):
@@ -299,7 +301,7 @@ def train(config: TrainConfig):
             wandb.log(metrics, step=epoch)
             logger.record_dict(metrics | {"epoch": epoch})
             logger.dump_tabular(with_prefix=False, with_timestamp=False)
-        if save:
+        if config.checkpoints_path is not None:
             save_model(
                 trans, model_args, "model", config.checkpoints_path, checkpointer
             )
