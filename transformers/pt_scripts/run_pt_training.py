@@ -164,7 +164,7 @@ def train(config: TrainConfig):
             config.embd_dropout,
             max_pos,
             config.model_eps,
-            seed,
+            config.seed,
         ]
 
         trans = PT(
