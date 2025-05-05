@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 from flax import nnx
 from tqdm import tqdm
-
 from transformers.models.policy import sample_actions
 
 
@@ -82,10 +81,7 @@ def collision(
 def find_direction(x1, y1, x2, y2):
     x = x2 - x1
     y = y2 - y1
-    degs = np.arctan2(y, x) * (180.0 / np.pi)
-    degs = np.where(np.isclose(degs, 0.0), 360.0, degs)
-    degs = np.where(degs < 0, degs + 360.0, degs)
-    return degs * 1
+    return np.rad2deg(np.arctan2(y, x))
 
 
 def first_nth_argmins(arr, n):
@@ -1160,3 +1156,321 @@ def run_pen_human_IQL(
             )
         return -1, episode_return, task_episode_return
     return -1, -1, episode_return
+
+
+def bb_record_only_goal(
+    max_speed,
+    obs_dist=10,
+    n_min_obstacles=6,
+    max_horizon=500,
+    days=181,
+    seed=4,
+):
+    rng = np.random.default_rng(seed)
+    level = rng.choice([9, 10, 11])
+    ai = rng.choice([1, 2, 3, 4])
+    attempt = rng.choice(4)
+    day = rng.choice(days)
+    p_samp = rand_circle(50, None, rng=rng)
+
+    p_posX = float(p_samp[0])
+    p_posY = float(p_samp[1])
+
+    theta = rng.random(n_min_obstacles) * 2 * np.pi
+
+    O_posX = p_posX + obs_dist * np.cos(theta)
+    O_posY = p_posY + obs_dist * np.sin(theta)
+
+    O_angle = rng.uniform(0.0, 360.0, n_min_obstacles)
+
+    while True:
+        g_h = rng.uniform(0.0, 360.0)
+        g_r = rng.normal(30)
+        g = (
+            float(p_posX + g_r * cos_plus(g_h)),
+            float(p_posY + g_r * sin_plus(g_h)),
+        )
+        if ((g[0] ** 2) + (g[1] ** 2)) <= 2500:
+            break
+
+    def create_new_state(
+        g,
+        p_posX,
+        p_posY,
+        O_posX,
+        O_posY,
+        O_angle,
+        level,
+        ai,
+        attempt,
+        day,
+        n_min_obstacles,
+    ):
+        s = [p_posX, p_posY]
+        obs_distances = point_dist(
+            O_posX,
+            O_posY,
+            p_posX,
+            p_posY,
+        )
+
+        min_dist_obs = first_nth_argmins(obs_distances, n_min_obstacles)
+
+        for i in range(n_min_obstacles):
+            s += [
+                O_posX[min_dist_obs[i]],
+                O_posY[min_dist_obs[i]],
+                O_angle[min_dist_obs[i]],
+            ]
+
+        s += [g[0], g[1]]
+
+        s.append(level * 1.0)
+        s.append(ai * 1.0)
+        s.append(attempt * 1.0)
+
+        s.append(day * 1.0)
+
+        return np.asarray(s)
+
+    s = create_new_state(
+        g,
+        p_posX,
+        p_posY,
+        O_posX,
+        O_posY,
+        O_angle,
+        level,
+        ai,
+        attempt,
+        day,
+        n_min_obstacles,
+    ).reshape(1, 1, -1)
+    a = np.zeros((1, 0, 2))
+    t = np.zeros((1, 1), dtype=np.int32)
+
+    while True:
+        g_dir = find_direction(p_posX, p_posY, g[0], g[1])
+        action = np.asarray([max_speed, g_dir])
+        a = np.concatenate([a, action.reshape(1, 1, -1)], axis=1)
+
+        old_p_posX = p_posX
+        old_p_posY = p_posY
+        p_posX = float(p_posX + (action[0] * cos_plus(action[1])))
+        p_posY = float(p_posY + (action[0] * sin_plus(action[1])))
+
+        coll, _, _ = collision(
+            old_p_posX,
+            old_p_posY,
+            p_posX,
+            p_posY,
+            O_posX,
+            O_posY,
+        )
+        old_O_posX = O_posX
+        old_O_posY = O_posY
+        O_posX = O_posX + (0 * cos_plus(O_angle))
+        O_posY = O_posY + (0 * sin_plus(O_angle))
+
+        coll, _, _ = collision(
+            old_O_posX,
+            old_O_posY,
+            O_posX,
+            O_posY,
+            p_posX,
+            p_posY,
+        )
+
+        coll, _, _ = collision(
+            old_p_posX,
+            old_p_posY,
+            p_posX,
+            p_posY,
+            g[0],
+            g[1],
+            radius_2=1.0,
+        )
+        if coll or a.shape[1] == max_horizon:
+            break
+
+        s = np.concatenate(
+            [
+                s,
+                create_new_state(
+                    g,
+                    p_posX,
+                    p_posY,
+                    O_posX,
+                    O_posY,
+                    O_angle,
+                    level,
+                    ai,
+                    attempt,
+                    day,
+                    n_min_obstacles,
+                ).reshape(1, 1, -1),
+            ],
+            axis=1,
+        )
+
+        t = np.concatenate([t, (t[-1][-1] + 1).reshape(1, -1)], axis=1)
+    return s, a, t
+
+
+def bb_record_opposite_goal(
+    max_speed,
+    obs_dist=10,
+    n_min_obstacles=6,
+    max_horizon=100,
+    days=181,
+    seed=4,
+):
+    rng = np.random.default_rng(seed)
+    level = rng.choice([9, 10, 11])
+    ai = rng.choice([1, 2, 3, 4])
+    attempt = rng.choice(4)
+    day = rng.choice(days)
+    p_samp = rand_circle(50, None, rng=rng)
+
+    p_posX = float(p_samp[0])
+    p_posY = float(p_samp[1])
+
+    theta = rng.random(n_min_obstacles) * 2 * np.pi
+
+    O_posX = p_posX + obs_dist * np.cos(theta)
+    O_posY = p_posY + obs_dist * np.sin(theta)
+
+    O_angle = rng.uniform(0.0, 360.0, n_min_obstacles)
+
+    while True:
+        g_h = rng.uniform(0.0, 360.0)
+        g_r = rng.normal(30)
+        g = (
+            float(p_posX + g_r * cos_plus(g_h)),
+            float(p_posY + g_r * sin_plus(g_h)),
+        )
+        if ((g[0] ** 2) + (g[1] ** 2)) <= 2500:
+            break
+
+    def create_new_state(
+        g,
+        p_posX,
+        p_posY,
+        O_posX,
+        O_posY,
+        O_angle,
+        level,
+        ai,
+        attempt,
+        day,
+        n_min_obstacles,
+    ):
+        s = [p_posX, p_posY]
+        obs_distances = point_dist(
+            O_posX,
+            O_posY,
+            p_posX,
+            p_posY,
+        )
+
+        min_dist_obs = first_nth_argmins(obs_distances, n_min_obstacles)
+
+        for i in range(n_min_obstacles):
+            s += [
+                O_posX[min_dist_obs[i]],
+                O_posY[min_dist_obs[i]],
+                O_angle[min_dist_obs[i]],
+            ]
+
+        s += [g[0], g[1]]
+
+        s.append(level * 1.0)
+        s.append(ai * 1.0)
+        s.append(attempt * 1.0)
+
+        s.append(day * 1.0)
+
+        return np.asarray(s)
+
+    s = create_new_state(
+        g,
+        p_posX,
+        p_posY,
+        O_posX,
+        O_posY,
+        O_angle,
+        level,
+        ai,
+        attempt,
+        day,
+        n_min_obstacles,
+    ).reshape(1, 1, -1)
+    a = np.zeros((1, 0, 2))
+    t = np.zeros((1, 1), dtype=np.int32)
+    while True:
+        og_dir = find_direction(p_posX, p_posY, g[0], g[1])
+        og_dir = og_dir + 180
+        og_dir = og_dir - 360 if og_dir > 180 else og_dir
+        action = np.asarray([max_speed, og_dir])
+        a = np.concatenate([a, action.reshape(1, 1, -1)], axis=1)
+
+        old_p_posX = p_posX
+        old_p_posY = p_posY
+        p_posX = float(p_posX + (action[0] * cos_plus(action[1])))
+        p_posY = float(p_posY + (action[0] * sin_plus(action[1])))
+
+        coll, _, _ = collision(
+            old_p_posX,
+            old_p_posY,
+            p_posX,
+            p_posY,
+            O_posX,
+            O_posY,
+        )
+        old_O_posX = O_posX
+        old_O_posY = O_posY
+        O_posX = O_posX + (0 * cos_plus(O_angle))
+        O_posY = O_posY + (0 * sin_plus(O_angle))
+
+        coll, _, _ = collision(
+            old_O_posX,
+            old_O_posY,
+            O_posX,
+            O_posY,
+            p_posX,
+            p_posY,
+        )
+
+        coll, _, _ = collision(
+            old_p_posX,
+            old_p_posY,
+            p_posX,
+            p_posY,
+            g[0],
+            g[1],
+            radius_2=1.0,
+        )
+        if coll or a.shape[1] == max_horizon:
+            break
+        s = np.concatenate(
+            [
+                s,
+                create_new_state(
+                    g,
+                    p_posX,
+                    p_posY,
+                    O_posX,
+                    O_posY,
+                    O_angle,
+                    level,
+                    ai,
+                    attempt,
+                    day,
+                    n_min_obstacles,
+                ).reshape(1, 1, -1),
+            ],
+            axis=1,
+        )
+
+        t = np.concatenate([t, (t[-1][-1] + 1).reshape(1, -1)], axis=1)
+    return s, a, t
