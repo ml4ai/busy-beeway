@@ -24,8 +24,8 @@ warmup_steps: null
 decay_steps: null
 eval_every: 1
 workers: 2
-criteria_type: loss
-criteria_key: eval_loss
+criteria_type: acc
+criteria_key: eval_acc
 pin_memory: true
 seed: 0
 checkpoints_path: ~/busy-beeway/transformers
