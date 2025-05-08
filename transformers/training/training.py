@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import optax
 from flax import nnx
 from ml_collections import ConfigDict
-from transformers.training.jax_utils import pref_loss_fn
+from transformers.training.jax_utils import pt_loss_fn
 
 
 class PrefTransformerTrainer(object):
