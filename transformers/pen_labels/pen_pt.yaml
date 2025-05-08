@@ -28,4 +28,4 @@ criteria_type: acc
 criteria_key: eval_acc
 pin_memory: true
 seed: 0
-checkpoints_path: ~/busy-beeway/transformers
+checkpoints_path: ~/busy-beeway/transformers/pen_labels/pt_pen
