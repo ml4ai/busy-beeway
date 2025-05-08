@@ -52,7 +52,7 @@ class TrainConfig:
     max_ep_length: Optional[int] = None
     default_max_pos: int = 2048
     # training params
-    dataset_id: str = "D4RL/pen-v2"
+    dataset_id: str = "D4RL_pen-v2"
     dataset: str = "~/busy-beeway/transformers/pen_labels/AdroitHandPen-v1_pref.hdf5"
     training_split: float = 0.7
     epochs: int = 10
