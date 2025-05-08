@@ -109,7 +109,7 @@ def value_and_multi_grad(fun, n_outputs, argnums=0, has_aux=False):
     return multi_grad_fn
 
 
-def pref_loss_fn(model, batch, training):
+def pt_loss_fn(model, batch, training):
     sts_1 = batch["states"]
     sts_2 = batch["states_2"]
     acts_1 = batch["actions"]
@@ -142,6 +142,36 @@ def pref_loss_fn(model, batch, training):
 
     sum_pred_1 = jnp.nanmean(trans_pred_1.reshape(B, T), axis=1).reshape(-1, 1)
     sum_pred_2 = jnp.nanmean(trans_pred_2.reshape(B, T), axis=1).reshape(-1, 1)
+
+    logits = jnp.concatenate([sum_pred_1, sum_pred_2], axis=1)
+
+    return cross_ent_loss(logits, labels), pref_accuracy(logits, labels)
+
+def mr_loss_fn(model, batch, training):
+    am_1_sum = batch["attn_mask"].sum()
+    am_2_sum = batch["attn_mask_2"].sum()
+    sts_1 = batch["states"][:am_1_sum]
+    sts_2 = batch["states_2"][:am_2_sum]
+    acts_1 = batch["actions"][:am_1_sum]
+    acts_2 = batch["actions_2"][:am_2_sum]
+    labels = batch["labels"]
+
+    B1, T1, _ = sts_1.shape
+    B2, T2, _ = sts_2.shape
+
+    pred_1 = model(
+        sts_1,
+        acts_1,
+        training=training,
+    )
+    pred_2, _ = model(
+        sts_2,
+        acts_2,
+        training=training,
+    )
+
+    sum_pred_1 = jnp.nanmean(pred_1.reshape(B1, T1), axis=1).reshape(-1, 1)
+    sum_pred_2 = jnp.nanmean(pred_2.reshape(B2, T2), axis=1).reshape(-1, 1)
 
     logits = jnp.concatenate([sum_pred_1, sum_pred_2], axis=1)
 

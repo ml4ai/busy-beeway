@@ -23,25 +23,57 @@ class PrefTransformerTrainer(object):
         tx = optimizer_class(scheduler_class)
 
         self.evaluation = nnx.cached_partial(
-            _eval_pref_step,
+            _eval_pt_step,
             nnx.Optimizer(trans, tx),
         )
 
         self.train = nnx.cached_partial(
-            _train_pref_step,
+            _train_pt_step,
             nnx.Optimizer(trans, tx),
         )
 
 
 @nnx.jit
-def _eval_pref_step(state, batch):
-    loss, acc = pref_loss_fn(state.model, batch, False)
+def _eval_pt_step(state, batch):
+    loss, acc = pt_loss_fn(state.model, batch, False)
     return dict(eval_loss=loss, eval_acc=acc)
 
 
 @nnx.jit
-def _train_pref_step(state, batch):
-    (loss, acc), grads = nnx.value_and_grad(pref_loss_fn, has_aux=True)(
+def _train_pt_step(state, batch):
+    (loss, acc), grads = nnx.value_and_grad(pt_loss_fn, has_aux=True)(
+        state.model, batch, True
+    )
+    state.update(grads)
+    return dict(training_loss=loss, training_acc=acc)
+
+
+class MRTrainer(object):
+
+    def __init__(self, qmlp, **kwargs):
+        optimizer_class = optax.adam
+        tx = optimizer_class(kwargs.get("lr", 3e-4))
+
+        self.evaluation = nnx.cached_partial(
+            _eval_mr_step,
+            nnx.Optimizer(qmlp, tx),
+        )
+
+        self.train = nnx.cached_partial(
+            _train_mr_step,
+            nnx.Optimizer(qmlp, tx),
+        )
+
+
+@nnx.jit
+def _eval_mr_step(state, batch):
+    loss, acc = mr_loss_fn(state.model, batch, False)
+    return dict(eval_loss=loss, eval_acc=acc)
+
+
+@nnx.jit
+def _train_mr_step(state, batch):
+    (loss, acc), grads = nnx.value_and_grad(mr_loss_fn, has_aux=True)(
         state.model, batch, True
     )
     state.update(grads)
