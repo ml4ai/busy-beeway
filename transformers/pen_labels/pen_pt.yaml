@@ -10,7 +10,7 @@ intermediate_dim: null
 num_layers: 1
 embd_dropout: 0.1
 model_eps: 0.1
-max_ep_length: null
+max_ep_length: 200
 default_max_pos: 2048
 dataset_id: D4RL_pen-v2
 dataset: ~/busy-beeway/transformers/pen_labels/AdroitHandPen-v1_pref.hdf5

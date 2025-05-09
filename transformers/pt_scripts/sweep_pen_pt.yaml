@@ -9,7 +9,7 @@ parameters:
     values: [1, 2, 3, 4, 5, 6, 7, 8]
   num_layers:
     values: [1, 2, 3, 4]
-  epoch:
+  epochs:
     values: [10, 100, 1000, 3334]
   initial_lr:
     values: [0.0001, 0.00001, 0.000001, 0.0]
