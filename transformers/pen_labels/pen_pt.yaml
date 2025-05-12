@@ -23,7 +23,7 @@ end_lr: 0.0001
 warmup_steps: null
 decay_steps: null
 eval_every: 1
-workers: 1
+workers: 0
 criteria_type: acc
 criteria_key: eval_acc
 pin_memory: true
