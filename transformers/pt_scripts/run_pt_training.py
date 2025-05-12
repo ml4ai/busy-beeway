@@ -23,7 +23,8 @@ import h5py
 
 sys.path.insert(0, os.path.abspath("../.."))
 from transformers.data_utils.data_loader import (
-    Pref_H5Dataset,
+    Pref_H5Dataset_from_disk,
+    Pref_H5Dataset_from_ram,
     fast_loader,
     sorted_random_split,
 )
@@ -70,6 +71,7 @@ class TrainConfig:
     # general params
     pin_memory: bool = True
     seed: int = 0
+    data_from_disk: bool = False
     checkpoints_path: Optional[str] = "~/busy-beeway/transformers"  # Save path
 
     def __post_init__(self):
@@ -96,218 +98,438 @@ def train(config: TrainConfig):
     )
     multiprocessing.set_start_method("forkserver")
     data = osp.expanduser(config.dataset)
-    try:
-        with h5py.File(data, "r") as f:
-            if config.max_ep_length is None:
-                mep = np.max([np.max(f["timesteps"][:]), np.max(f["timesteps_2"][:])])
+    if data_from_disk:
+        try:
+            with h5py.File(data, "r") as f:
+                if config.max_ep_length is None:
+                    mep = np.max(
+                        [np.max(f["timesteps"][:]), np.max(f["timesteps_2"][:])]
+                    )
+                else:
+                    mep = config.max_ep_length
+            data = Pref_H5Dataset_from_disk(data, mep)
+            checkpointer = ocp.Checkpointer(ocp.CompositeCheckpointHandler())
+            setup_logger(
+                variant=None,
+                seed=config.seed,
+                base_log_dir=config.checkpoints_path,
+                include_exp_prefix_sub_dir=False,
+            )
+
+            state_shape, action_shape = data.shapes()
+            _, query_len, state_dim = state_shape
+            action_dim = action_shape[2]
+            rng_key = jax.random.key(config.seed)
+            rng_key, rng_subkey = jax.random.split(rng_key, 2)
+            t_keys = jax.random.randint(rng_subkey, 2, 0, 10000)
+            torch.manual_seed(int(t_keys[0]))
+            training_data, test_data = sorted_random_split(
+                data, [config.training_split, 1 - config.training_split]
+            )
+            training_data_loader = fast_loader(
+                training_data,
+                batch_size=config.batch_size,
+                num_workers=config.workers,
+                pin_memory=config.pin_memory,
+            )
+            test_data_loader = fast_loader(
+                test_data,
+                batch_size=config.batch_size,
+                num_workers=config.workers,
+                pin_memory=config.pin_memory,
+            )
+
+            interval = len(training_data) / config.batch_size
+            if int(interval) < interval:
+                interval = int(interval + 1)
             else:
-                mep = config.max_ep_length
-        data = Pref_H5Dataset(data, mep)
-        checkpointer = ocp.Checkpointer(ocp.CompositeCheckpointHandler())
-        setup_logger(
-            variant=None,
-            seed=config.seed,
-            base_log_dir=config.checkpoints_path,
-            include_exp_prefix_sub_dir=False,
-        )
+                interval = int(interval)
 
-        state_shape, action_shape = data.shapes()
-        _, query_len, state_dim = state_shape
-        action_dim = action_shape[2]
-        rng_key = jax.random.key(config.seed)
-        rng_key, rng_subkey = jax.random.split(rng_key, 2)
-        t_keys = jax.random.randint(rng_subkey, 2, 0, 10000)
-        torch.manual_seed(int(t_keys[0]))
-        training_data, test_data = sorted_random_split(
-            data, [config.training_split, 1 - config.training_split]
-        )
-        training_data_loader = fast_loader(
-            training_data,
-            batch_size=config.batch_size,
-            num_workers=config.workers,
-            pin_memory=config.pin_memory,
-        )
-        test_data_loader = fast_loader(
-            test_data,
-            batch_size=config.batch_size,
-            num_workers=config.workers,
-            pin_memory=config.pin_memory,
-        )
+            eval_interval = len(test_data) / config.batch_size
+            if int(eval_interval) < eval_interval:
+                eval_interval = int(eval_interval + 1)
+            else:
+                eval_interval = int(eval_interval)
+            rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
+            rngs = nnx.Rngs(rng_subkey1, params=rng_subkey2, dropout=rng_subkey3)
+            max_pos = config.default_max_pos
+            while query_len > max_pos:
+                max_pos *= 2
+            model_args = [
+                state_dim,
+                action_dim,
+                mep,
+                config.embd_dim,
+                config.pref_attn_embd_dim,
+                config.num_heads,
+                config.attn_dropout,
+                config.resid_dropout,
+                config.intermediate_dim,
+                config.num_layers,
+                config.embd_dropout,
+                max_pos,
+                config.model_eps,
+                config.seed,
+            ]
 
-        interval = len(training_data) / config.batch_size
-        if int(interval) < interval:
-            interval = int(interval + 1)
-        else:
-            interval = int(interval)
+            trans = PT(
+                state_dim=model_args[0],
+                action_dim=model_args[1],
+                max_episode_steps=model_args[2],
+                embd_dim=model_args[3],
+                pref_attn_embd_dim=model_args[4],
+                num_heads=model_args[5],
+                attn_dropout=model_args[6],
+                resid_dropout=model_args[7],
+                intermediate_dim=model_args[8],
+                num_layers=model_args[9],
+                embd_dropout=model_args[10],
+                max_pos=model_args[11],
+                eps=model_args[12],
+                rngs=rngs,
+            )
 
-        eval_interval = len(test_data) / config.batch_size
-        if int(eval_interval) < eval_interval:
-            eval_interval = int(eval_interval + 1)
-        else:
-            eval_interval = int(eval_interval)
-        rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
-        rngs = nnx.Rngs(rng_subkey1, params=rng_subkey2, dropout=rng_subkey3)
-        max_pos = config.default_max_pos
-        while query_len > max_pos:
-            max_pos *= 2
-        model_args = [
-            state_dim,
-            action_dim,
-            mep,
-            config.embd_dim,
-            config.pref_attn_embd_dim,
-            config.num_heads,
-            config.attn_dropout,
-            config.resid_dropout,
-            config.intermediate_dim,
-            config.num_layers,
-            config.embd_dropout,
-            max_pos,
-            config.model_eps,
-            config.seed,
-        ]
+            model_args = np.array(model_args)
 
-        trans = PT(
-            state_dim=model_args[0],
-            action_dim=model_args[1],
-            max_episode_steps=model_args[2],
-            embd_dim=model_args[3],
-            pref_attn_embd_dim=model_args[4],
-            num_heads=model_args[5],
-            attn_dropout=model_args[6],
-            resid_dropout=model_args[7],
-            intermediate_dim=model_args[8],
-            num_layers=model_args[9],
-            embd_dropout=model_args[10],
-            max_pos=model_args[11],
-            eps=model_args[12],
-            rngs=rngs,
-        )
+            if config.warmup_steps is None:
+                warmup_steps = int(config.epochs * interval * 0.05)
+            else:
+                warmup_steps = config.warmup_steps
 
-        model_args = np.array(model_args)
+            if config.decay_steps is None:
+                decay_steps = int(config.epochs * interval)
+            else:
+                decay_steps = config.decay_steps
 
-        if config.warmup_steps is None:
-            warmup_steps = int(config.epochs * interval * 0.05)
-        else:
-            warmup_steps = config.warmup_steps
+            model = PrefTransformerTrainer(
+                trans,
+                init_value=config.initial_lr,
+                peak_value=config.peak_lr,
+                warmup_steps=warmup_steps,
+                decay_steps=decay_steps,
+                end_value=config.end_lr,
+            )
+            c_best_epoch = 0
+            if config.criteria_type == "acc":
+                c_criteria_key = -np.inf
+            else:
+                c_criteria_key = np.inf
 
-        if config.decay_steps is None:
-            decay_steps = int(config.epochs * interval)
-        else:
-            decay_steps = config.decay_steps
+            batch_keys = [
+                "states",
+                "actions",
+                "timesteps",
+                "attn_mask",
+                "states_2",
+                "actions_2",
+                "timesteps_2",
+                "attn_mask_2",
+                "labels",
+            ]
+            for epoch in range(config.epochs + 1):
+                metrics = {
+                    "train_time": np.nan,
+                    "training_loss": [],
+                    "training_acc": [],
+                    "eval_loss": [],
+                    "eval_acc": [],
+                    "best_epoch": c_best_epoch,
+                    f"{config.criteria_key}_best": c_criteria_key,
+                }
+                if epoch:
+                    with Timer() as train_timer:
+                        for i, t_data in tqdm(
+                            enumerate(training_data_loader),
+                            total=interval,
+                            desc=f"Training Epoch {epoch}",
+                        ):
+                            batch = {}
+                            for k, dat in enumerate(t_data):
+                                batch[batch_keys[k]] = jnp.asarray(dat)
+                            for key, val in model.train(batch).items():
+                                metrics[key].append(val)
+                            del batch
+                    metrics["train_time"] = train_timer()
+                else:
+                    # for using early stopping with train loss.
+                    metrics["training_loss"] = np.nan
 
-        model = PrefTransformerTrainer(
-            trans,
-            init_value=config.initial_lr,
-            peak_value=config.peak_lr,
-            warmup_steps=warmup_steps,
-            decay_steps=decay_steps,
-            end_value=config.end_lr,
-        )
-        c_best_epoch = 0
-        if config.criteria_type == "acc":
-            c_criteria_key = -np.inf
-        else:
-            c_criteria_key = np.inf
-
-        batch_keys = [
-            "states",
-            "actions",
-            "timesteps",
-            "attn_mask",
-            "states_2",
-            "actions_2",
-            "timesteps_2",
-            "attn_mask_2",
-            "labels",
-        ]
-        for epoch in range(config.epochs + 1):
-            metrics = {
-                "train_time": np.nan,
-                "training_loss": [],
-                "training_acc": [],
-                "eval_loss": [],
-                "eval_acc": [],
-                "best_epoch": c_best_epoch,
-                f"{config.criteria_key}_best": c_criteria_key,
-            }
-            if epoch:
-                with Timer() as train_timer:
-                    for i, t_data in tqdm(
-                        enumerate(training_data_loader),
-                        total=interval,
-                        desc=f"Training Epoch {epoch}",
+                # eval phase
+                if epoch % config.eval_every == 0:
+                    for j, e_data in tqdm(
+                        enumerate(test_data_loader),
+                        total=eval_interval,
+                        desc=f"Evaluation Epoch {epoch}",
                     ):
                         batch = {}
-                        for k, dat in enumerate(t_data):
+                        for k, dat in enumerate(e_data):
                             batch[batch_keys[k]] = jnp.asarray(dat)
-                        for key, val in model.train(batch).items():
+                        for key, val in model.evaluation(batch).items():
                             metrics[key].append(val)
                         del batch
-                metrics["train_time"] = train_timer()
-            else:
-                # for using early stopping with train loss.
-                metrics["training_loss"] = np.nan
+                    criteria = np.mean(metrics[config.criteria_key])
 
-            # eval phase
-            if epoch % config.eval_every == 0:
-                for j, e_data in tqdm(
-                    enumerate(test_data_loader),
-                    total=eval_interval,
-                    desc=f"Evaluation Epoch {epoch}",
-                ):
-                    batch = {}
-                    for k, dat in enumerate(e_data):
-                        batch[batch_keys[k]] = jnp.asarray(dat)
-                    for key, val in model.evaluation(batch).items():
-                        metrics[key].append(val)
-                    del batch
-                criteria = np.mean(metrics[config.criteria_key])
-
-                if config.criteria_type == "acc":
-                    if criteria >= c_criteria_key:
-                        c_best_epoch = epoch
-                        c_criteria_key = criteria
-                        metrics["best_epoch"] = c_best_epoch
-                        metrics[f"{config.criteria_key}_best"] = c_criteria_key
-                        if config.checkpoints_path is not None:
-                            save_model(
-                                trans,
-                                model_args,
-                                "best_model",
-                                config.checkpoints_path,
-                                checkpointer,
-                            )
-                else:
-                    if criteria <= c_criteria_key:
-                        c_best_epoch = epoch
-                        c_criteria_key = criteria
-                        metrics["best_epoch"] = c_best_epoch
-                        metrics[f"{config.criteria_key}_best"] = c_criteria_key
-                        if config.checkpoints_path is not None:
-                            save_model(
-                                trans,
-                                model_args,
-                                "best_model",
-                                config.checkpoints_path,
-                                checkpointer,
-                            )
-            for key, val in metrics.items():
-                if isinstance(val, list):
-                    if len(val):
-                        metrics[key] = np.mean(val)
+                    if config.criteria_type == "acc":
+                        if criteria >= c_criteria_key:
+                            c_best_epoch = epoch
+                            c_criteria_key = criteria
+                            metrics["best_epoch"] = c_best_epoch
+                            metrics[f"{config.criteria_key}_best"] = c_criteria_key
+                            if config.checkpoints_path is not None:
+                                save_model(
+                                    trans,
+                                    model_args,
+                                    "best_model",
+                                    config.checkpoints_path,
+                                    checkpointer,
+                                )
                     else:
-                        metrics[key] = np.nan
-            wandb.log(metrics, step=epoch)
-            logger.record_dict(metrics | {"epoch": epoch})
-            logger.dump_tabular(with_prefix=False, with_timestamp=False)
-        if config.checkpoints_path is not None:
-            save_model(
-                trans, model_args, "model", config.checkpoints_path, checkpointer
+                        if criteria <= c_criteria_key:
+                            c_best_epoch = epoch
+                            c_criteria_key = criteria
+                            metrics["best_epoch"] = c_best_epoch
+                            metrics[f"{config.criteria_key}_best"] = c_criteria_key
+                            if config.checkpoints_path is not None:
+                                save_model(
+                                    trans,
+                                    model_args,
+                                    "best_model",
+                                    config.checkpoints_path,
+                                    checkpointer,
+                                )
+                for key, val in metrics.items():
+                    if isinstance(val, list):
+                        if len(val):
+                            metrics[key] = np.mean(val)
+                        else:
+                            metrics[key] = np.nan
+                wandb.log(metrics, step=epoch)
+                logger.record_dict(metrics | {"epoch": epoch})
+                logger.dump_tabular(with_prefix=False, with_timestamp=False)
+            if config.checkpoints_path is not None:
+                save_model(
+                    trans, model_args, "model", config.checkpoints_path, checkpointer
+                )
+            checkpointer.close()
+        except FileNotFoundError:
+            raise FileNotFoundError(f"{data} not found!")
+    else:
+        try:
+            with h5py.File(data, "r") as f:
+                if config.max_ep_length is None:
+                    mep = np.max(
+                        [np.max(f["timesteps"][:]), np.max(f["timesteps_2"][:])]
+                    )
+                else:
+                    mep = config.max_ep_length
+            data = Pref_H5Dataset_from_ram(data, mep)
+            checkpointer = ocp.Checkpointer(ocp.CompositeCheckpointHandler())
+            setup_logger(
+                variant=None,
+                seed=config.seed,
+                base_log_dir=config.checkpoints_path,
+                include_exp_prefix_sub_dir=False,
             )
-        checkpointer.close()
-    except FileNotFoundError:
-        raise FileNotFoundError(f"{data} not found!")
+
+            state_shape, action_shape = data.shapes()
+            _, query_len, state_dim = state_shape
+            action_dim = action_shape[2]
+            rng_key = jax.random.key(config.seed)
+            rng_key, rng_subkey = jax.random.split(rng_key, 2)
+            t_keys = jax.random.randint(rng_subkey, 2, 0, 10000)
+            torch.manual_seed(int(t_keys[0]))
+            training_data, test_data = random_split(
+                data, [config.training_split, 1 - config.training_split]
+            )
+            training_data_loader = DataLoader(
+                training_data,
+                batch_size=config.batch_size,
+                shuffle=True,
+                num_workers=config.workers,
+                pin_memory=config.pin_memory,
+            )
+            test_data_loader = DataLoader(
+                test_data,
+                batch_size=config.batch_size,
+                num_workers=config.workers,
+                shuffle=False,
+                pin_memory=config.pin_memory,
+            )
+
+            interval = len(training_data) / config.batch_size
+            if int(interval) < interval:
+                interval = int(interval + 1)
+            else:
+                interval = int(interval)
+
+            eval_interval = len(test_data) / config.batch_size
+            if int(eval_interval) < eval_interval:
+                eval_interval = int(eval_interval + 1)
+            else:
+                eval_interval = int(eval_interval)
+            rng_subkey1, rng_subkey2, rng_subkey3 = jax.random.split(rng_key, 3)
+            rngs = nnx.Rngs(rng_subkey1, params=rng_subkey2, dropout=rng_subkey3)
+            max_pos = config.default_max_pos
+            while query_len > max_pos:
+                max_pos *= 2
+            model_args = [
+                state_dim,
+                action_dim,
+                mep,
+                config.embd_dim,
+                config.pref_attn_embd_dim,
+                config.num_heads,
+                config.attn_dropout,
+                config.resid_dropout,
+                config.intermediate_dim,
+                config.num_layers,
+                config.embd_dropout,
+                max_pos,
+                config.model_eps,
+                config.seed,
+            ]
+
+            trans = PT(
+                state_dim=model_args[0],
+                action_dim=model_args[1],
+                max_episode_steps=model_args[2],
+                embd_dim=model_args[3],
+                pref_attn_embd_dim=model_args[4],
+                num_heads=model_args[5],
+                attn_dropout=model_args[6],
+                resid_dropout=model_args[7],
+                intermediate_dim=model_args[8],
+                num_layers=model_args[9],
+                embd_dropout=model_args[10],
+                max_pos=model_args[11],
+                eps=model_args[12],
+                rngs=rngs,
+            )
+
+            model_args = np.array(model_args)
+
+            if config.warmup_steps is None:
+                warmup_steps = int(config.epochs * interval * 0.05)
+            else:
+                warmup_steps = config.warmup_steps
+
+            if config.decay_steps is None:
+                decay_steps = int(config.epochs * interval)
+            else:
+                decay_steps = config.decay_steps
+
+            model = PrefTransformerTrainer(
+                trans,
+                init_value=config.initial_lr,
+                peak_value=config.peak_lr,
+                warmup_steps=warmup_steps,
+                decay_steps=decay_steps,
+                end_value=config.end_lr,
+            )
+            c_best_epoch = 0
+            if config.criteria_type == "acc":
+                c_criteria_key = -np.inf
+            else:
+                c_criteria_key = np.inf
+
+            batch_keys = [
+                "states",
+                "actions",
+                "timesteps",
+                "attn_mask",
+                "states_2",
+                "actions_2",
+                "timesteps_2",
+                "attn_mask_2",
+                "labels",
+            ]
+            for epoch in range(config.epochs + 1):
+                metrics = {
+                    "train_time": np.nan,
+                    "training_loss": [],
+                    "training_acc": [],
+                    "eval_loss": [],
+                    "eval_acc": [],
+                    "best_epoch": c_best_epoch,
+                    f"{config.criteria_key}_best": c_criteria_key,
+                }
+                if epoch:
+                    with Timer() as train_timer:
+                        for i, t_data in tqdm(
+                            enumerate(training_data_loader),
+                            total=interval,
+                            desc=f"Training Epoch {epoch}",
+                        ):
+                            batch = {}
+                            for k, dat in enumerate(t_data):
+                                batch[batch_keys[k]] = jnp.asarray(dat)
+                            for key, val in model.train(batch).items():
+                                metrics[key].append(val)
+                            del batch
+                    metrics["train_time"] = train_timer()
+                else:
+                    # for using early stopping with train loss.
+                    metrics["training_loss"] = np.nan
+
+                # eval phase
+                if epoch % config.eval_every == 0:
+                    for j, e_data in tqdm(
+                        enumerate(test_data_loader),
+                        total=eval_interval,
+                        desc=f"Evaluation Epoch {epoch}",
+                    ):
+                        batch = {}
+                        for k, dat in enumerate(e_data):
+                            batch[batch_keys[k]] = jnp.asarray(dat)
+                        for key, val in model.evaluation(batch).items():
+                            metrics[key].append(val)
+                        del batch
+                    criteria = np.mean(metrics[config.criteria_key])
+
+                    if config.criteria_type == "acc":
+                        if criteria >= c_criteria_key:
+                            c_best_epoch = epoch
+                            c_criteria_key = criteria
+                            metrics["best_epoch"] = c_best_epoch
+                            metrics[f"{config.criteria_key}_best"] = c_criteria_key
+                            if config.checkpoints_path is not None:
+                                save_model(
+                                    trans,
+                                    model_args,
+                                    "best_model",
+                                    config.checkpoints_path,
+                                    checkpointer,
+                                )
+                    else:
+                        if criteria <= c_criteria_key:
+                            c_best_epoch = epoch
+                            c_criteria_key = criteria
+                            metrics["best_epoch"] = c_best_epoch
+                            metrics[f"{config.criteria_key}_best"] = c_criteria_key
+                            if config.checkpoints_path is not None:
+                                save_model(
+                                    trans,
+                                    model_args,
+                                    "best_model",
+                                    config.checkpoints_path,
+                                    checkpointer,
+                                )
+                for key, val in metrics.items():
+                    if isinstance(val, list):
+                        if len(val):
+                            metrics[key] = np.mean(val)
+                        else:
+                            metrics[key] = np.nan
+                wandb.log(metrics, step=epoch)
+                logger.record_dict(metrics | {"epoch": epoch})
+                logger.dump_tabular(with_prefix=False, with_timestamp=False)
+            if config.checkpoints_path is not None:
+                save_model(
+                    trans, model_args, "model", config.checkpoints_path, checkpointer
+                )
+            checkpointer.close()
+        except FileNotFoundError:
+            raise FileNotFoundError(f"{data} not found!")
     sys.exit(0)
 
 
