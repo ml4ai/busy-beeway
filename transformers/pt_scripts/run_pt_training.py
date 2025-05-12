@@ -98,7 +98,7 @@ def train(config: TrainConfig):
     )
     multiprocessing.set_start_method("forkserver")
     data = osp.expanduser(config.dataset)
-    if data_from_disk:
+    if config.data_from_disk:
         try:
             with h5py.File(data, "r") as f:
                 if config.max_ep_length is None:
