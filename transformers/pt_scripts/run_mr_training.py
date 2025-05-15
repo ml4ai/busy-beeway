@@ -4,7 +4,7 @@ import os.path as osp
 import random
 import sys
 import uuid
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import jax
@@ -41,7 +41,7 @@ class TrainConfig:
     group: str = "MR"
     name: str = "mr"
     # model params
-    hidden_dims: List[int] = [256, 256]
+    hidden_dims: List[int] = field(default_factory=lambda: [256, 256])
     orthogonal_init: bool = False
     activations: str = "relu"
     activation_final: str = "none"
