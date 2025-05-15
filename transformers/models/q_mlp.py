@@ -1,4 +1,5 @@
 import jax.numpy as jnp
+import jax
 from flax import nnx
 import orbax.checkpoint as ocp
 from transformers.training.utils import prng_to_raw, raw_to_prng
