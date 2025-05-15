@@ -67,7 +67,7 @@ class TrainConfig:
     eval_every: int = 1  # How often (time steps) we evaluate
     workers: int = 2
     criteria_type: str = "acc"
-    criteria_key: str = "eval_loss"
+    criteria_key: str = "eval_acc"
     # general params
     pin_memory: bool = True
     seed: int = 0
