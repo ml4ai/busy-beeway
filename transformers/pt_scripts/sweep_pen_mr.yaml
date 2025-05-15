@@ -1,0 +1,13 @@
+project: MR-training
+program: run_mr_training.py
+method: grid
+parameters:
+  # specify all configs to run for the choosen algorithm
+  config_path:
+    value: "../pen_labels/pen_mr.yaml"
+  hidden_dims:
+    values: [[64, 64], [64, 64, 64], [64, 64, 64, 64], [256, 256], [256, 256, 256], [256, 256, 256, 256]]
+  epochs:
+    values: [10, 100, 1000, 10000]
+  lr:
+    values: [0.03, 0.003, 0.0003, 0.00003, 0.000003]
