@@ -147,7 +147,8 @@ def pt_loss_fn(model, batch, training):
 
     return cross_ent_loss(logits, labels), pref_accuracy(logits, labels)
 
-def mr_loss_fn(model, batch, training):
+
+def mr_loss_fn(model, batch):
     sts_1 = batch["states"]
     sts_2 = batch["states_2"]
     acts_1 = batch["actions"]
@@ -160,12 +161,10 @@ def mr_loss_fn(model, batch, training):
     pred_1 = model(
         sts_1,
         acts_1,
-        training=training,
     )
     pred_2, _ = model(
         sts_2,
         acts_2,
-        training=training,
     )
 
     sum_pred_1 = jnp.nanmean(pred_1.reshape(B1, T1), axis=1).reshape(-1, 1)
@@ -174,6 +173,7 @@ def mr_loss_fn(model, batch, training):
     logits = jnp.concatenate([sum_pred_1, sum_pred_2], axis=1)
 
     return cross_ent_loss(logits, labels), pref_accuracy(logits, labels)
+
 
 def vgrad(f, x):
     y, vjp_fn = jax.vjp(f, x)

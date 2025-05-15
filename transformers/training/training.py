@@ -67,14 +67,12 @@ class MRTrainer(object):
 
 @nnx.jit
 def _eval_mr_step(state, batch):
-    loss, acc = mr_loss_fn(state.model, batch, False)
+    loss, acc = mr_loss_fn(state.model, batch)
     return dict(eval_loss=loss, eval_acc=acc)
 
 
 @nnx.jit
 def _train_mr_step(state, batch):
-    (loss, acc), grads = nnx.value_and_grad(mr_loss_fn, has_aux=True)(
-        state.model, batch, True
-    )
+    (loss, acc), grads = nnx.value_and_grad(mr_loss_fn, has_aux=True)(state.model, batch)
     state.update(grads)
     return dict(training_loss=loss, training_acc=acc)
