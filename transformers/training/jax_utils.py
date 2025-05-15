@@ -155,14 +155,19 @@ def mr_loss_fn(model, batch):
     acts_2 = batch["actions_2"]
     labels = batch["labels"]
 
-    B1, T1, _ = sts_1.shape
-    B2, T2, _ = sts_2.shape
+    B1, T1, sts_dim = sts_1.shape
+    B2, T2, acts_dim = acts_2.shape
+
+    sts_1 = sts_1.reshape(-1,sts_dim)
+    sts_2 = sts_2.reshape(-1,sts_dim)
+    acts_1 = acts_1.reshape(-1,acts_dim)
+    acts_2 = acts_2.reshape(-1,acts_dim)
 
     pred_1 = model(
         sts_1,
         acts_1,
     )
-    pred_2, _ = model(
+    pred_2 = model(
         sts_2,
         acts_2,
     )
