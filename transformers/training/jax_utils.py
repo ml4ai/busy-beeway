@@ -148,12 +148,10 @@ def pt_loss_fn(model, batch, training):
     return cross_ent_loss(logits, labels), pref_accuracy(logits, labels)
 
 def mr_loss_fn(model, batch, training):
-    am_1_sum = batch["attn_mask"].sum()
-    am_2_sum = batch["attn_mask_2"].sum()
-    sts_1 = batch["states"][:am_1_sum]
-    sts_2 = batch["states_2"][:am_2_sum]
-    acts_1 = batch["actions"][:am_1_sum]
-    acts_2 = batch["actions_2"][:am_2_sum]
+    sts_1 = batch["states"]
+    sts_2 = batch["states_2"]
+    acts_1 = batch["actions"]
+    acts_2 = batch["actions_2"]
     labels = batch["labels"]
 
     B1, T1, _ = sts_1.shape
