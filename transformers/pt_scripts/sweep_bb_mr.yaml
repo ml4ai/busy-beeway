@@ -4,7 +4,11 @@ method: grid
 parameters:
   # specify all configs to run for the choosen algorithm
   config_path:
-    value: "../pen_labels/pen_mr.yaml"
+    value: "../pref_data_1/bb_mr.yaml"
+  dataset_id:
+    value: "BB_t0009"
+  dataset:
+    value: "~/busy-beeway/transformers/pref_data_1/t0009_pref.hdf5"
   hidden_dims:
     values: [[64, 64], [64, 64, 64], [64, 64, 64, 64], [128, 128], [128, 128, 128], [128, 128, 128, 128] [256, 256], [256, 256, 256], [256, 256, 256, 256]]
   epochs:
