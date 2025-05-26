@@ -6,7 +6,7 @@ orthogonal_init: false
 activations: relu
 activation_final: none
 dataset_id: D4RL_pen-v2
-dataset: ~/busy-beeway/transformers/pen_labels/AdroitHandPen-v1_pref.hdf5
+dataset: ~/busy-beeway/transformers/pen_labels/AdroitHandPen-v1_pref_b.hdf5
 training_split: 0.8
 epochs: 10
 batch_size: 256
