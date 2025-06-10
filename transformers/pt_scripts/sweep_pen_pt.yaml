@@ -9,6 +9,8 @@ parameters:
     values: [1, 2, 4, 6, 8]
   num_layers:
     values: [1, 2, 3, 4]
+  embd_dim:
+    values: [64,128,256]
   epochs:
     values: [10, 100, 1000, 3334]
   initial_lr:
