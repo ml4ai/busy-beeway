@@ -164,6 +164,8 @@ def main(argv):
     qpos_2 = []
     qvel_1 = []
     qvel_2 = []
+    rwds_1 = []
+    rwds_2 = []
     idx = rng.choice(dataset.episode_indices, args.num_query * 2, replace=True)
     episodes = dataset.iterate_episodes(idx)
     for i in range(args.num_query):
@@ -209,6 +211,9 @@ def main(argv):
         qp_2 = episode_2.infos["state"]["qpos"][:-1, ...][st_idx_2:end_idx_2, ...]
         qv_2 = episode_2.infos["state"]["qvel"][:-1, ...][st_idx_2:end_idx_2, ...]
 
+        rwd_1 = episode_1.rewards[st_idx_1:end_idx_1]
+        rwd_2 = episode_2.rewards[st_idx_2:end_idx_2]
+
         states_1.append(sts_1)
         states_2.append(sts_2)
 
@@ -230,6 +235,9 @@ def main(argv):
         qvel_1.append(qv_1)
         qvel_2.append(qv_2)
 
+        rwds_1.append(rwd_1)
+        rwds_2.append(rwd_2)
+
     batch = {
         "states": np.stack(states_1),
         "actions": np.stack(actions_1),
@@ -245,6 +253,8 @@ def main(argv):
         "qpos_2": np.stack(qpos_2),
         "qvel_1": np.stack(qvel_1),
         "qvel_2": np.stack(qvel_2),
+        "rwds_1": np.stack(rwds_1),
+        "rwds_2": np.stack(rwds_2),
     }
     with h5py.File(f"{save_dir}/{gym_env.spec.id}_pref.hdf5", "a") as f:
         if "states" in f:
@@ -263,6 +273,10 @@ def main(argv):
             del f["attn_mask"]
         f.create_dataset("attn_mask", data=batch["attn_mask"], chunks=True)
 
+        if "rewards" in f:
+            del f["rewards"]
+        f.create_dataset("rewards", data=batch["rwds_1"], chunks=True)
+
         if "states_2" in f:
             del f["states_2"]
         f.create_dataset("states_2", data=batch["states_2"], chunks=True)
@@ -279,17 +293,20 @@ def main(argv):
             del f["attn_mask_2"]
         f.create_dataset("attn_mask_2", data=batch["attn_mask_2"], chunks=True)
 
-    visualize_query(
-        gym_env,
-        dataset,
-        batch,
-        args.query_len,
-        args.num_query,
-        width=500,
-        height=500,
-        save_dir=save_dir,
-        slow=args.slow,
-    )
+        if "rewards_2" in f:
+            del f["rewards_2"]
+        f.create_dataset("rewards_2", data=batch["rwds_2"], chunks=True)
+    # visualize_query(
+    #     gym_env,
+    #     dataset,
+    #     batch,
+    #     args.query_len,
+    #     args.num_query,
+    #     width=500,
+    #     height=500,
+    #     save_dir=save_dir,
+    #     slow=args.slow,
+    # )
 
 
 if __name__ == "__main__":
