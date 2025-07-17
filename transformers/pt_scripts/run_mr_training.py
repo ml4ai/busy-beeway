@@ -204,12 +204,6 @@ def train(config: TrainConfig):
                             batch = {}
                             for k, dat in enumerate(t_data):
                                 batch[batch_keys[k]] = jnp.asarray(dat)
-                            am_1_sum = batch["attn_mask"].sum()
-                            am_2_sum = batch["attn_mask_2"].sum()
-                            batch["states"] = batch["states"][:am_1_sum]
-                            batch["states_2"] = batch["states_2"][:am_2_sum]
-                            batch["actions"] = batch["actions"][:am_1_sum]
-                            batch["actions_2"] = batch["actions_2"][:am_2_sum]
                             for key, val in model.train(batch).items():
                                 metrics[key].append(val)
                             del batch
@@ -228,12 +222,6 @@ def train(config: TrainConfig):
                         batch = {}
                         for k, dat in enumerate(e_data):
                             batch[batch_keys[k]] = jnp.asarray(dat)
-                        am_1_sum = batch["attn_mask"].sum()
-                        am_2_sum = batch["attn_mask_2"].sum()
-                        batch["states"] = batch["states"][:am_1_sum]
-                        batch["states_2"] = batch["states_2"][:am_2_sum]
-                        batch["actions"] = batch["actions"][:am_1_sum]
-                        batch["actions_2"] = batch["actions_2"][:am_2_sum]
                         for key, val in model.evaluation(batch).items():
                             metrics[key].append(val)
                         del batch

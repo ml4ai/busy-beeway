@@ -153,27 +153,29 @@ def mr_loss_fn(model, batch):
     sts_2 = batch["states_2"]
     acts_1 = batch["actions"]
     acts_2 = batch["actions_2"]
+    am_1 = batch["attn_mask"]
+    am_2 = batch["attn_mask_2"]
     labels = batch["labels"]
 
     B1, T1, sts_dim = sts_1.shape
     B2, T2, acts_dim = acts_2.shape
 
-    sts_1 = sts_1.reshape(-1,sts_dim)
-    sts_2 = sts_2.reshape(-1,sts_dim)
-    acts_1 = acts_1.reshape(-1,acts_dim)
-    acts_2 = acts_2.reshape(-1,acts_dim)
+    sts_1 = sts_1.reshape(-1, sts_dim)
+    sts_2 = sts_2.reshape(-1, sts_dim)
+    acts_1 = acts_1.reshape(-1, acts_dim)
+    acts_2 = acts_2.reshape(-1, acts_dim)
 
     pred_1 = model(
         sts_1,
         acts_1,
-    )
+    ).reshape(B1, T1) * am_1
     pred_2 = model(
         sts_2,
         acts_2,
-    )
+    ).reshape(B2, T2) * am_2
 
-    sum_pred_1 = jnp.nanmean(pred_1.reshape(B1, T1), axis=1).reshape(-1, 1)
-    sum_pred_2 = jnp.nanmean(pred_2.reshape(B2, T2), axis=1).reshape(-1, 1)
+    sum_pred_1 = jnp.nansum(pred_1, axis=1).reshape(-1, 1)
+    sum_pred_2 = jnp.nansum(pred_2, axis=1).reshape(-1, 1)
 
     logits = jnp.concatenate([sum_pred_1, sum_pred_2], axis=1)
 
