@@ -4,7 +4,6 @@ import jax
 import jax.numpy as jnp
 import optax
 from flax import nnx
-from ml_collections import ConfigDict
 from transformers.training.jax_utils import pt_loss_fn, mr_loss_fn
 
 
