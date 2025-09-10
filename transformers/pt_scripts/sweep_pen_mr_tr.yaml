@@ -4,7 +4,7 @@ method: grid
 parameters:
   # specify all configs to run for the choosen algorithm
   config_path:
-    value: "../pen_labels/pen_mr.yaml"
+    value: "../pen_labels/pen_mr_tr.yaml"
   hidden_dims:
     value: [64, 64]
   epochs:
