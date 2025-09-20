@@ -11,5 +11,9 @@ parameters:
     value: 5000
   lr:
     value: 0.003
+  criteria_type:
+    value: "loss"
+  criteria_key:
+    value: "training_loss"
   training_reduce:
     values: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
