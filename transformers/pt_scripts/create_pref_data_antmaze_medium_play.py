@@ -1,3 +1,4 @@
+import d4rl
 import gym
 import numpy as np
 import os
