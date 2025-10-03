@@ -35,17 +35,13 @@ def mse_loss(val, target):
 
 
 # classes only needs to be set if target is not a one hot vector, otherwise |logits| == |label| should already be true
-def cross_ent_loss(logits, target, classes=2):
+def cross_ent_loss(logits, target):
 
     if len(target.shape) == 1:
-        label = jax.nn.one_hot(target, num_classes=classes)
-        label = jnp.where(
-            jnp.stack([jnp.all(label == 0, axis=1), jnp.all(label == 0, axis=1)]).T,
-            0.5,
-            label,
-        )
+        label = jax.nn.one_hot(target, num_classes=2)
     else:
         label = target
+
     loss = jnp.nanmean(optax.softmax_cross_entropy(logits=logits, labels=label))
     return loss
 
@@ -165,14 +161,20 @@ def mr_loss_fn(model, batch):
     acts_1 = acts_1.reshape(-1, acts_dim)
     acts_2 = acts_2.reshape(-1, acts_dim)
 
-    pred_1 = model(
-        sts_1,
-        acts_1,
-    ).reshape(B1, T1) * am_1
-    pred_2 = model(
-        sts_2,
-        acts_2,
-    ).reshape(B2, T2) * am_2
+    pred_1 = (
+        model(
+            sts_1,
+            acts_1,
+        ).reshape(B1, T1)
+        * am_1
+    )
+    pred_2 = (
+        model(
+            sts_2,
+            acts_2,
+        ).reshape(B2, T2)
+        * am_2
+    )
 
     sum_pred_1 = jnp.nansum(pred_1, axis=1).reshape(-1, 1)
     sum_pred_2 = jnp.nansum(pred_2, axis=1).reshape(-1, 1)
