@@ -1,0 +1,21 @@
+project: MR-training
+group: MR
+name: mr
+hidden_dims: [256, 256]
+orthogonal_init: false
+activations: relu
+activation_final: none
+dataset_id: D4RL_antmaze-medium-play-v2
+dataset: ~/busy-beeway/transformers/ant_labels/antmaze-medium-play-v2/antmaze-medium-play-v2_pref.hdf5
+training_split: 0.8
+epochs: 10
+batch_size: 256
+lr: 0.0003
+eval_every: 1
+workers: 0
+criteria_type: acc
+criteria_key: eval_acc
+pin_memory: true
+seed: 0
+data_from_disk: false
+checkpoints_path: ~/busy-beeway/transformers/ant_labels/antmaze-medium-play-v2
