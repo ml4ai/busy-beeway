@@ -1,0 +1,13 @@
+project: MR-training
+program: run_mr_training.py
+method: grid
+parameters:
+  # specify all configs to run for the choosen algorithm
+  config_path:
+    value: "../ant_labels/antmaze_medium_diverse_mr.yaml"
+  hidden_dims:
+    values: [[64, 64], [64, 64, 64], [64, 64, 64, 64], [128, 128], [128, 128, 128], [128, 128, 128, 128], [256, 256], [256, 256, 256], [256, 256, 256, 256]]
+  epochs:
+    value: 5000
+  lr:
+    values: [0.03, 0.003, 0.0003, 0.00003, 0.000003]
