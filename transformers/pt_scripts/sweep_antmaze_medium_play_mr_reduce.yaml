@@ -12,9 +12,9 @@ parameters:
   lr:
     value: 0.03
   criteria_type:
-    value: "loss"
+    value: "acc"
   criteria_key:
-    value: "training_loss"
+    value: "training_acc"
   training_reduce:
     values: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
   seed:
