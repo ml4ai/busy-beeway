@@ -17,4 +17,4 @@ criteria_key: training_acc
 pin_memory: true
 seed: 0
 data_from_disk: false
-checkpoints_path: ~/busy-beeway/transformers/ant_labels/antmaze-large-play-v2
+checkpoints_path: ~/busy-beeway/transformers/ant_labels/antmaze-large-play-v2_models
