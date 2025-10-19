@@ -1,0 +1,21 @@
+project: PT-training
+program: run_pt_training.py
+method: grid
+parameters:
+  # specify all configs to run for the choosen algorithm
+  config_path:
+    value: "../ant_labels/antmaze_medium_play_pt.yaml"
+  num_heads:
+    values: [1, 2, 4, 6, 8]
+  num_layers:
+    values: [1, 2, 3, 4]
+  embd_dim:
+    values: [64, 128, 256]
+  epochs:
+    value: 2560
+  initial_lr:
+    values: [0.0001, 0.00001, 0.000001, 0.0]
+  end_lr:
+    values: [0.0001, 0.00001, 0.000001, 0.0] 
+  peak_lr:
+    values: [0.001, 0.0001, 0.00001]
