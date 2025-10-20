@@ -4,13 +4,13 @@ method: grid
 parameters:
   # specify all configs to run for the choosen algorithm
   config_path:
-    value: "../ant_labels/antmaze_medium_diverse_pt.yaml"
+    value: "../ant_labels/antmaze_medium_play_pt.yaml"
   num_heads:
     values: [1, 2, 4, 6, 8]
   num_layers:
     values: [1, 2, 3, 4]
   embd_dim:
-    value: 128
+    value: 256
   epochs:
     value: 3200
   initial_lr:

@@ -10,7 +10,7 @@ parameters:
   num_layers:
     values: [1, 2, 3, 4]
   embd_dim:
-    value: 128
+    value: 256
   epochs:
     value: 3200
   initial_lr:
