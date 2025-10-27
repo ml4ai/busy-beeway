@@ -6,7 +6,7 @@ parameters:
   config_path:
     value: "../ant_labels/antmaze_large_play_pt.yaml"
   num_heads:
-    values: [1, 2, 4, 6, 8]
+    values: [1, 2, 4, 8]
   num_layers:
     values: [1, 2, 3, 4]
   embd_dim:
@@ -14,8 +14,8 @@ parameters:
   epochs:
     value: 3200
   initial_lr:
-    value: 0.0001
+    value: 0.001
   end_lr:
-    value: 0.0001
+    value: 0.001
   peak_lr:
     value: 0.001
