@@ -76,7 +76,7 @@ class TrainConfig:
     checkpoints_path: Optional[str] = "~/busy-beeway/transformers"  # Save path
 
     def __post_init__(self):
-        self.name = f"{self.name}-{self.dataset_id}-{str(uuid.uuid4())[:8]}"
+        self.name = f"{self.name}-{self.dataset_id}-{str(uuid.uuid4())[:8]}-{self.training_reduce}"
         if self.checkpoints_path is not None:
             self.checkpoints_path = os.path.join(
                 osp.expanduser(self.checkpoints_path), self.name
