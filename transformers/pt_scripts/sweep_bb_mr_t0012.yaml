@@ -6,9 +6,9 @@ parameters:
   config_path:
     value: "../pref_data/bb_mr.yaml"
   dataset_id:
-    value: "BB_t0048"
+    value: "BB_t0012"
   dataset:
-    value: "~/busy-beeway/transformers/pref_data/t0048_pref.hdf5"
+    value: "~/busy-beeway/transformers/pref_data/t0012_pref.hdf5"
   hidden_dims:
     values: [[64, 64], [64, 64, 64], [64, 64, 64, 64], [128, 128], [128, 128, 128], [128, 128, 128, 128], [256, 256], [256, 256, 256], [256, 256, 256, 256]]
   epochs:
