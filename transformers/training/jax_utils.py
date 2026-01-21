@@ -58,9 +58,13 @@ def custom_softmax(array, axis=-1, temperature=1.0):
 
 
 def pref_accuracy(logits, target):
+    if len(target.shape) == 1:
+        label = jax.nn.one_hot(target, num_classes=2)
+    else:
+        label = target
     predicted_class = jnp.argmax(logits, axis=1)
-    target_class = jnp.argmax(target, axis=1)
-    return jnp.mean(predicted_class == target_class)
+    target_class = jnp.argmax(label, axis=1)
+    return jnp.nanmean(predicted_class == target_class)
 
 
 def dt_accuracy(logits, target):
