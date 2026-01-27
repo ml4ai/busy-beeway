@@ -10,16 +10,16 @@ parameters:
   dataset:
     value: "~/busy-beeway/transformers/pref_data/t0012_pref.hdf5"
   num_heads:
-    values: [1, 2, 4, 6, 8]
+    values: [2, 4, 8]
   num_layers:
-    values: [1, 2, 3, 4]
+    values: [2, 3, 4]
   embd_dim:
     value: 256
   epochs:
     value: 300
   initial_lr:
-    values: [0.0001, 0.00001, 0.000001, 0.0]
+    values: [0.0003, 0.00003, 0.000003]
   end_lr:
-    values: [0.0001, 0.00001, 0.000001, 0.0] 
+    values: [0.0003, 0.00003, 0.000003] 
   peak_lr:
-    values: [0.001, 0.0001, 0.00001] 
+    values: [0.003, 0.0003, 0.00003]
