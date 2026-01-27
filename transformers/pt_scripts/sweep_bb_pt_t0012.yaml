@@ -18,8 +18,8 @@ parameters:
   epochs:
     value: 300
   initial_lr:
-    values: [0.00003, 0.000003]
+    value: 0.0000003
   end_lr:
-    values: [0.00003, 0.000003] 
+    value: 0.0000003
   peak_lr:
-    values: [0.0003, 0.00003]
+    value: 0.000003
