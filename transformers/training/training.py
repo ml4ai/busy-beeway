@@ -12,14 +12,7 @@ class PrefTransformerTrainer(object):
     def __init__(self, trans, **kwargs):
         optimizer_class = optax.adamw
         # May need to reconfigure for our data
-        scheduler_class = optax.warmup_cosine_decay_schedule(
-            init_value=kwargs.get("init_value", 0),
-            peak_value=kwargs.get("peak_value", 1e-4),
-            warmup_steps=kwargs.get("warmup_steps", 65),
-            decay_steps=kwargs.get("decay_steps", 650),
-            end_value=kwargs.get("end_value", 0),
-        )
-        tx = optimizer_class(scheduler_class)
+        tx = optimizer_class(kwargs.get("lr", 3e-4))
 
         self.evaluation = nnx.cached_partial(
             _eval_pt_step,

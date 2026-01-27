@@ -60,11 +60,7 @@ class TrainConfig:
     )
     epochs: int = 10
     batch_size: int = 256  # Batch size for all networks
-    initial_lr: float = 1e-4
-    peak_lr: float = 1e-4 * 10
-    end_lr: float = 1e-4
-    warmup_steps: Optional[int] = None
-    decay_steps: Optional[int] = None
+    lr: float = 3e-4
     # evaluation params
     workers: int = 2
     criteria_type: str = "acc"
@@ -186,23 +182,9 @@ def train(config: TrainConfig):
 
             model_args = np.array(model_args)
 
-            if config.warmup_steps is None:
-                warmup_steps = int(config.epochs * interval * 0.05)
-            else:
-                warmup_steps = config.warmup_steps
-
-            if config.decay_steps is None:
-                decay_steps = int(config.epochs * interval)
-            else:
-                decay_steps = config.decay_steps
-
             model = PrefTransformerTrainer(
                 trans,
-                init_value=config.initial_lr,
-                peak_value=config.peak_lr,
-                warmup_steps=warmup_steps,
-                decay_steps=decay_steps,
-                end_value=config.end_lr,
+                lr=config.lr
             )
             c_best_epoch = 0
             if config.criteria_type == "acc":
@@ -378,23 +360,9 @@ def train(config: TrainConfig):
 
             model_args = np.array(model_args)
 
-            if config.warmup_steps is None:
-                warmup_steps = int(config.epochs * interval * 0.05)
-            else:
-                warmup_steps = config.warmup_steps
-
-            if config.decay_steps is None:
-                decay_steps = int(config.epochs * interval)
-            else:
-                decay_steps = config.decay_steps
-
             model = PrefTransformerTrainer(
                 trans,
-                init_value=config.initial_lr,
-                peak_value=config.peak_lr,
-                warmup_steps=warmup_steps,
-                decay_steps=decay_steps,
-                end_value=config.end_lr,
+                lr=config.lr
             )
             c_best_epoch = 0
             if config.criteria_type == "acc":

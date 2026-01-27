@@ -17,11 +17,7 @@ dataset: ~/busy-beeway/transformers/pref_data/t0012_pref.hdf5
 training_split: 0.8
 epochs: 10
 batch_size: 256
-initial_lr: 0.0001
-peak_lr: 0.001
-end_lr: 0.0001
-warmup_steps: null
-decay_steps: null
+lr: 0.0003
 eval_every: 1
 workers: 0
 criteria_type: acc
