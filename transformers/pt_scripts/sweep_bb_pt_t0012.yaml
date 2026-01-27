@@ -10,9 +10,9 @@ parameters:
   dataset:
     value: "~/busy-beeway/transformers/pref_data/t0012_pref.hdf5"
   num_heads:
-    values: [2, 4, 8]
+    value: 8
   num_layers:
-    values: [2, 3, 4]
+    value: 3
   embd_dim:
     value: 256
   epochs:
