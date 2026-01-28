@@ -10,14 +10,12 @@ parameters:
   dataset:
     value: "~/busy-beeway/transformers/pref_data/t0048_pref.hdf5"
   num_heads:
-    value: 8
+    values: [2, 4, 8]
   num_layers:
-    value: 3
+    values: [2, 3, 4]
   embd_dim:
     value: 256
   epochs:
     value: 300
   lr:
-    values: [0.000003, 0.0000003, 0.00000003]
-  seed:
-    value: 25102
+    values: [0.03, 0.003, 0.0003, 0.00003, 0.000003]
