@@ -18,4 +18,6 @@ parameters:
   epochs:
     value: 300
   lr:
-    values: [0.03, 0.003, 0.0003, 0.00003, 0.000003]
+    values: [0.000003, 0.0000003, 0.00000003]
+  seed:
+    value: 25102
