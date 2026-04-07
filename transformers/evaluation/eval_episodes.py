@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from flax import nnx
 from tqdm import tqdm
-from transformers.models.policy import sample_actions
+# from transformers.models.policy import sample_actions
 
 
 def rand_circle(R, N, C=(0, 0), rng=np.random.default_rng()):
