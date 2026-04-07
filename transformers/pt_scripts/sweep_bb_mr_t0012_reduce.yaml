@@ -1,0 +1,21 @@
+project: MR-training
+program: run_mr_training_only.py
+method: grid
+parameters:
+  # specify all configs to run for the choosen algorithm
+  config_path:
+    value: "../pref_data/bb_mr_reduce.yaml"
+  dataset_id:
+    value: "BB_t0012"
+  dataset:
+    value: "~/busy-beeway/transformers/pref_data/t0012_pref.hdf5"
+  hidden_dims:
+    value: [256, 256, 256]
+  epochs:
+    value: 500
+  lr:
+    value: 0.0003
+  training_reduce: 
+    value: 0.999
+  seed:
+    values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] 
