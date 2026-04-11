@@ -12,7 +12,7 @@ parameters:
   embd_dim:
     values: [64, 128, 256]
   epochs:
-    value: 3200
+    value: 5000
   initial_lr:
     value: 0.00001
   end_lr:
