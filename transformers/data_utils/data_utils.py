@@ -527,6 +527,7 @@ def create_state_data(
         ams = []
         lbs = []
         for f in F:
+            print(f.shape[0])
             if f.shape[0] % split_size == 0:
                 fill_size = f.shape[0]
             else:
