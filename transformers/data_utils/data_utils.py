@@ -526,7 +526,7 @@ def create_state_data(
         ts = []
         ams = []
         lbs = []
-        f_shapes = [
+        f_shapes = []
         for f in F:
             f_shapes.append(f.shape[0])
             if f.shape[0] % split_size == 0:
