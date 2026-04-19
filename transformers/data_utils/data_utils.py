@@ -547,7 +547,7 @@ def create_state_data(
 
             lbs.append(np.ones(s.shape[0]))
         idx = np.argsort(f_shapes)[-10:][::-1]
-        print(f_shapes[idx])
+        print(idx)
         if save_data is None:
             return {
                 labels[0]: np.concatenate(sts),
