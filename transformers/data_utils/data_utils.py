@@ -526,8 +526,9 @@ def create_state_data(
         ts = []
         ams = []
         lbs = []
+        f_shapes = [
         for f in F:
-            print(f.shape[0])
+            f_shapes.append(f.shape[0])
             if f.shape[0] % split_size == 0:
                 fill_size = f.shape[0]
             else:
@@ -545,6 +546,7 @@ def create_state_data(
             ams.append(am)
 
             lbs.append(np.ones(s.shape[0]))
+        print(max(f_shapes))
         if save_data is None:
             return {
                 labels[0]: np.concatenate(sts),
