@@ -56,7 +56,8 @@ def load_attempt_data(
             raise FileNotFoundError(
                 f"Could not find player data for level {lvl}, attempt {attempt}. Check that directory {path} exists!"
             )
-        print(p_df['timestamp'].diff().max())
+        for p in p_df["timestamp"].diff():
+            print(p)
         p_df["level"] = lvl
         p_df["ai"] = ai
         p_df["attempt"] = attempt
