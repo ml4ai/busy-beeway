@@ -55,7 +55,7 @@ def load_attempt_data(
             raise FileNotFoundError(
                 f"Could not find player data for level {lvl}, attempt {attempt}. Check that directory {path} exists!"
             )
-
+        assert not p_df['userControl'].any()
         p_df["level"] = lvl
         p_df["ai"] = ai
         p_df["attempt"] = attempt
@@ -223,7 +223,7 @@ def load_attempt_data(
                 raise FileNotFoundError(
                     f"Could not find player data for level {lvl}, attempt {attempt}. Check that directory {path} exists!"
                 )
-
+                
             p_df["level"] = lvl
             p_df["ai"] = ai
             p_df["attempt"] = attempt
@@ -450,7 +450,6 @@ def load_attempt_data(
                 raise FileNotFoundError(
                     f"Could not find player data for level {lvl}, attempt {attempt}. Check that directory {path} exists!"
                 )
-            assert not p_df['userControl'].any()
             p_df["level"] = lvl
             p_df["ai"] = ai
             p_df["attempt"] = attempt
