@@ -7,6 +7,7 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 from tqdm import tqdm
 
 
@@ -546,7 +547,8 @@ def create_state_data(
             ams.append(am)
 
             lbs.append(np.ones(s.shape[0]))
-        print(np.partition(f_shapes, -100)[-100:])
+        sns.violinplot(np.array(f_shapes))
+        plt.savefig("f_shapes.png")
         if save_data is None:
             return {
                 labels[0]: np.concatenate(sts),
