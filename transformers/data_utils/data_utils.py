@@ -546,7 +546,7 @@ def create_state_data(
             ams.append(am)
 
             lbs.append(np.ones(s.shape[0]))
-        print(np.partition(f_shapes, -10)[-10:])
+        print(np.partition(f_shapes, -100)[-100:])
         if save_data is None:
             return {
                 labels[0]: np.concatenate(sts),
