@@ -56,8 +56,6 @@ def load_attempt_data(
             raise FileNotFoundError(
                 f"Could not find player data for level {lvl}, attempt {attempt}. Check that directory {path} exists!"
             )
-        for p in p_df["timestamp"].diff():
-            print(p)
         p_df["level"] = lvl
         p_df["ai"] = ai
         p_df["attempt"] = attempt
@@ -87,6 +85,9 @@ def load_attempt_data(
         if g_df.shape[0] > 0:
             for i in range(g_df.shape[0]):
                 p_pos = p_df.iloc[(g_df.iloc[i, 1] - 1) : (g_df.iloc[i, 0] - 1),]
+                p_diffs_check = ~p_pos["timestamp"].diff().iloc[1:].between(33,66)
+                if p_diff_check.any():
+                    continue
                 p_pos = p_pos.reset_index(drop=True)
                 p_pos = p_pos[
                     (p_pos.index % (skip + 1) == 0)
@@ -133,20 +134,69 @@ def load_attempt_data(
                 p_pos = p_df.iloc[
                     (g_df.iloc[g_df.shape[0] - 1, 0] - 1) : (p_df.shape[0] - 1),
                 ]
-                p_pos = p_pos.reset_index(drop=True)
-                p_pos = p_pos[
-                    (p_pos.index % (skip + 1) == 0)
-                    | (p_pos.index == (p_pos.shape[0] - 1))
-                ]
-                p_pos = p_pos.reset_index(drop=True)
-                p_pos["t"] = p_pos.index
+                p_diffs_check = ~p_pos["timestamp"].diff().iloc[1:].between(33,66)
+                if p_diff_check.any():
+                    pass
+                else:
+                    p_pos = p_pos.reset_index(drop=True)
+                    p_pos = p_pos[
+                        (p_pos.index % (skip + 1) == 0)
+                        | (p_pos.index == (p_pos.shape[0] - 1))
+                    ]
+                    p_pos = p_pos.reset_index(drop=True)
+                    p_pos["t"] = p_pos.index
+    
+                    O_list = []
+                    for o_id, o_df in enumerate(o_dfs):
+                        O = o_df.iloc[
+                            (g_df.iloc[g_df.shape[0] - 1, 0] - 1) : (p_df.shape[0] - 1),
+                        ]
+                        O = O.reset_index(drop=True)
+                        O = O[(O.index % (skip + 1) == 0) | (O.index == (O.shape[0] - 1))]
+                        O = O.reset_index(drop=True)
+                        O["t"] = O.index
+                        O["id"] = o_id
+                        O_list.append(O)
+                    o_pos = pd.concat(O_list)
+                    o_pos.reset_index
+    
+                    if g_df.shape[0] == 6:
+                        k = final_goal
+                        c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
+                    else:
+                        k = g_df.shape[0] + goal_inc
+                        c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
+                    try:
+                        c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
+                    except:
+                        raise FileNotFoundError(
+                            f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"
+                        )
+                    c_g = (c_g_df["posX"].values[0], c_g_df["posY"].values[0])
+                    D.append(
+                        {
+                            "player": p_pos,
+                            "obstacles": o_pos,
+                            "reached_goal": False,
+                            "goal": c_g,
+                        }
+                    )
 
+        else:
+            p_df = p_df.iloc[:-1,]
+            p_diffs_check = ~p_df["timestamp"].diff().iloc[1:].between(33,66)
+            if p_diff_check.any():
+                pass
+            else:
+                p_df = p_df[
+                    (p_df.index % (skip + 1) == 0) | (p_df.index == (p_df.shape[0] - 1))
+                ]
+                p_df = p_df.reset_index(drop=True)
+                p_df["t"] = p_df.index
+    
                 O_list = []
                 for o_id, o_df in enumerate(o_dfs):
-                    O = o_df.iloc[
-                        (g_df.iloc[g_df.shape[0] - 1, 0] - 1) : (p_df.shape[0] - 1),
-                    ]
-                    O = O.reset_index(drop=True)
+                    O = o_df.iloc[:-1,]
                     O = O[(O.index % (skip + 1) == 0) | (O.index == (O.shape[0] - 1))]
                     O = O.reset_index(drop=True)
                     O["t"] = O.index
@@ -154,59 +204,18 @@ def load_attempt_data(
                     O_list.append(O)
                 o_pos = pd.concat(O_list)
                 o_pos.reset_index
-
-                if g_df.shape[0] == 6:
-                    k = final_goal
-                    c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
-                else:
-                    k = g_df.shape[0] + goal_inc
-                    c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
+    
+                c_g_file = f"{path}/entity.{lvl}.{attempt}.{goal_inc}.data.csv"
                 try:
                     c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
                 except:
                     raise FileNotFoundError(
-                        f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"
+                        f"Could not find data for entity (goal) {goal_inc} for level {lvl}, attempt {attempt}!"
                     )
                 c_g = (c_g_df["posX"].values[0], c_g_df["posY"].values[0])
                 D.append(
-                    {
-                        "player": p_pos,
-                        "obstacles": o_pos,
-                        "reached_goal": False,
-                        "goal": c_g,
-                    }
+                    {"player": p_df, "obstacles": o_pos, "reached_goal": False, "goal": c_g}
                 )
-
-        else:
-            p_df = p_df.iloc[:-1,]
-            p_df = p_df[
-                (p_df.index % (skip + 1) == 0) | (p_df.index == (p_df.shape[0] - 1))
-            ]
-            p_df = p_df.reset_index(drop=True)
-            p_df["t"] = p_df.index
-
-            O_list = []
-            for o_id, o_df in enumerate(o_dfs):
-                O = o_df.iloc[:-1,]
-                O = O[(O.index % (skip + 1) == 0) | (O.index == (O.shape[0] - 1))]
-                O = O.reset_index(drop=True)
-                O["t"] = O.index
-                O["id"] = o_id
-                O_list.append(O)
-            o_pos = pd.concat(O_list)
-            o_pos.reset_index
-
-            c_g_file = f"{path}/entity.{lvl}.{attempt}.{goal_inc}.data.csv"
-            try:
-                c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
-            except:
-                raise FileNotFoundError(
-                    f"Could not find data for entity (goal) {goal_inc} for level {lvl}, attempt {attempt}!"
-                )
-            c_g = (c_g_df["posX"].values[0], c_g_df["posY"].values[0])
-            D.append(
-                {"player": p_df, "obstacles": o_pos, "reached_goal": False, "goal": c_g}
-            )
 
         return D
     else:
