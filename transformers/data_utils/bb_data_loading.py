@@ -86,7 +86,7 @@ def load_attempt_data(
             for i in range(g_df.shape[0]):
                 p_pos = p_df.iloc[(g_df.iloc[i, 1] - 1) : (g_df.iloc[i, 0] - 1),]
                 p_diffs_check = ~p_pos["timestamp"].diff().iloc[1:].between(33,66)
-                if p_diff_check.any():
+                if p_diffs_check.any():
                     continue
                 p_pos = p_pos.reset_index(drop=True)
                 p_pos = p_pos[
@@ -135,7 +135,7 @@ def load_attempt_data(
                     (g_df.iloc[g_df.shape[0] - 1, 0] - 1) : (p_df.shape[0] - 1),
                 ]
                 p_diffs_check = ~p_pos["timestamp"].diff().iloc[1:].between(33,66)
-                if p_diff_check.any():
+                if p_diffs_check.any():
                     pass
                 else:
                     p_pos = p_pos.reset_index(drop=True)
@@ -185,7 +185,7 @@ def load_attempt_data(
         else:
             p_df = p_df.iloc[:-1,]
             p_diffs_check = ~p_df["timestamp"].diff().iloc[1:].between(33,66)
-            if p_diff_check.any():
+            if p_diffs_check.any():
                 pass
             else:
                 p_df = p_df[
