@@ -547,7 +547,7 @@ def create_state_data(
             ams.append(am)
 
             lbs.append(np.ones(s.shape[0]))
-        max(f_shapes)
+        print(max(f_shapes))
         if save_data is None:
             return {
                 labels[0]: np.concatenate(sts),
