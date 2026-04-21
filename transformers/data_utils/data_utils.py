@@ -547,8 +547,7 @@ def create_state_data(
             ams.append(am)
 
             lbs.append(np.ones(s.shape[0]))
-        sns.violinplot(np.array(f_shapes))
-        plt.savefig("f_shapes.png")
+        max(f_shapes)
         if save_data is None:
             return {
                 labels[0]: np.concatenate(sts),
