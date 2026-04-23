@@ -1,13 +1,13 @@
 import argparse
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.abspath("../.."))
 from pathlib import Path
 
 import h5py
-from argformat import StructuredFormatter
 import numpy as np
+from argformat import StructuredFormatter
 from transformers.data_utils.bb_data_loading import load_list
 
 
@@ -72,13 +72,7 @@ def main(argv):
                 action_sizes.append(act)
 
                 for m in range(d):
-                    m_static = g["states"][m, 0, -4:]
-                    t_static = f["states"][:, 0, -4:]
-                    matches = np.argwhere(np.all(t_static == m_static, axis=1))[:, 0]
-                    if matches.shape[0] > 0:
-                        m_idxs.append(rng.choice(matches))
-                    else:
-                        m_idxs.append(rng.choice(t_static.shape[0]))
+                    m_idxs.append(rng.choice(t_size))
 
     if not np.all(np.array(segment_sizes) == segment_sizes[0]):
         raise ValueError("All segment lengths must be the same!")

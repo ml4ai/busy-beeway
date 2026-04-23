@@ -1,14 +1,13 @@
 import argparse
+import itertools
 import os
 import sys
-import itertools
 
 sys.path.insert(0, os.path.abspath("../.."))
 from pathlib import Path
 
 from argformat import StructuredFormatter
 from tqdm import tqdm
-
 from transformers.data_utils.bb_data_loading import (
     load_list,
     load_participant_data,
@@ -173,7 +172,7 @@ def main(argv):
                 save_d_pref = save_pref + f"{p_id}.hdf5"
                 create_state_data(
                     F,
-                    state_features=8 + 3 * args.n_min_obstacles,
+                    state_features=4 + 3 * args.n_min_obstacles,
                     split_size=split_size,
                     save_data=save_d_pref,
                 )
@@ -211,7 +210,7 @@ def main(argv):
                 save_d_pref = save_pref + f"{p_id}.hdf5"
                 create_state_data(
                     F,
-                    state_features=8 + 3 * args.n_min_obstacles,
+                    state_features=4 + 3 * args.n_min_obstacles,
                     split_size=split_size,
                     save_data=save_d_pref,
                 )
@@ -250,7 +249,7 @@ def main(argv):
             save_d_pref = save_pref + f"{p_id}.hdf5"
             create_state_data(
                 F,
-                state_features=8 + 3 * args.n_min_obstacles,
+                state_features=4 + 3 * args.n_min_obstacles,
                 split_size=split_size,
                 save_data=save_d_pref,
             )
@@ -287,7 +286,7 @@ def main(argv):
         save_d_pref = save_pref + f"{p_id}.hdf5"
         create_state_data(
             F,
-            state_features=8 + 3 * args.n_min_obstacles,
+            state_features=4 + 3 * args.n_min_obstacles,
             split_size=split_size,
             save_data=save_d_pref,
         )

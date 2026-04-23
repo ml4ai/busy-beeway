@@ -16,7 +16,6 @@ def load_attempt_data(
     control=1,
     study=1,
 ):
-
     p_file = f"{path}/player.{lvl}.{attempt}.0.data.csv"
     if study == 1:
         match lvl:
@@ -44,13 +43,7 @@ def load_attempt_data(
         try:
             p_df = pd.read_csv(
                 p_file,
-                usecols=[
-                    "posX",
-                    "posY",
-                    "angle",
-                    "userControl",
-                    "timestamp"
-                ],
+                usecols=["posX", "posY", "angle", "userControl", "timestamp"],
             )
         except FileNotFoundError:
             raise FileNotFoundError(
@@ -63,9 +56,7 @@ def load_attempt_data(
         for i in range(obs_start, obs_end + 1):
             o_file = f"{path}/entity.{lvl}.{attempt}.{i}.data.csv"
             try:
-                o = pd.read_csv(
-                    o_file, usecols=["posX", "posY", "angle"]
-                )
+                o = pd.read_csv(o_file, usecols=["posX", "posY", "angle"])
             except:
                 raise FileNotFoundError(
                     f"Could not find data for entity (obstacle) {i} for level {lvl}, attempt {attempt}!"
@@ -85,7 +76,7 @@ def load_attempt_data(
         if g_df.shape[0] > 0:
             for i in range(g_df.shape[0]):
                 p_pos = p_df.iloc[(g_df.iloc[i, 1] - 1) : (g_df.iloc[i, 0] - 1),]
-                p_diffs_check = ~p_pos["timestamp"].diff().iloc[1:].between(33,66)
+                p_diffs_check = ~p_pos["timestamp"].diff().iloc[1:].between(33, 66)
                 if p_diffs_check.any():
                     continue
                 p_pos = p_pos.reset_index(drop=True)
@@ -134,7 +125,7 @@ def load_attempt_data(
                 p_pos = p_df.iloc[
                     (g_df.iloc[g_df.shape[0] - 1, 0] - 1) : (p_df.shape[0] - 1),
                 ]
-                p_diffs_check = ~p_pos["timestamp"].diff().iloc[1:].between(33,66)
+                p_diffs_check = ~p_pos["timestamp"].diff().iloc[1:].between(33, 66)
                 if p_diffs_check.any():
                     pass
                 else:
@@ -145,21 +136,23 @@ def load_attempt_data(
                     ]
                     p_pos = p_pos.reset_index(drop=True)
                     p_pos["t"] = p_pos.index
-    
+
                     O_list = []
                     for o_id, o_df in enumerate(o_dfs):
                         O = o_df.iloc[
                             (g_df.iloc[g_df.shape[0] - 1, 0] - 1) : (p_df.shape[0] - 1),
                         ]
                         O = O.reset_index(drop=True)
-                        O = O[(O.index % (skip + 1) == 0) | (O.index == (O.shape[0] - 1))]
+                        O = O[
+                            (O.index % (skip + 1) == 0) | (O.index == (O.shape[0] - 1))
+                        ]
                         O = O.reset_index(drop=True)
                         O["t"] = O.index
                         O["id"] = o_id
                         O_list.append(O)
                     o_pos = pd.concat(O_list)
                     o_pos.reset_index
-    
+
                     if g_df.shape[0] == 6:
                         k = final_goal
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
@@ -184,7 +177,7 @@ def load_attempt_data(
 
         else:
             p_df = p_df.iloc[:-1,]
-            p_diffs_check = ~p_df["timestamp"].diff().iloc[1:].between(33,66)
+            p_diffs_check = ~p_df["timestamp"].diff().iloc[1:].between(33, 66)
             if p_diffs_check.any():
                 pass
             else:
@@ -193,7 +186,7 @@ def load_attempt_data(
                 ]
                 p_df = p_df.reset_index(drop=True)
                 p_df["t"] = p_df.index
-    
+
                 O_list = []
                 for o_id, o_df in enumerate(o_dfs):
                     O = o_df.iloc[:-1,]
@@ -204,7 +197,7 @@ def load_attempt_data(
                     O_list.append(O)
                 o_pos = pd.concat(O_list)
                 o_pos.reset_index
-    
+
                 c_g_file = f"{path}/entity.{lvl}.{attempt}.{goal_inc}.data.csv"
                 try:
                     c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
@@ -214,7 +207,12 @@ def load_attempt_data(
                     )
                 c_g = (c_g_df["posX"].values[0], c_g_df["posY"].values[0])
                 D.append(
-                    {"player": p_df, "obstacles": o_pos, "reached_goal": False, "goal": c_g}
+                    {
+                        "player": p_df,
+                        "obstacles": o_pos,
+                        "reached_goal": False,
+                        "goal": c_g,
+                    }
                 )
 
         return D
@@ -234,7 +232,7 @@ def load_attempt_data(
                 raise FileNotFoundError(
                     f"Could not find player data for level {lvl}, attempt {attempt}. Check that directory {path} exists!"
                 )
-                
+
             p_df["level"] = lvl
             p_df["ai"] = ai
             p_df["attempt"] = attempt
@@ -271,9 +269,7 @@ def load_attempt_data(
                         k = final_goal
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
-                        c_g_df = pd.read_csv(
-                            c_g_file, usecols=["posX", "posY"], nrows=1
-                        )
+                        c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
                     except:
                         raise FileNotFoundError(
                             f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"
@@ -335,9 +331,7 @@ def load_attempt_data(
                         k = g_df.shape[0] + goal_inc
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
-                        c_g_df = pd.read_csv(
-                            c_g_file, usecols=["posX", "posY"], nrows=1
-                        )
+                        c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
                     except:
                         raise FileNotFoundError(
                             f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"
@@ -497,9 +491,7 @@ def load_attempt_data(
                         k = final_goal
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
-                        c_g_df = pd.read_csv(
-                            c_g_file, usecols=["posX", "posY"], nrows=1
-                        )
+                        c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
                     except:
                         raise FileNotFoundError(
                             f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"
@@ -561,9 +553,7 @@ def load_attempt_data(
                         k = g_df.shape[0] + goal_inc
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
-                        c_g_df = pd.read_csv(
-                            c_g_file, usecols=["posX", "posY"], nrows=1
-                        )
+                        c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
                     except:
                         raise FileNotFoundError(
                             f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"
@@ -714,7 +704,6 @@ def load_test_data(
 # Path is a directory for a participant for a given experiment over several different days (e.g., Experiment_1T5)
 # Exclusion list is a list of strings where each is a path to a test session to exclude.
 def load_experiment_data(ai, path, skip=0, control=1, study=1, exclusion_list=[]):
-
     if exclusion_list:
         D = []
         dir_path = os.path.expanduser(path)
@@ -737,10 +726,7 @@ def load_experiment_data(ai, path, skip=0, control=1, study=1, exclusion_list=[]
     return D
 
 
-def load_experiment_data_by_day(
-    ai, path, skip=0, control=1, study=1, exclusion_list=[]
-):
-
+def load_experiment_data_by_day(ai, path, skip=0, control=1, study=1, exclusion_list=[]):
     if exclusion_list:
         D = {}
         dir_path = os.path.expanduser(path)
@@ -1062,12 +1048,13 @@ def load_attempt_data_p(f):
         if control == 2:
             try:
                 p_df = pd.read_csv(
-                    p_file, usecols=[
-                    "posX",
-                    "posY",
-                    "angle",
-                    "userControl",
-                ],
+                    p_file,
+                    usecols=[
+                        "posX",
+                        "posY",
+                        "angle",
+                        "userControl",
+                    ],
                 )
             except FileNotFoundError:
                 raise FileNotFoundError(
@@ -1107,9 +1094,7 @@ def load_attempt_data_p(f):
                         k = final_goal
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
-                        c_g_df = pd.read_csv(
-                            c_g_file, usecols=["posX", "posY"], nrows=1
-                        )
+                        c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
                     except:
                         raise FileNotFoundError(
                             f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"
@@ -1171,9 +1156,7 @@ def load_attempt_data_p(f):
                         k = g_df.shape[0] + goal_inc
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
-                        c_g_df = pd.read_csv(
-                            c_g_file, usecols=["posX", "posY"], nrows=1
-                        )
+                        c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
                     except:
                         raise FileNotFoundError(
                             f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"
@@ -1285,12 +1268,13 @@ def load_attempt_data_p(f):
         else:
             try:
                 p_df = pd.read_csv(
-                    p_file,usecols=[
-                    "posX",
-                    "posY",
-                    "angle",
-                    "userControl",
-                ],
+                    p_file,
+                    usecols=[
+                        "posX",
+                        "posY",
+                        "angle",
+                        "userControl",
+                    ],
                 )
             except FileNotFoundError:
                 raise FileNotFoundError(
@@ -1330,9 +1314,7 @@ def load_attempt_data_p(f):
                         k = final_goal
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
-                        c_g_df = pd.read_csv(
-                            c_g_file, usecols=["posX", "posY"], nrows=1
-                        )
+                        c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
                     except:
                         raise FileNotFoundError(
                             f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"
@@ -1394,9 +1376,7 @@ def load_attempt_data_p(f):
                         k = g_df.shape[0] + goal_inc
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
-                        c_g_df = pd.read_csv(
-                            c_g_file, usecols=["posX", "posY"], nrows=1
-                        )
+                        c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
                     except:
                         raise FileNotFoundError(
                             f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"

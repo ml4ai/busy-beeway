@@ -1,11 +1,11 @@
 import os
+from collections import defaultdict
 from multiprocessing import Pool
 from pathlib import Path
-from collections import defaultdict
 
 import h5py
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
 from tqdm import tqdm
@@ -122,7 +122,6 @@ def compute_run_features(p_df, g, O, day=None, n_min_obstacles=6):
     features["posY"] = p_df["posY"].to_numpy()
 
     for i in range(n_min_obstacles):
-
         features[f"O_{i}_posX"] = np.repeat(0.0, p_df.shape[0])
 
         features[f"O_{i}_posY"] = np.repeat(0.0, p_df.shape[0])
@@ -150,11 +149,11 @@ def compute_run_features(p_df, g, O, day=None, n_min_obstacles=6):
 
     features["goalX"] = np.repeat(g[0], p_df.shape[0])
     features["goalY"] = np.repeat(g[1], p_df.shape[0])
-    features["level"] = p_df["level"].to_numpy()
-    features["ai"] = p_df["ai"].to_numpy()
-    features["attempt"] = p_df["attempt"].to_numpy()
-    if day is not None:
-        features["day"] = np.repeat(day, p_df.shape[0])
+    # features["level"] = p_df["level"].to_numpy()
+    # features["ai"] = p_df["ai"].to_numpy()
+    # features["attempt"] = p_df["attempt"].to_numpy()
+    # if day is not None:
+    #     features["day"] = np.repeat(day, p_df.shape[0])
     features["speed"] = np.append(
         np.sqrt(
             np.diff(p_df["posX"].to_numpy()) ** 2
@@ -197,7 +196,6 @@ def compute_run_features_p(d):
     features["posY"] = p_df["posY"].to_numpy()
 
     for i in range(n_min_obstacles):
-
         features[f"O_{i}_posX"] = np.repeat(0.0, p_df.shape[0])
 
         features[f"O_{i}_posY"] = np.repeat(0.0, p_df.shape[0])
@@ -226,11 +224,11 @@ def compute_run_features_p(d):
 
     features["goalX"] = np.repeat(g[0], p_df.shape[0])
     features["goalY"] = np.repeat(g[1], p_df.shape[0])
-    features["level"] = p_df["level"].to_numpy()
-    features["ai"] = p_df["ai"].to_numpy()
-    features["attempt"] = p_df["attempt"].to_numpy()
-    if day is not None:
-        features["day"] = np.repeat(day, p_df.shape[0])
+    # features["level"] = p_df["level"].to_numpy()
+    # features["ai"] = p_df["ai"].to_numpy()
+    # features["attempt"] = p_df["attempt"].to_numpy()
+    # if day is not None:
+    #     features["day"] = np.repeat(day, p_df.shape[0])
     features["speed"] = np.append(
         np.sqrt(
             np.diff(p_df["posX"].to_numpy()) ** 2
@@ -321,7 +319,7 @@ def pad_run_features(f, fill_size=500):
 
 
 # Takes feature dataframe and transforms into np arrays with padding. Returns tuple of features matrix and timestep array for a state sequence
-def run_to_np(f, state_features=26, fill_size=500, with_attn_mask=True):
+def run_to_np(f, state_features=22, fill_size=500, with_attn_mask=True):
     p_f = pad_run_features(f, fill_size)
     nf = p_f.to_numpy()
     if with_attn_mask:
@@ -362,12 +360,11 @@ def create_preference_data(
     F_2,
     split_size=100,
     gh_idx=1,
-    state_features=26,
+    state_features=22,
     labels=("states", "actions", "timesteps", "attn_mask"),
     with_attn_mask=True,
     save_data=None,
 ):
-
     assert len(F_1) == len(F_2), "F_1 and F_2 should be equal sizes!"
 
     if with_attn_mask:
@@ -515,12 +512,11 @@ def create_preference_data(
 def create_state_data(
     F,
     split_size=100,
-    state_features=26,
+    state_features=22,
     labels=("states", "actions", "timesteps", "attn_mask"),
     with_attn_mask=True,
     save_data=None,
 ):
-
     if with_attn_mask:
         sts = []
         acts = []
