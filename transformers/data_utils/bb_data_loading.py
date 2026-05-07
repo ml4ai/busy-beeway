@@ -186,7 +186,7 @@ def load_attempt_data(
             p_diffs_check = ~p_df["timestamp"].diff().iloc[1:].between(33, 66)
             if p_diffs_check.any():
                 pass
-            elif not p_pos["userControl"].any():
+            elif not p_df["userControl"].any():
                 pass
             else:
                 p_df = p_df[
