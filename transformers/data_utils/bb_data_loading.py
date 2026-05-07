@@ -79,6 +79,8 @@ def load_attempt_data(
                 p_diffs_check = ~p_pos["timestamp"].diff().iloc[1:].between(33, 66)
                 if p_diffs_check.any():
                     continue
+                if not p_pos["userControl"].any():
+                    continue
                 p_pos = p_pos.reset_index(drop=True)
                 p_pos = p_pos[
                     (p_pos.index % (skip + 1) == 0)
@@ -128,6 +130,8 @@ def load_attempt_data(
                 p_diffs_check = ~p_pos["timestamp"].diff().iloc[1:].between(33, 66)
                 if p_diffs_check.any():
                     pass
+                elif not p_pos["userControl"].any():
+                    pass
                 else:
                     p_pos = p_pos.reset_index(drop=True)
                     p_pos = p_pos[
@@ -160,7 +164,9 @@ def load_attempt_data(
                         k = g_df.shape[0] + goal_inc
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
-                        c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
+                        c_g_df = pd.read_csv(
+                            c_g_file, usecols=["posX", "posY"], nrows=1
+                        )
                     except:
                         raise FileNotFoundError(
                             f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"
@@ -179,6 +185,8 @@ def load_attempt_data(
             p_df = p_df.iloc[:-1,]
             p_diffs_check = ~p_df["timestamp"].diff().iloc[1:].between(33, 66)
             if p_diffs_check.any():
+                pass
+            elif not p_pos["userControl"].any():
                 pass
             else:
                 p_df = p_df[
@@ -269,7 +277,9 @@ def load_attempt_data(
                         k = final_goal
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
-                        c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
+                        c_g_df = pd.read_csv(
+                            c_g_file, usecols=["posX", "posY"], nrows=1
+                        )
                     except:
                         raise FileNotFoundError(
                             f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"
@@ -331,7 +341,9 @@ def load_attempt_data(
                         k = g_df.shape[0] + goal_inc
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
-                        c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
+                        c_g_df = pd.read_csv(
+                            c_g_file, usecols=["posX", "posY"], nrows=1
+                        )
                     except:
                         raise FileNotFoundError(
                             f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"
@@ -491,7 +503,9 @@ def load_attempt_data(
                         k = final_goal
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
-                        c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
+                        c_g_df = pd.read_csv(
+                            c_g_file, usecols=["posX", "posY"], nrows=1
+                        )
                     except:
                         raise FileNotFoundError(
                             f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"
@@ -553,7 +567,9 @@ def load_attempt_data(
                         k = g_df.shape[0] + goal_inc
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
-                        c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
+                        c_g_df = pd.read_csv(
+                            c_g_file, usecols=["posX", "posY"], nrows=1
+                        )
                     except:
                         raise FileNotFoundError(
                             f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"
@@ -726,7 +742,9 @@ def load_experiment_data(ai, path, skip=0, control=1, study=1, exclusion_list=[]
     return D
 
 
-def load_experiment_data_by_day(ai, path, skip=0, control=1, study=1, exclusion_list=[]):
+def load_experiment_data_by_day(
+    ai, path, skip=0, control=1, study=1, exclusion_list=[]
+):
     if exclusion_list:
         D = {}
         dir_path = os.path.expanduser(path)
@@ -1094,7 +1112,9 @@ def load_attempt_data_p(f):
                         k = final_goal
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
-                        c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
+                        c_g_df = pd.read_csv(
+                            c_g_file, usecols=["posX", "posY"], nrows=1
+                        )
                     except:
                         raise FileNotFoundError(
                             f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"
@@ -1156,7 +1176,9 @@ def load_attempt_data_p(f):
                         k = g_df.shape[0] + goal_inc
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
-                        c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
+                        c_g_df = pd.read_csv(
+                            c_g_file, usecols=["posX", "posY"], nrows=1
+                        )
                     except:
                         raise FileNotFoundError(
                             f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"
@@ -1314,7 +1336,9 @@ def load_attempt_data_p(f):
                         k = final_goal
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
-                        c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
+                        c_g_df = pd.read_csv(
+                            c_g_file, usecols=["posX", "posY"], nrows=1
+                        )
                     except:
                         raise FileNotFoundError(
                             f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"
@@ -1376,7 +1400,9 @@ def load_attempt_data_p(f):
                         k = g_df.shape[0] + goal_inc
                         c_g_file = f"{path}/entity.{lvl}.{attempt}.{k}.data.csv"
                     try:
-                        c_g_df = pd.read_csv(c_g_file, usecols=["posX", "posY"], nrows=1)
+                        c_g_df = pd.read_csv(
+                            c_g_file, usecols=["posX", "posY"], nrows=1
+                        )
                     except:
                         raise FileNotFoundError(
                             f"Could not find data for entity (goal) {k} for level {lvl}, attempt {attempt}!"
